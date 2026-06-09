@@ -150,6 +150,8 @@ data/
 EXPS/repos/
 exps/
 *.pdf
+!EXPS/*.pdf
+!EXPS/Chat/*.pdf
 *.png
 *.jpg
 *.jpeg

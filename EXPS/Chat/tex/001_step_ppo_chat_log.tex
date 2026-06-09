@@ -1,0 +1,191 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,booktabs,longtable}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlist[itemize]{leftmargin=1.5em}
+\setlist[enumerate]{leftmargin=1.8em}
+\title{001：StepPPO 研究聊天记录归档}
+\author{用户与 Codex}
+\date{2026-06-05}
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{说明}
+本文归档当前会话中围绕 Step-wise PPO、GRPO、GiGPO、实验脚本、可视化、文档和算法改进的主要讨论内容。为避免 PDF 过长，本文保留用户问题、关键回答、形成的决策、代码与文档产物；对长日志和工具输出只保留结论与路径。
+
+\section*{一、研究目标与初始规划}
+用户首先提出希望做一个 step-wise PPO 实验，并要求先理解当前 PPO、GRPO 和 GiGPO 的实现。经过对齐后，形成如下目标：
+\begin{itemize}
+\item 任务是 agentic multi-step episode，每个 episode 包含多个 environment steps。
+\item 每个 step 中，agent 接收 context/observation，生成一个完整 action，例如 tool call 或文本动作。
+\item Step-wise PPO 的 value、return、TD error 和 GAE 都在 environment-step 维度计算，而不是 token 维度。
+\item 每个 action 只产生一个 value prediction；底层模型可以每个 token 输出 value，但主实现只取 action 生成前边界处的 scalar value。
+\end{itemize}
+
+\section*{二、Critic 与 Value Head 的共识}
+关于 PPO critic，讨论中形成的共识是：
+\begin{itemize}
+\item 传统 PPO 可以维护独立 critic 模型，但本实验不希望额外维护一套 critic backbone。
+\item 当前 StepPPO 采用 shared-backbone actor-critic：在 actor CausalLM 上额外挂一个 TRL-style value head。
+\item value head 是小型 regression head，主版本为 MLP，输入为 actor hidden state，输出 scalar value。
+\item 默认 value position 是 \path{pre_action_last_context_token}，即 action 生成前最后一个 context token，用来估计严格的 $V(s_t)$。
+\item 取 first response token 或 last response token 更接近 action-conditioned baseline，保留为未来 ablation，不作为主定义。
+\end{itemize}
+
+严格 step value 形式为：
+\[
+V_{\theta,\psi}(s_t)=v_\psi(H_t[b_t]),
+\qquad b_t=n_t-L_t-1,
+\]
+其中 $n_t$ 是 context+response 总长度，$L_t$ 是 response 长度。
+
+\section*{三、StepPPO Advantage 的定义}
+用户强调 StepPPO 的 return、GAE、TD-error 都应沿 step 维度计算。最终采用：
+\[
+\delta_t=r_t+\gamma(1-d_t)V^{old}(s_{t+1})-V^{old}(s_t),
+\]
+\[
+A_t^{step}=\delta_t+\gamma\lambda(1-d_t)A_{t+1}^{step},
+\qquad
+R_t^{step}=A_t^{step}+V^{old}(s_t).
+\]
+
+同时保留 episode-level GRPO signal：
+\[
+A_i^{epi}=\frac{R_i^{epi}-\mu_g}{\sigma_g+\epsilon}.
+\]
+
+v1 版本定义为：
+\[
+A_t^{final,v1}=\frac{\widehat A_t^{epi}+w\widehat A_t^{step}}{1+w}.
+\]
+
+v0 base 版本定义为：
+\[
+A_t^{final,v0}=\frac{\widehat A_t^{epi}+wA_t^{step}}{1+w}.
+\]
+
+\section*{四、Baseline 选择讨论}
+围绕 baseline，形成如下结论：
+\begin{itemize}
+\item GRPO 是 non-step baseline，因为它只使用 episode-level grouped relative advantage。
+\item GiGPO 是更重要的 step-aware baseline，因为它已经利用 step return、anchor observation grouping 和 step-level relative advantage。
+\item StepPPO 应主要和 GiGPO 对比，回答 learned step-level critic correction 是否优于 critic-free step grouping。
+\item 如果想衡量 step 信息本身是否有用，可以对比 GRPO。
+\end{itemize}
+
+\section*{五、v1、v0 与实验顺序}
+用户重新规划实验后，明确：
+\begin{itemize}
+\item GiGPO 三个 seed 已经跑过。
+\item GRPO 需要作为额外 baseline 补跑。
+\item StepPPO 准备两个版本：v1\_step\_norm 与 v0\_base。
+\item 首轮 seed 使用 2026，顺序为 StepPPO-v1、StepPPO-v0、GRPO。
+\end{itemize}
+
+对应批量脚本为：
+\begin{verbatim}
+exps/run_webshop_step_ppo_v1_v0_grpo_seed2026.sh
+\end{verbatim}
+
+\section*{六、可视化与已有训练结果}
+用户要求将 StepPPO 与 GiGPO 三个 seed 的结果可视化对比。生成的主要输出包括：
+\begin{itemize}
+\item \path{VISULIZATION/figures/fig_gigpo_vs_step_ppo_val_metrics.png}
+\item \path{VISULIZATION/figures/fig_step_ppo_instability_diagnostics.png}
+\item \path{VISULIZATION/figures/fig_step_ppo_time_resource_diagnostics.png}
+\end{itemize}
+
+已有诊断显示：
+\begin{itemize}
+\item StepPPO-v1 相对 GiGPO validation 指标更低。
+\item StepPPO-v1 valid action ratio 更低。
+\item StepPPO-v1 response clipping 更高。
+\item StepPPO-v1 value loss 和 grad norm 更大。
+\item StepPPO-v1 的 rollout generation 更慢，后期非验证 step 约为 GiGPO 的 $2.02\times$。
+\end{itemize}
+
+\section*{七、StepPPO 训练慢的定位}
+对时间和资源消耗的定位结论：
+\begin{itemize}
+\item 主因不是显存不足，StepPPO 平均 GPU allocated memory 反而低于 GiGPO。
+\item 最大时间差来自 rollout generation：StepPPO 生成更长、更容易截断、更可能 invalid 的 response。
+\item 直接实现开销也存在：StepPPO 需要 value prediction 和 value loss。
+\item 原 old-log-probability 阶段存在 logprob 与 value 分两次 forward 的开销。
+\end{itemize}
+
+时间诊断文档为：
+\begin{verbatim}
+EXPS/010_step_ppo_time_resource_analysis.pdf
+\end{verbatim}
+
+\section*{八、文档体系整理}
+用户要求 EXPS 下文档以 TeX/PDF 形式保存，并指定除 method/算法介绍用英文外，其它以中文为主。当前约定为：
+\begin{itemize}
+\item \path{EXPS/tex/} 存放实验文档 TeX 源文件。
+\item \path{EXPS/} 根目录存放对应 PDF。
+\item \path{003_shared_value_head_step_ppo_method} 保持英文 method 文档。
+\item 其它实验规划、实现说明、诊断分析文档以中文为主。
+\end{itemize}
+
+已提交过的相关 commit 包括：
+\begin{itemize}
+\item \texttt{ede5d07 Add TeX experiment docs and log conventions}
+\item \texttt{8279bea Localize experiment docs except method}
+\end{itemize}
+
+\section*{九、StepPPO-v2 改进}
+用户询问是否可以改进 StepPPO 后，做了一个低风险 v2 改进版本：
+\begin{enumerate}
+\item old-log-probability 阶段改为 single forward 同时返回 logprob 和 state value，减少重复计算。
+\item 新增 \path{normalize_final_advantage} 配置，默认关闭。
+\item 新增 v2 stable 脚本，使用 detached value backbone 和更小 value loss coefficient。
+\end{enumerate}
+
+v2 stable 核心配置为：
+\begin{verbatim}
+algorithm.step_ppo.normalize_step_advantage=True
+algorithm.step_ppo.normalize_final_advantage=True
+actor_rollout_ref.actor.value_head.detach_value_backbone=True
+actor_rollout_ref.actor.value_head.value_loss_coef=0.03
+\end{verbatim}
+
+新增脚本为：
+\begin{verbatim}
+exps/run_webshop_step_ppo_v2_stable_4gpu_paper_align_simple.sh
+\end{verbatim}
+
+提交为：
+\begin{verbatim}
+c5829ff Improve StepPPO stability and old value collection
+\end{verbatim}
+
+\section*{十、最近一次算法细节讨论}
+用户最后询问两个问题：
+\begin{enumerate}
+\item 平衡 $A_t^{epi}$ 与 $A_t^{step}$ 的 $w$ 默认是多少？
+\item 当前 v1 除了加入 $A^{step}$ 和 value loss 外，是否与 GiGPO 完全对齐？
+\end{enumerate}
+
+回答结论：
+\begin{itemize}
+\item $w$ 默认是 $1.0$，即 StepPPO-v1 中 episode:step 的比例是 $1:1$。
+\item 但 StepPPO-v1 用 $1+w$ 做平均，而 GiGPO 当前是直接相加：$A^{GiGPO}=A^{epi}+wA^{step}$。
+\item StepPPO-v1 并不与 GiGPO 完全对齐。主要差异包括 episode normalization、step advantage 来源、step normalization 粒度、final advantage scale 和 microbatch 配置。
+\end{itemize}
+
+更准确的描述是：StepPPO-v1 是以 GRPO-style episode advantage 为 anchor，再加入 critic/GAE step correction 的 shared-backbone actor-critic 方法；它借鉴了 GiGPO 的 episode+step 框架，但不等价于 GiGPO 加一个 value loss。
+
+\section*{十一、后续建议}
+如果希望做更严格的 GiGPO-aligned StepPPO，建议开新版本，例如 \texttt{v3\_gigpo\_aligned}：
+\begin{itemize}
+\item episode advantage 语义对齐 GiGPO 的 \texttt{mean\_norm} 或 \texttt{mean\_std\_norm}。
+\item final advantage 与 GiGPO 一样使用 $A^{epi}+wA^{step}$，或者显式做 scale ablation。
+\item step normalization 不做全 batch whitening，而考虑按 \path{anchor_obs} group 或至少按 \path{uid} group。
+\item 只把 critic/GAE step signal 作为变量，其它尽量固定。
+\end{itemize}
+
+\end{document}

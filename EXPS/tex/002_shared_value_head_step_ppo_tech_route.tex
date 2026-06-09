@@ -1,0 +1,127 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,mathtools,bm}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlist[itemize]{leftmargin=1.5em}
+\newcommand{\clip}{\operatorname{clip}}
+\title{002：Shared-Backbone Step-wise PPO 技术路线}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{目标}
+本文给出 Step-wise PPO 的确定实现路线。critic 不作为独立模型维护，而是在 actor language model 上额外挂一个 scalar value head。actor 负责生成 action，value head 在每个环境 step 的 action 边界预测一个 state value。
+
+\section*{Value Head 设计}
+设 $h_t\in\mathbb{R}^d$ 是 action 生成前边界位置的 hidden state。主版本使用两层 MLP：
+\[
+v_\psi(h_t)=W_2\,\mathrm{GELU}(W_1h_t+b_1)+b_2.
+\]
+linear head 作为低成本 ablation 保留。value head 在 FSDP wrapping 前挂载，使其参与 actor optimizer 和 checkpoint；同步到 vLLM/SGLang rollout engine 前，需要过滤包含 \path{value_head} 的参数。
+
+默认 value position 是
+\[
+b_t = n_t - L_t - 1,
+\]
+其中 $n_t$ 是 context+response 总长度，$L_t$ 是 response 长度。value 定义为
+\[
+V_{\theta,\psi}(s_t)=v_\psi(H_t[b_t]).
+\]
+这个位置不 attend 到生成 token，因此是严格 state-value，而不是 action-conditioned value。
+
+\section*{Rollout 必需字段}
+每个 step sample 需要保存以下字段：
+\begin{itemize}
+\item \path{uid}：初始任务 group id，用于 episode-level GRPO normalization。
+\item \path{traj_uid}：trajectory id，用于恢复 episode 内 step 序列。
+\item \path{step_idx}：环境 step index，用于按时间顺序计算 GAE。
+\item \path{step_sample_uid}：可选字段，用于 batch expansion/filter 后追踪样本。
+\end{itemize}
+Tensor 侧需要保存 response mask、token-level reward、immediate step reward、old log probability、old scalar state value、token-broadcast advantage 和 scalar step return。
+
+\section*{Forward 路径}
+actor forward 支持 \path{return_step_values=True}。启用后，模型返回语言模型输出和 token-wise scalar values；StepPPO actor 再根据 \path{value_position} 取一个 scalar。old-log-probability 阶段记录：
+\[
+(\log\pi_{\theta_{\mathrm{old}}}, V^{\mathrm{old}}_t).
+\]
+actor update 阶段重新计算：
+\[
+(\log\pi_{\theta}, V_t).
+\]
+
+\section*{Step-wise Advantage}
+对每个 \path{traj_uid}，按 \path{step_idx} 排序后计算：
+\[
+\delta_t = r_t + \gamma(1-d_t)V^{\mathrm{old}}_{t+1} - V^{\mathrm{old}}_t,
+\]
+\[
+A_t^{\mathrm{step}} = \delta_t + \gamma\lambda(1-d_t)A_{t+1}^{\mathrm{step}},
+\qquad
+R_t^{\mathrm{step}} = A_t^{\mathrm{step}} + V^{\mathrm{old}}_t.
+\]
+这些量全部是 environment-step indexed，不是 token indexed。
+
+\section*{Episode Relative Signal}
+对 task group $g$ 内 trajectory $i$，定义 episode return $R_i^{\mathrm{epi}}$。GRPO-style signal 为
+\[
+A_i^{\mathrm{epi}}
+=\frac{R_i^{\mathrm{epi}}-\mu_g}{\sigma_g+\epsilon}.
+\]
+该 scalar 会广播到 trajectory $i$ 的所有 step。
+
+\section*{Final Advantage 版本}
+当前 v1 版本为
+\[
+A_t^{\mathrm{final,v1}}
+=\frac{\widehat A_t^{\mathrm{epi}}+w\widehat A_t^{\mathrm{step}}}{1+w}.
+\]
+v0 base 版本为
+\[
+A_t^{\mathrm{final,v0}}
+=\frac{\widehat A_t^{\mathrm{epi}}+w A_t^{\mathrm{step}}}{1+w}.
+\]
+二者区别在于 step GAE advantage 是否先做 batch-level whitening。
+
+\section*{Policy 与 Value Loss}
+actor 使用 PPO clipped objective。对 step $t$ 中 token $\ell$：
+\[
+\rho_{t,\ell}(\theta)
+=\exp(\log\pi_\theta(y_{t,\ell})-\log\pi_{\theta_{\mathrm{old}}}(y_{t,\ell})).
+\]
+policy loss 为
+\[
+\mathcal{L}_{\mathrm{pg}}
+=-\mathbb{E}\left[\min\left(\rho_{t,\ell}A_t^{\mathrm{final}},
+\clip(\rho_{t,\ell},1-\epsilon,1+\epsilon)A_t^{\mathrm{final}}\right)\right].
+\]
+value loss 使用 clipped scalar regression：
+\[
+\widetilde V_t = V_t^{\mathrm{old}} + \clip(V_t-V_t^{\mathrm{old}},-\epsilon_v,\epsilon_v),
+\]
+\[
+\mathcal{L}_{\mathrm v}
+=\frac12\mathbb{E}_t\left[\max\left((V_t-R_t^{\mathrm{step}})^2,
+(\widetilde V_t-R_t^{\mathrm{step}})^2\right)\right].
+\]
+总 loss 为
+\[
+\mathcal{L}=\mathcal{L}_{\mathrm{pg}}+c_v\mathcal{L}_{\mathrm v}+\beta\mathcal{L}_{\mathrm{KL}}-c_H\mathcal{H}.
+\]
+
+\section*{验证计划}
+\begin{itemize}
+\item 检查每个 step sample 都有 \path{uid}、\path{traj_uid}、\path{step_idx}。
+\item 检查 batch shuffle 后 GAE 的 temporal ordering 是否正确。
+\item 先跑 2GPU smoke，确认日志里出现 \path{state_values}、\path{step_returns}、\path{actor/value_loss}。
+\item 再跑 4GPU WebShop 单 seed，与 GiGPO 和 GRPO 对比。
+\end{itemize}
+
+\section*{主要风险}
+最大风险是 value target 噪声通过 shared backbone 干扰 actor 表征。第二个风险是额外 value forward 带来的运行开销。需要用 detached-backbone、lower-value-coef 和 microbatch ablation 来定位。
+
+\end{document}

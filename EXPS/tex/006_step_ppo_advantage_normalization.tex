@@ -1,0 +1,82 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,booktabs}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlist[itemize]{leftmargin=1.5em}
+\newcommand{\Whiten}{\operatorname{Whiten}}
+\title{006：StepPPO Advantage Normalization 说明}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{符号}
+任务 group 记为 $g$，其中包含 $K$ 条 sampled trajectories。trajectory index 为 $i$，环境 step index 为 $t$。immediate reward 为 $r_{i,t}$，old state value 为 $V^{\mathrm{old}}_{i,t}$，episode return 为
+\[
+R_i^{\mathrm{epi}}=\sum_t r_{i,t}.
+\]
+
+\section*{Episode Advantage}
+episode-level advantage 沿用 GRPO。对 group $g$：
+\[
+\mu_g=\frac1{|g|}\sum_{j\in g} R_j^{\mathrm{epi}},
+\qquad
+\sigma_g^2=\frac1{|g|-1}\sum_{j\in g}(R_j^{\mathrm{epi}}-\mu_g)^2.
+\]
+trajectory scalar advantage 为
+\[
+A_i^{\mathrm{epi}}=\frac{R_i^{\mathrm{epi}}-\mu_g}{\sigma_g+\epsilon}.
+\]
+然后广播到该 trajectory 的所有 step：
+\[
+A_{i,t}^{\mathrm{epi}}=A_i^{\mathrm{epi}}.
+\]
+实现中使用 \path{traj_uid} 去重，避免同一 trajectory 的多个 step 在 episode-level group 中被重复计数。
+
+\section*{Step Advantage}
+step advantage 沿每个 \path{traj_uid} 做 GAE：
+\[
+\delta_{i,t}=r_{i,t}+\gamma(1-d_{i,t})V^{\mathrm{old}}_{i,t+1}-V^{\mathrm{old}}_{i,t},
+\]
+\[
+A_{i,t}^{\mathrm{step}}=\delta_{i,t}+\gamma\lambda(1-d_{i,t})A_{i,t+1}^{\mathrm{step}}.
+\]
+value target 为
+\[
+R_{i,t}^{\mathrm{step}}=A_{i,t}^{\mathrm{step}}+V^{\mathrm{old}}_{i,t}.
+\]
+
+\section*{v1 当前归一化}
+v1 版本在 valid step batch 上分别 whitening 两个信号：
+\[
+\widehat A^{\mathrm{epi}} = \Whiten_{\mathcal{B}_{\mathrm{step}}}(A^{\mathrm{epi}}),
+\qquad
+\widehat A^{\mathrm{step}} = \Whiten_{\mathcal{B}_{\mathrm{step}}}(A^{\mathrm{step}}).
+\]
+若 $z$ 是 valid steps 上的向量，则
+\[
+\Whiten(z)_k=\frac{z_k-\bar z}{\sqrt{\operatorname{Var}(z)+\epsilon}}.
+\]
+最终 advantage 为
+\[
+A_t^{\mathrm{final,v1}}=\frac{\widehat A_t^{\mathrm{epi}}+w\widehat A_t^{\mathrm{step}}}{1+w}.
+\]
+该做法让两个来源在 scale 上可比，但也可能削弱原始 GRPO signal，并引入 noisy critic ordering。
+
+\section*{v0 Base 归一化}
+v0 保留 episode normalization，但不 whitening step GAE：
+\[
+A_t^{\mathrm{final,v0}}=\frac{\widehat A_t^{\mathrm{epi}}+w A_t^{\mathrm{step}}}{1+w}.
+\]
+它用于定位 batch-level step whitening 是否是 instability 来源。
+
+\section*{与 GiGPO 的 \path{traj_uid} 关系}
+使用 \path{traj_uid} 不代表 StepPPO 等价于 GiGPO。StepPPO 用 \path{traj_uid} 做 temporal GAE 和 episode return 去重；GiGPO 用 trajectory identity 与 anchor observation 构造 comparable step groups。二者都利用 step 信息，但 credit assignment 机制不同。
+
+\section*{后续可选版本}
+后续可测：按 \path{uid} 做 step normalization、trajectory-wise centering、按 anchor observation group normalization、mixing 后再 whitening，以及将 value target normalization 与 policy advantage normalization 分离。
+
+\end{document}

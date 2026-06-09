@@ -1,0 +1,69 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,booktabs}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlist[itemize]{leftmargin=1.5em}
+\title{005：Step-wise PPO 代码实现说明}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{结论}
+当前 StepPPO 是 shared-backbone actor-critic 变体。它既不是纯 GRPO，也不是纯 GiGPO。policy loss 仍然是 PPO clipped surrogate，但 advantage 由 GRPO-style episode signal 和 learned step-wise GAE signal 混合得到。critic 不是独立模型，而是挂在 actor 上的 value head。
+
+\section*{Baseline 建议}
+non-step baseline 使用 GRPO；step-aware baseline 使用 GiGPO。因为 GiGPO 和 StepPPO 都使用 step 信息，所以 GiGPO 是判断 learned step value 是否有价值的更强基线。GRPO 则用于衡量 step information 本身是否带来收益。
+
+\section*{代码入口}
+相关文件包括：
+\begin{itemize}
+\item \path{verl/trainer/main_step_ppo.py}：StepPPO 入口。
+\item \path{verl/trainer/ppo/step_ppo_trainer.py}：StepPPO trainer 和 estimator 检查。
+\item \path{verl/trainer/ppo/step_ppo_algos.py}：step GAE、episode advantage、final mixing。
+\item \path{verl/workers/actor/value_head.py}：TRL-style value head 挂载。
+\item \path{verl/workers/actor/step_ppo_actor.py}：old value collection、actor update、value loss。
+\item \path{verl/workers/step_ppo_fsdp_workers.py}：FSDP worker 集成。
+\item \path{verl/workers/sharding_manager/step_ppo_filters.py}：rollout weight sync 前过滤 value-head 参数。
+\end{itemize}
+
+\section*{Runtime Path}
+一次 StepPPO iteration 的顺序为：
+\begin{enumerate}
+\item 采集 multi-turn trajectories。
+\item 将 episode flatten 成 environment-step samples。
+\item 重新计算 old token log probabilities。
+\item 用 shared actor value head 计算 old scalar state values。
+\item 计算 reference log probabilities。
+\item 计算 immediate step rewards 和 episode scores。
+\item 计算 episode-level group advantage 与 step-level GAE advantage。
+\item 将 scalar final advantage 广播到 response token。
+\item 联合更新 actor 和 value head。
+\end{enumerate}
+
+\section*{Rollout 字段}
+实现依赖 \path{uid}、\path{traj_uid}、\path{step_idx}。\path{uid} 定义初始任务 group；\path{traj_uid} 区分同一任务下的不同 sampled trajectories；\path{step_idx} 恢复 trajectory 内时间顺序。没有 \path{step_idx} 时，batch rearrangement 可能静默破坏 GAE 的 temporal ordering。
+
+\section*{Value Position}
+默认位置为 \path{pre_action_last_context_token}，对应 action 生成前最后一个 context token，用于估计 $V(s_t)$。\path{first_response_token} 和 \path{last_response_token} 支持 ablation，但更接近 action-conditioned value。
+
+\section*{Advantage 与 Return}
+\path{advantages} tensor 保持 token shape，但语义是 step scalar：
+\[
+A_{t,\ell}=A_t^{\mathrm{final}}\cdot m_{t,\ell}.
+\]
+\path{step_returns} 保持 scalar，用于监督 value head。
+
+\section*{Actor Update}
+当 batch 中存在 \path{step_returns} 时，\path{StepWisePPOActor.update_policy} 会同时计算 current log probabilities 和 current values。value loss 使用 old values 与 scalar returns 做 clipped regression。policy loss 和 value loss 共享同一个 optimizer step。
+
+\section*{语义检查}
+当前实现满足三个关键点：value、return、TD error 和 GAE 都在 step 维度计算；每个 action 只取一个 scalar value；scalar advantage 广播到 token 只是为了复用现有 token-level PPO loss。
+
+\section*{当前训练快照}
+已有 StepPPO-v1 WebShop 日志到 step 187。相对 GiGPO，它表现为 validation reward 更低、valid action ratio 更低、response clipping 更高、gradient norm 更大。详细分析见文档 009 和 010。
+
+\end{document}

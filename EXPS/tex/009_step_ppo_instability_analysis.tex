@@ -1,0 +1,86 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,booktabs}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlist[itemize]{leftmargin=1.5em}
+\newcommand{\Whiten}{\operatorname{Whiten}}
+\title{009：StepPPO-v1 不稳定性与效果偏弱分析}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{主要现象}
+已有 StepPPO-v1 run 明显弱于 GiGPO seed 2026。在可对齐的 validation step 上，StepPPO 的 task score、success rate 和 text score 都更低；同时 valid action ratio 更低、response clipping 更高、gradient norm 更大。这说明 learned value correction 目前没有改善 credit assignment，反而可能引入优化噪声并破坏 actor 表征。
+
+\section*{当前算法形式}
+v1 final advantage 为
+\[
+A_t^{\mathrm{final,v1}}
+=\frac{\widehat A_t^{\mathrm{epi}}+w\widehat A_t^{\mathrm{step}}}{1+w},
+\]
+其中
+\[
+\widehat A_t^{\mathrm{epi}}=\Whiten(A_t^{\mathrm{epi}}),
+\qquad
+\widehat A_t^{\mathrm{step}}=\Whiten(A_t^{\mathrm{step}}).
+\]
+step term 来自 shared-backbone GAE：
+\[
+\delta_t=r_t+\gamma V(s_{t+1})-V(s_t),
+\qquad
+A_t^{\mathrm{step}}=\delta_t+\gamma\lambda A_{t+1}^{\mathrm{step}}.
+\]
+默认 value-head 配置允许 value loss 更新 actor backbone：
+\[
+\texttt{detach\_value\_backbone=False},
+\qquad
+\texttt{value\_loss\_coef=0.1}.
+\]
+
+\section*{诊断证据}
+StepPPO-v1 的 valid action ratio 明显低于 GiGPO：
+\[
+\mathrm{valid\_action\_ratio}_{\mathrm{StepPPO}}\approx0.803,
+\qquad
+\mathrm{valid\_action\_ratio}_{\mathrm{GiGPO}}\approx0.980.
+\]
+response clipping 也明显更高：
+\[
+\mathrm{clip\_ratio}_{\mathrm{StepPPO}}\approx0.0259,
+\qquad
+\mathrm{clip\_ratio}_{\mathrm{GiGPO}}\approx0.0043.
+\]
+StepPPO value loss 长期较大且波动，mean 约为 $3.6$，observed max 超过 $8$。actor grad norm 也更高：
+\[
+\mathrm{grad\_norm}_{\mathrm{StepPPO}}\approx10.1,
+\qquad
+\mathrm{grad\_norm}_{\mathrm{GiGPO}}\approx5.8.
+\]
+这些现象更像 policy-format 退化，而不是纯 validation 随机波动。
+
+\section*{可能原因排序}
+\begin{enumerate}
+\item \textbf{value loss 干扰 shared actor backbone。} WebShop 的 value target 高方差，value gradients 会更新 action generation 所依赖的同一套表征。
+\item \textbf{v1 advantage mixture 可能削弱 policy signal。} 两个 signal 都 whitening 后再平均，可能降低 effective policy-gradient scale，而 value regression 仍然存在。
+\item \textbf{critic 早期不准。} 当 $V(s_t)$ 质量较差时，TD error 会给出错误 step credit。
+\item \textbf{batch-level step whitening 语义不匹配。} 它没有像 GiGPO 那样尊重 task group、trajectory 或 anchor-state comparability。
+\end{enumerate}
+
+\section*{下一轮建议}
+优先级如下：
+\begin{enumerate}
+\item 跑 v0-base，隔离 step-advantage normalization 的影响。
+\item 跑 \path{detach_value_backbone=True} 版本。
+\item 将 \path{value_loss_coef} 从 $0.1$ 降到 $0.03$ 或 $0.01$。
+\item 改为 mixing 后再 normalization。
+\item 增加 value target scale、value prediction scale、explained variance、episode/step advantage correlation 等日志。
+\end{enumerate}
+
+\section*{结论}
+当前 StepPPO-v1 更适合作为 diagnostic implementation，而不是更强方法。下一步应先降低 value head 对 shared backbone 的干扰，再扩展多 seed。
+
+\end{document}

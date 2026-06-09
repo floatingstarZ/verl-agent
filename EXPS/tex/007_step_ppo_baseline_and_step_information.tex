@@ -1,0 +1,56 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,booktabs}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlist[itemize]{leftmargin=1.5em}
+\title{007：Baseline 与 Step 信息使用说明}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{核心判断}
+因为 StepPPO 显式使用 step reward、step ordering 和 step value function，所以最相关的 baseline 是 GiGPO，而不只是 GRPO。GiGPO 也是 step-aware，但没有 learned critic。因此关键问题是：shared-backbone learned critic 是否能优于 GiGPO 的 grouped relative step signal。
+
+\section*{方法关系}
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+方法 & 使用 step reward/order & learned critic & 主要角色 \\
+\midrule
+GRPO & 否 & 否 & non-step baseline \\
+GiGPO & 是 & 否 & step-aware baseline \\
+StepPPO & 是 & 是 & learned step-aware method \\
+\bottomrule
+\end{tabular}
+\end{center}
+GRPO 使用 episode-level grouped relative advantage。GiGPO 增加 step-level grouped relative advantage。StepPPO 保留 episode-level relative signal，但用 learned value-based GAE correction 表示 step signal。
+
+\section*{什么叫不使用 Step 信息}
+如果一个方法忽略 immediate step reward、step order 和 anchor observation，只使用 episode-level outcome，那么它就是 non-step 方法。即使工程上把 episode flatten 成 step samples，只要每个 step 都拿同一个 episode-level signal，它仍然属于 non-step baseline。按这个定义，GRPO 是最干净的 non-step baseline。
+
+\section*{为什么 Classic PPO 不是干净 Baseline}
+classic PPO 加 critic 后可能在 token/sample 维度上学习 value，这在 agentic setting 中会不严格地引入部分 step 结构，同时又不满足我们定义的 environment-step value。因此它不如 GRPO 适合作为 no-step 对照。
+
+\section*{推荐实验矩阵}
+\begin{itemize}
+\item Non-step baseline：GRPO。
+\item Step-aware critic-free baseline：GiGPO。
+\item Learned step-aware method：StepPPO-v1 和 StepPPO-v0。
+\item Ablation：no step term、detached value backbone、lower value coefficient、mixing 后 final-advantage normalization。
+\end{itemize}
+
+\section*{No-Step-Advantage Ablation}
+直接 ablation 是设置 $w_{\mathrm{step}}=0$：
+\[
+A_t^{\mathrm{final}}=A_t^{\mathrm{epi}}.
+\]
+如果仍训练 value head 但 policy 不使用 step term，可以隔离 value regression 对 shared backbone 的干扰；如果完全关闭 value head，则更接近 GRPO 数据路径。
+
+\section*{结论}
+GRPO 用于衡量 step information 是否有收益；GiGPO 用于判断 StepPPO 的 learned critic 是否优于已有 step-aware critic-free 方法。不能只用 GRPO 作为 StepPPO 的主要 baseline。
+
+\end{document}

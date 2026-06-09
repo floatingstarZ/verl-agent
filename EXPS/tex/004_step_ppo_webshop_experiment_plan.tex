@@ -1,0 +1,62 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,booktabs}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlist[itemize]{leftmargin=1.5em}
+\title{004：Step-wise PPO WebShop 实验计划}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{背景}
+本文记录 StepPPO 在 WebShop 上的第一版可执行实验计划。目标是尽量复用已跑 GiGPO 实验的配置约定，同时引入新的 StepPPO trainer path。主任务为 WebShop，模型为 Qwen2.5-1.5B-Instruct，使用 grouped rollout、KL regularization 和固定频率 validation。
+
+\section*{已恢复的 GiGPO 基线}
+已有三个完整 GiGPO 4GPU 日志，可作为性能和运行时间基线：
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Seed & 日志 & 状态 \\
+\midrule
+2026 & \path{logs/webshop_gigpo_qwen25_15b_4gpu_paper_align_simple_20260530_114442.log} & 250 steps 完整 \\
+2077 & \path{logs/webshop_gigpo_qwen25_15b_4gpu_paper_align_simple_20260531_004613.log} & 250 steps 完整 \\
+2501 & \path{logs/webshop_gigpo_qwen25_15b_4gpu_paper_align_simple_20260531_123134.log} & 250 steps 完整 \\
+\bottomrule
+\end{tabular}
+\end{center}
+这些日志用于比较 validation task score、success rate、text score、action validity、length behavior、timing 和资源消耗。
+
+\section*{运行环境要求}
+实验从仓库根目录启动，使用准备好的 conda/Python 环境，并设置 Hugging Face、Triton、vLLM 和 Ray cache。WebShop 环境侧 CPU 压力较大，因此脚本中限制了线程数和 JVM 资源。
+
+\section*{StepPPO 与 GiGPO 的差异}
+StepPPO 使用 \path{verl.trainer.main_step_ppo}，启用 \path{actor_rollout_ref.actor.value_head}，在 old-log-probability 阶段记录 old state values，基于 immediate step rewards 计算 step GAE，并在 actor update 中加入 clipped scalar value loss。GiGPO 没有 learned critic，而是通过 step group 构造 critic-free relative step advantage。
+
+\section*{已准备脚本}
+\begin{itemize}
+\item \path{exps/run_webshop_step_ppo_2gpu_smoke.sh}：正确性 smoke test。
+\item \path{exps/run_webshop_step_ppo_4gpu_paper_align_simple.sh}：4GPU StepPPO base script。
+\item \path{exps/run_webshop_step_ppo_v1_step_norm_4gpu_paper_align_simple.sh}：v1 step-normalized 版本。
+\item \path{exps/run_webshop_step_ppo_v0_base_4gpu_paper_align_simple.sh}：v0 unnormalized step-advantage 版本。
+\item \path{exps/run_webshop_grpo_4gpu_paper_align_simple.sh}：GRPO baseline。
+\end{itemize}
+
+\section*{首轮运行顺序}
+单 seed 首轮运行顺序为
+\[
+\mathrm{StepPPO\text{-}v1}_{2026}
+\rightarrow
+\mathrm{StepPPO\text{-}v0}_{2026}
+\rightarrow
+\mathrm{GRPO}_{2026}.
+\]
+对应 wrapper 为 \path{exps/run_webshop_step_ppo_v1_v0_grpo_seed2026.sh}。多 seed 扩展应等单 seed 行为明确后再进行。
+
+\section*{已知风险}
+StepPPO 会比 GiGPO 多 value prediction 和 value loss 开销；如果 value loss 干扰 actor backbone，还会导致 response 更长、invalid action 更多，从而进一步拖慢 rollout generation。validation 本身也很贵，因此比较 wall-clock 时必须保持 \path{trainer.test_freq} 一致。
+
+\end{document}

@@ -1,0 +1,589 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{fvextra}
+\setlist[itemize]{leftmargin=1.5em}
+\setlist[enumerate]{leftmargin=1.8em}
+\title{002：StepPPO Raw Chat Log（Append-only）}
+\author{用户与 Codex}
+\date{2026-06-05}
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{记录约定}
+本文件从当前指令开始，采用 append-only 模式记录用户与 Codex 的对话原文。后续新增内容只追加，不重写已有条目。公式可以使用 LaTeX 展示格式。
+
+\section*{Turn 1 | User}
+Chat的格式是这样的，append only的模式记录我和你的对话（原文即可，公式可以用tex熟悉的格式）
+
+\section*{Turn 1 | Codex}
+我会把 \path{EXPS/Chat} 的约定改成“append-only 原文对话记录”，并新建一个从当前指令开始的 raw chat log。已有 \path{001} 是之前的摘要式归档，我不会改写它；之后按新的 raw append-only 格式追加。
+
+\section*{Turn 2 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+来一起讨论一下细节。1. 平衡At epi和At step的w默认是多少？2. 目前v1的实现除了加上一个A-step，以及有value loss以外，是否和GiGPO完全对齐？
+\end{Verbatim}
+
+\section*{Turn 2 | Codex}
+1. $w$ 默认是 $1.0$。
+
+StepPPO 里 \path{step_advantage_w=1.0}，v1 的公式是：
+\[
+A_t^{\mathrm{final},v1}
+=
+\frac{\widehat A_t^{\mathrm{epi}} + w\widehat A_t^{\mathrm{step}}}{1+w}.
+\]
+所以默认 $w=1$ 时，episode term 和 step term 在系数上是 $1:1$，但最终是平均：
+\[
+A_t^{\mathrm{final},v1}
+=
+\frac{\widehat A_t^{\mathrm{epi}} + \widehat A_t^{\mathrm{step}}}{2}.
+\]
+
+GiGPO 的 WebShop 脚本里 \path{algorithm.gigpo.step_advantage_w=1.0}，但 GiGPO 的组合是：
+\[
+A_t^{\mathrm{GiGPO}}
+=
+A_t^{\mathrm{epi}} + w A_t^{\mathrm{step}}.
+\]
+没有除以 $1+w$。所以虽然 $w$ 都是 $1.0$，但 v1 StepPPO 的 final advantage scale 和 GiGPO 不完全一致。v1 默认也没有 \path{normalize_final_advantage}；这个是后来 v2 stable 里才打开的。
+
+2. 目前 v1 不是“GiGPO + $A^{\mathrm{step}}$ + value loss”的完全对齐版本。
+
+更准确地说，StepPPO-v1 是一个 GRPO-style episode advantage 为 anchor，再加入 critic/GAE step correction 的 shared-backbone actor-critic 方法。它借鉴了 GiGPO 的 episode + step 框架，但和 GiGPO 至少有这些差异：
+
+第一，step signal 来源不同。GiGPO 的 step term 来自沿 trajectory 反向算的 discounted step return，然后在 anchor observation step group 内做 relative normalization。StepPPO-v1 的 step term 来自 value baseline 的 GAE：
+\[
+\delta_t
+=
+r_t + \gamma V^{\mathrm{old}}(s_{t+1}) - V^{\mathrm{old}}(s_t),
+\]
+\[
+A_t^{\mathrm{step}}
+=
+\delta_t + \gamma\lambda A_{t+1}^{\mathrm{step}}.
+\]
+
+第二，step normalization 粒度不同。GiGPO 用 \path{anchor_obs + uid} 构造 step group，在相同或相似 state 下比较 action。StepPPO-v1 是把所有 valid step advantages 在当前 batch 上整体 whitening，没有按 anchor observation group 对齐。
+
+第三，episode advantage normalization 不完全一致。GiGPO WebShop 默认是 \path{mode=mean_norm}，也就是主要做 group mean centering。StepPPO-v1 先用 GRPO-style std normalization，再做 batch-level whitening。因此 episode term 的分布也不完全对齐。
+
+第四，final combination scale 不同。GiGPO 是加法：
+\[
+A^{\mathrm{epi}} + w A^{\mathrm{step}}.
+\]
+StepPPO-v1 是平均：
+\[
+\frac{A^{\mathrm{epi}} + w A^{\mathrm{step}}}{1+w}.
+\]
+
+第五，优化目标不同。GiGPO critic-free，只更新 actor policy。StepPPO-v1 还会训练 shared value head，并且 v1 默认 \path{detach_value_backbone=False}，value loss 会回传到 actor backbone。这不只是多了一个 loss term，而是会改变 actor 表征学习动力学。
+
+第六，实验实现上也有不完全对齐的点，例如当前 StepPPO 4GPU 脚本曾为了显存安全用更小 actor microbatch，而 GiGPO 用更大 microbatch。这主要影响 runtime 和数值细节。
+
+因此，我建议不要把 v1 描述成“GiGPO 加 critic”。更准确的描述是：
+\[
+\mathrm{StepPPO\text{-}v1}
+=
+\mathrm{GRPO\text{-}style\ episode\ relative\ signal}
++
+\mathrm{learned\ step\text{-}wise\ GAE\ correction}
++
+\mathrm{shared\text{-}backbone\ value\ loss}.
+\]
+
+如果我们想做一个真正的 GiGPO-aligned StepPPO，应该单独开 \path{v3_gigpo_aligned}：
+\begin{enumerate}
+\item episode advantage 对齐 GiGPO 的 \path{mean_norm} / \path{mean_std_norm} 语义。
+\item step normalization 按 GiGPO 的 \path{anchor_obs} step group，而不是全 batch whitening。
+\item final combination 默认用 $A^{\mathrm{epi}} + wA^{\mathrm{step}}$，或者显式做 scale ablation。
+\item 其它训练配置尽量和 GiGPO 保持一致，只把 step signal 从 GiGPO return-relative 替换成 critic/GAE signal。
+\end{enumerate}
+
+\section*{Turn 3 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+002_raw_append_only_chat_log中的公式记得改成tex格式的。下一个问题，之前提到的v2是什么？
+\end{Verbatim}
+
+\section*{Turn 3 | Codex}
+我会先把 \path{002_raw_append_only_chat_log} 里之前用纯文本写的公式改成 TeX 展示格式。关于 v2：这里说的 v2 指当前仓库里的 \path{StepPPO-v2 stable}，不是一个全新的算法定义，而是在 v1 暴露出不稳定和运行变慢之后做的稳定性优先版本。
+
+v2 保留 StepPPO 的核心结构：
+\begin{itemize}
+\item episode term 仍然是 GRPO-style episode relative signal；
+\item step term 仍然是 critic/GAE 产生的 $A_t^{\mathrm{step}}$；
+\item actor 仍然使用 token-level PPO clipped loss；
+\item value head 仍然挂在 actor 模型上。
+\end{itemize}
+
+v2 的主要变化有三点。
+
+第一，打开 final advantage whitening。v1 是：
+\[
+A_t^{\mathrm{final},v1}
+=
+\frac{\widehat A_t^{\mathrm{epi}} + w\widehat A_t^{\mathrm{step}}}{1+w}.
+\]
+v2 先计算同样的混合值：
+\[
+\bar A_t
+=
+\frac{\widehat A_t^{\mathrm{epi}} + w\widehat A_t^{\mathrm{step}}}{1+w},
+\]
+然后再做一次 whitening：
+\[
+A_t^{\mathrm{final},v2}
+=
+\operatorname{Whiten}(\bar A_t).
+\]
+对应配置是 \path{algorithm.step_ppo.normalize_final_advantage=True}。它的目的不是改变 credit assignment 定义，而是恢复 final policy advantage 的尺度，避免 v1 中两个 normalized signals 平均后 policy gradient signal 偏弱。
+
+第二，detach value backbone，并降低 value loss 权重。v1 默认是：
+\[
+\texttt{detach\_value\_backbone=False},
+\qquad
+\texttt{value\_loss\_coef=0.1}.
+\]
+v2 stable 改成：
+\[
+\texttt{detach\_value\_backbone=True},
+\qquad
+\texttt{value\_loss\_coef=0.03}.
+\]
+这意味着 value loss 主要训练 value head，不再直接通过 value loss 更新 actor backbone；actor backbone 仍然通过 policy loss 更新。这个改动是为了减少 value regression 对 action-format 能力的干扰。
+
+第三，优化 old log probability 阶段的实现。原来 value head 启用时，会先 forward 一次算 old token log probability，再额外 forward 一次算 old state value。v2 把它改成 single forward：
+\[
+(\log \pi_{\theta_{\mathrm{old}}}, V_t^{\mathrm{old}})
+=
+f_{\theta_{\mathrm{old}},\psi_{\mathrm{old}}}(s_t,a_t).
+\]
+这不改变算法语义，只减少重复计算，预期主要降低 \path{timing_s/old_log_prob}。
+
+v2 stable 的脚本是 \path{exps/run_webshop_step_ppo_v2_stable_4gpu_paper_align_simple.sh}。
+核心覆盖配置是：
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+algorithm.step_ppo.normalize_step_advantage=True
+algorithm.step_ppo.normalize_final_advantage=True
+actor_rollout_ref.actor.value_head.detach_value_backbone=True
+actor_rollout_ref.actor.value_head.value_loss_coef=0.03
+\end{Verbatim}
+
+所以一句话总结：v2 是“稳定性修正版 StepPPO”，不是 GiGPO-aligned 版本。它主要解决 v1 的三个问题：policy advantage 尺度可能偏弱、value loss 干扰 actor backbone、old-log-probability 阶段重复 forward 太慢。
+
+
+\section*{Turn 4 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+有以下问题（准备为v2做准备）：
+1. advantage的加权方式参考GiGPO的方式来，w设置为0.5，由于其可能潜在有更不稳定的情况。
+2. ，step normalization 粒度不同这个问题，请你详细描述一下目前StepPPO的Advantage归一化方式
+3. ，episode advantage normalization 不完全一致这个问题详细说明一下
+4. fi nal combination scale 刚才说了，和GiGPO对齐
+5. 优化目标不同这个问题。没关系，不过我们需要继续详细分析value到底多大
+、
+\end{Verbatim}
+
+\section*{Turn 4 | Codex}
+我先把结论说清楚：如果按这五点准备 v2，那么“之前提到的 v2 stable”需要调整。新的 v2 不应该再用 final whitening 作为主设置，而应该更接近 GiGPO 的组合尺度：
+\[
+A_t^{\mathrm{final},v2}
+=
+A_t^{\mathrm{epi}} + 0.5 A_t^{\mathrm{step}}.
+\]
+也就是不再除以 $1+w$。$w=0.5$ 是合理的，因为 StepPPO 的 $A_t^{\mathrm{step}}$ 来自 critic/GAE，早期可能比 GiGPO 的 step-group relative signal 更 noisy。
+
+当前 StepPPO 的 step advantage normalization 是 batch-level whitening。具体流程是：先按 \path{traj_uid} 和 \path{step_idx} 做 step GAE：
+\[
+\delta_t=r_t+\gamma(1-d_t)V^{\mathrm{old}}_{t+1}-V^{\mathrm{old}}_t,
+\]
+\[
+A_t^{\mathrm{step}}=\delta_t+\gamma\lambda(1-d_t)A_{t+1}^{\mathrm{step}}.
+\]
+然后如果 \path{normalize_step_advantage=True}，就在当前 batch 的所有 step scalar 上做：
+\[
+\widehat A_i^{\mathrm{step}}
+=
+\frac{A_i^{\mathrm{step}}-\mu_{\mathcal B}}{\sigma_{\mathcal B}+\epsilon}.
+\]
+这里的 $\mathcal B$ 是当前训练 batch 里的 step samples，不按 \path{uid}、\path{traj_uid}、\path{step_idx} 或 \path{anchor_obs} 分组。因此它不是 GiGPO 的 anchor-state group normalization。
+
+GiGPO 的 step normalization 是先用 \path{anchor_obs + uid} 构造 step group，然后在这个 group 里对 discounted step return 做 mean centering 或 mean/std normalization。它比较的是相同或相似 observation 下不同 action 的相对好坏。StepPPO 当前 batch-level whitening 则把不同任务、不同状态、不同时间位置的 GAE advantage 放在一起标准化，语义更粗。
+
+Episode advantage normalization 也不完全一致。StepPPO 当前先按 \path{uid} 计算 episode group stats，并用 \path{traj_uid} 对同一 trajectory 去重：
+\[
+A_i^{\mathrm{epi,grp}}
+=
+\frac{R_i^{\mathrm{epi}}-\mu_{\mathrm{uid}}}{\sigma_{\mathrm{uid}}+\epsilon}.
+\]
+然后如果 \path{normalize_episode_advantage=True}，还会在当前 batch 的 step samples 上再做一次 whitening：
+\[
+\widehat A_i^{\mathrm{epi}}
+=
+\frac{A_i^{\mathrm{epi,grp}}-\mu_{\mathcal B}}{\sigma_{\mathcal B}+\epsilon}.
+\]
+GiGPO WebShop 默认是 \path{mode=mean_norm}，也就是主要做 group mean centering，不除以 group std；而且 GiGPO 的默认实现会在 step samples 上统计 episode term，长 trajectory 会有更高权重。StepPPO 则先按 trajectory 去重做 group std normalization，再按 step samples 做 batch whitening。所以 episode term 也不是严格 GiGPO 对齐。
+
+关于 final combination scale，按用户要求，v2 应该对齐 GiGPO 的加法形式：
+\[
+A_t^{\mathrm{final},v2}
+=
+A_t^{\mathrm{epi}} + w A_t^{\mathrm{step}},
+\qquad w=0.5.
+\]
+如果再做 \path{normalize_final_advantage=True}，就又会改变 scale，不算严格 GiGPO scale 对齐。因此 v2 主设置建议关闭 final whitening；可以把 final whitening 作为 ablation。
+
+关于 value 到底多大，当前 StepPPO-v1 日志显示它不小。非验证训练行统计如下：
+\begin{itemize}
+\item \path{actor/value_loss}: mean $3.52$，median $3.48$，p90 $5.73$，max $8.07$。
+\item \path{actor/value_pred_mean}: mean $1.33$，后期 steps 151--187 mean $2.65$。
+\item \path{actor/value_return_mean}: mean $1.48$，后期 steps 151--187 mean $2.79$。
+\item \path{actor/value_clipfrac}: mean $0.093$，max $0.601$。
+\item \path{actor/grad_norm}: mean $10.04$，后期约 $13.27$。
+\end{itemize}
+
+更关键的是 v1 的 value loss coefficient 是 $0.1$，所以 value loss 对总 loss 的未分离标量贡献大约是：
+\[
+0.1\times \mathcal L_v
+\approx 0.35 \text{ mean},
+\]
+而日志中 \path{actor/pg_loss} mean 只有约 $0.008$。虽然不同 loss 的数值尺度不能直接等同于梯度尺度，但这个量级说明 value loss 如果回传 backbone，确实可能主导 representation update。因此 v2 继续保留 \path{detach_value_backbone=True} 是必要的。
+
+我的建议是把 v2 主版本定义为：
+\begin{itemize}
+\item final combine 改为 GiGPO-style sum，不除以 $1+w$；
+\item $w=0.5$；
+\item \path{normalize_final_advantage=False} 作为主设置；
+\item 保留 \path{detach_value_backbone=True} 和较小 \path{value_loss_coef=0.03}；
+\item 增加 value diagnostics：\path{value_pred_std}、\path{value_return_std}、\path{value_error_mean}、\path{value_error_abs_mean}、\path{value_explained_variance}。
+\end{itemize}
+
+step normalization 和 episode normalization 是否完全对齐 GiGPO，我建议不要塞进同一个 v2 主实验，否则同时改变太多变量。可以把它作为 v3 或 v2-ablation：\path{v2_gigpo_norm}。
+
+
+\section*{Turn 5 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+StepPPO 确实存在直接实现开销。verl/workers/actor/step_ppo_actor.py 的 old-log-probability
+路径在 value head 启用时不仅计算 token log probability，还会计算 old state values。actor update 路
+径也会重新计算 current values 并加入 clipped value loss。这解释了 old-log-probability 2.49 × 与 actor
+update 1.90 × 的开销。
+另一个配置差异是 microbatch：StepPPO 4GPU 脚本使用 actor_rollout_ref.actor.ppo_micro_
+batch_size_per_gpu=4，GiGPO 脚本使用 8。更小 microbatch 降低显存压力，但增加 microbatch 数
+量，因此也会拖慢 update actor。
+
+针对这段儿性能分析：
+1. 解释下old-log-probability，token-log-probability和old state value，current valude是什么
+2. microbatch为什么当时没对齐？
+\end{Verbatim}
+
+\section*{Turn 5 | Codex}
+这里的几个量可以按 PPO 的“old policy / current policy”来理解。
+
+\textbf{old-log-probability} 指采样 batch 中每个已生成 action token 在旧策略下的 log probability。采样时用的是更新前的 actor，也就是 $\pi_{\theta_{\mathrm{old}}}$。PPO 更新时需要重要性比率：
+\[
+\rho_{t,\ell}(\theta)
+=
+\exp\left(
+\log \pi_{\theta}(y_{t,\ell}\mid s_t,y_{t,<\ell})
+-
+\log \pi_{\theta_{\mathrm{old}}}(y_{t,\ell}\mid s_t,y_{t,<\ell})
+\right).
+\]
+其中第二项就是 old log probability。
+
+\textbf{token log probability} 是对一个完整 action 中每个 token 的 log probability。agent action $a_t$ 可能由多个 token 组成：
+\[
+a_t=(y_{t,1},\ldots,y_{t,L_t}).
+\]
+当前实现仍用 token-level PPO loss，因此 old/current logprob 都是 shape 近似为 $[\mathrm{batch},\mathrm{response\_length}]$ 的 token-level 张量。
+
+\textbf{old state value} 是更新前 value head 对当前 state 的 scalar value 预测：
+\[
+V^{\mathrm{old}}_t=V_{\theta_{\mathrm{old}},\psi_{\mathrm{old}}}(s_t).
+\]
+它不是 token logprob，而是 critic/value head 输出的 step-level scalar。StepPPO 用它计算 step GAE：
+\[
+\delta_t=r_t+\gamma(1-d_t)V^{\mathrm{old}}_{t+1}-V^{\mathrm{old}}_t,
+\]
+\[
+A_t^{\mathrm{step}}
+=
+\delta_t+\gamma\lambda(1-d_t)A_{t+1}^{\mathrm{step}}.
+\]
+它也用于 clipped value loss 的 clipping center。
+
+\textbf{current value} 是 actor update 阶段用当前参数重新算出来的 value：
+\[
+V_t=V_{\theta,\psi}(s_t).
+\]
+它参与 value loss：
+\[
+\widetilde V_t
+=
+V^{\mathrm{old}}_t+
+\operatorname{clip}(V_t-V^{\mathrm{old}}_t,-\epsilon_v,\epsilon_v),
+\]
+\[
+\mathcal L_v
+=
+\frac12\mathbb E_t\left[
+\max\left((V_t-R_t^{\mathrm{step}})^2,
+(\widetilde V_t-R_t^{\mathrm{step}})^2\right)
+\right].
+\]
+所以 old state value 是无梯度的旧预测，current value 是训练阶段带梯度的新预测。
+
+microbatch 当时没有对齐，主要是工程上的保守选择，不是算法要求。StepPPO 比 GiGPO 多了 value head、current value forward、value loss，以及早期实现中的 old value 额外 forward；同时 StepPPO-v1 训练不稳定会导致 response 更长、global sequence length 更大。为了先保证 4GPU full run 能跑通，当时把 StepPPO 的 \path{actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu} 设成了 4，而 GiGPO/GRPO 用 8。
+
+代价是：在 \path{ppo_mini_batch_size=64} 不变时，microbatch 从 8 降到 4 会让 actor update 的 microbatch 数量大约翻倍，循环次数、FSDP forward/backward 调度、optimizer accumulation overhead 都增加。因此这会拖慢 \path{timing_s/update_actor}。
+
+现在看，StepPPO 日志中的 GPU allocated memory 反而低于 GiGPO，这说明当时的 microbatch=4 很可能过于保守。v2 应该把 microbatch 对齐回 8 做测试；如果 OOM，再退回 4 或使用 dynamic batch。这样 wall-clock 对比会更公平。
+
+
+\section*{Turn 6 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+step advantage normalization中 traj_uid 和 step_idx的具体定义是？对batch内所有step这样归一化是否合理？原始的PPO是怎么做的？
+\end{Verbatim}
+
+\section*{Turn 6 | Codex}
+\textbf{traj\_uid} 是一条完整 sampled trajectory 的唯一 ID。rollout 开始时，每个并行环境样本都会被分配一个 UUID：同一条 episode 中所有 step samples 共享同一个 \path{traj_uid}。它的作用是告诉 StepPPO：哪些 step 属于同一条 trajectory，应该沿这些 step 做 temporal GAE。
+
+\textbf{step\_idx} 是同一条 \path{traj_uid} 内的环境 step 序号。当前 collector 没有直接写出 \path{step_idx} 时，StepPPO 会根据 \path{traj_uid} 的出现次数恢复：同一 \path{traj_uid} 第一次出现是 0，第二次是 1，以此类推。由于当前 gather rollout 时按 trajectory 收集有效 step，这个 occurrence count 可以恢复 episode 内顺序。
+
+StepPPO 的 step advantage 先按 \path{traj_uid + step_idx} 计算：
+\[
+\delta_t=r_t+\gamma(1-d_t)V^{\mathrm{old}}_{t+1}-V^{\mathrm{old}}_t,
+\]
+\[
+A_t^{\mathrm{step}}=\delta_t+\gamma\lambda(1-d_t)A_{t+1}^{\mathrm{step}}.
+\]
+然后当前 v1 如果 \path{normalize_step_advantage=True}，会对 batch 内所有 step scalar 做一次整体 whitening：
+\[
+\widehat A_i^{\mathrm{step}}
+=
+\frac{A_i^{\mathrm{step}}-\mu_{\mathcal B}}{\sigma_{\mathcal B}+\epsilon}.
+\]
+这里 $\mathcal B$ 是当前训练 batch 中全部有效 step samples，不区分 \path{uid}、\path{traj_uid}、\path{step_idx} 或 \path{anchor_obs}。
+
+是否合理要分两层看。作为优化上的 scale control，它是合理的：可以让 policy loss 看到的 advantage 均值接近 0、方差接近 1，避免 step GAE 尺度漂移。但作为 credit assignment 语义，它不够理想，因为不同任务、不同状态、不同 episode 位置、不同 trajectory 长度的 step 被放在一起标准化。这样会把本来不可比较的 GAE values 强行比较。
+
+原始 PPO 的 GAE 是 token-level 的。它沿 response token 维度反向算：
+\[
+\delta_\ell=r_\ell+\gamma V_{\ell+1}-V_\ell,
+\]
+\[
+A_\ell=\delta_\ell+\gamma\lambda A_{\ell+1}.
+\]
+然后用 \path{response_mask} 在整个 batch 的有效 response tokens 上做 \path{masked_whiten}。也就是说，原始 PPO 也是 batch-level whitening，但对象是 token-level advantages，而不是 environment-step advantages。
+
+所以 StepPPO 当前做法是把原始 PPO 的“batch-level advantage whitening”迁移到了 step scalar 上。工程上可行，但对 agentic step credit 来说不一定最合理。更合理的备选包括：不 normalize step advantage、按 \path{uid} 做 group-wise normalization、按 \path{anchor_obs} 做 GiGPO-style step group normalization，或者只在 final advantage 混合后统一 normalize。
+
+
+\section*{Turn 7 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+Episode advantage normalization和GiGPO对齐，写一个详细的数学定义（包括符号解释）
+\end{Verbatim}
+
+\section*{Turn 7 | Codex}
+GiGPO 对齐的 episode advantage normalization 应定义为 group-wise relative normalization，而不是 batch-level whitening。设训练 batch 中有 $N$ 个 action/step samples，第 $i$ 个 sample 的符号如下：
+\begin{itemize}
+\item $u_i$：episode group id，即代码中的 \path{uid}。同一个 $u_i$ 表示同一个 initial task/prompt 的多次 rollout。
+\item $\tau_i$：trajectory id，即代码中的 \path{traj\_uid}。同一个 $\tau_i$ 表示同一条 sampled episode。
+\item $\ell\in\{1,\ldots,L\}$：当前 response/action 的 token index。
+\item $m_{i,\ell}\in\{0,1\}$：response mask。
+\item $r^{\mathrm{tok}}_{i,\ell}$：token-level reward tensor。
+\item $S_i$：episode-level scalar score，定义为
+\[
+S_i=\sum_{\ell=1}^{L}r^{\mathrm{tok}}_{i,\ell}.
+\]
+\end{itemize}
+
+GiGPO 当前代码默认使用 row-level group set：
+\[
+\mathcal I_u=\{i:u_i=u\},
+\qquad
+n_u=|\mathcal I_u|.
+\]
+也就是说，当 \path{compute\_mean\_std\_cross\_steps=True} 时，同一 group 内所有 step rows 都参与 episode score 的 mean/std 统计；长 trajectory 会在该统计中贡献更多 rows。
+
+若 $n_u>1$，定义
+\[
+\mu_u=\frac{1}{n_u}\sum_{j\in\mathcal I_u}S_j,
+\]
+\[
+\sigma_u=\sqrt{\frac{1}{n_u-1}\sum_{j\in\mathcal I_u}(S_j-\mu_u)^2}.
+\]
+若 $n_u=1$，为对齐当前 GiGPO episode implementation，取
+\[
+\mu_u=0,
+\qquad
+\sigma_u=1.
+\]
+
+当 GiGPO mode 为 \path{mean\_norm} 时，episode advantage 为
+\[
+A_i^{\mathrm{epi}}=S_i-\mu_{u_i}.
+\]
+当 mode 为 \path{mean\_std\_norm} 时，episode advantage 为
+\[
+A_i^{\mathrm{epi}}=\frac{S_i-
+\mu_{u_i}}{\sigma_{u_i}+\epsilon}.
+\]
+最后 broadcast 到 token 维度：
+\[
+A_{i,\ell}^{\mathrm{epi}}=A_i^{\mathrm{epi}}m_{i,\ell}.
+\]
+
+为了让 StepPPO 与 GiGPO 对齐，StepPPO-v2 的 episode term 应满足
+\[
+A_i^{\mathrm{epi,StepPPO-v2}}=A_i^{\mathrm{epi,GiGPO}},
+\]
+并且不再额外做 batch-level whitening：
+\[
+\text{do not apply }\operatorname{Whiten}_{\mathcal B}(A^{\mathrm{epi}}).
+\]
+WebShop 的 GiGPO baseline 默认是 \path{mode=mean\_norm}，因此最直接的对齐定义是
+\[
+A_i^{\mathrm{epi,align}}=S_i-\mu_{u_i}.
+\]
+
+如果希望语义上更严格地让每条 episode 只贡献一次，可以定义去重集合
+\[
+\widetilde{\mathcal I}_u
+=
+\left\{\min\{i:u_i=u,\tau_i=\tau\}:\tau\in\mathcal T_u\right\},
+\]
+再用 $\widetilde{\mathcal I}_u$ 计算 $\mu_u$ 和 $\sigma_u$。但这不是当前 GiGPO 默认行为，应作为单独 ablation，而不是 GiGPO-aligned 主实验定义。
+
+\section*{Turn 8 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+写一个详细的论文版本的step ppo-v2的实现吧
+\end{Verbatim}
+
+\section*{Turn 8 | Codex}
+已新增论文方法风格文档：\path{EXPS/tex/012_step_ppo_v2_paper_method.tex}，并编译为 \path{EXPS/012_step_ppo_v2_paper_method.pdf}。该文档使用英文方法章节风格，定义 StepPPO-v2 的目标算法规范，包括 agentic RL setting、shared-backbone value head、GiGPO-aligned episode advantage、step-wise GAE、final policy advantage、PPO/value objective、训练伪代码和代码映射。
+
+核心 v2 论文规范为：
+\[
+A_i^{\mathrm{v2}}
+=
+A_i^{\mathrm{epi}}+w\widehat A_i^{\mathrm{step}},
+\qquad
+w=0.5.
+\]
+其中 $A_i^{\mathrm{epi}}$ 使用 GiGPO-aligned \path{uid} group normalization，不再额外做 batch-level whitening；$\widehat A_i^{\mathrm{step}}$ 来自按 \path{traj\_uid} 和 \path{step\_idx} 计算的 step-wise GAE，并保留 batch-level scale calibration 作为主实现。
+
+文档还明确：主论文版 v2 不应使用 v1 的
+\[
+\frac{A_i^{\mathrm{epi}}+wA_i^{\mathrm{step}}}{1+w}
+\]
+形式，而应采用 GiGPO-style direct addition。若启用 final advantage whitening，应报告为 stability ablation，而不是主 GiGPO-aligned v2。
+
+\section*{Turn 9 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+v2和v1的差异在那些？列觉一下
+\end{Verbatim}
+
+\section*{Turn 9 | Codex}
+StepPPO-v2 和 StepPPO-v1 的核心差异如下：
+\begin{itemize}
+\item \textbf{episode advantage normalization}：v1 使用 GRPO-style episode advantage 后又做 batch-level whitening；v2 要和 GiGPO 对齐，在 \path{uid} group 内做 \path{mean\_norm} 或 \path{mean\_std\_norm}，不再额外做全 batch whitening。
+\item \textbf{final advantage combination}：v1 使用平均形式
+\[
+A^{\mathrm{v1}}=\frac{\widehat A^{\mathrm{epi}}+w\widehat A^{\mathrm{step}}}{1+w},
+\]
+v2 使用 GiGPO-style direct addition
+\[
+A^{\mathrm{v2}}=A^{\mathrm{epi}}+w\widehat A^{\mathrm{step}}.
+\]
+\item \textbf{step weight}：v1 默认 $w=1.0$；v2 论文规范建议 $w=0.5$，降低 noisy learned critic 在早期训练中的影响。
+\item \textbf{value loss backbone gradient}：v1 默认 \path{detach\_value\_backbone=False}，value loss 会更新 actor backbone；v2 稳定版本默认 \path{detach\_value\_backbone=True}，value loss 主要训练 value head。
+\item \textbf{value loss coefficient}：v1 默认 \path{value\_loss\_coef=0.1}；v2 建议降低为 \path{0.03}。
+\item \textbf{old-log-probability path}：v1 早期路径可能分开计算 old token log probability 和 old state value；v2 要在 value head 启用时用 single forward 同时返回 old logprobs 和 old values。
+\item \textbf{final whitening}：v1 默认不做 final whitening；v2 主论文版也不做 final whitening，以保持 GiGPO scale。若打开 final whitening，只能作为 stability ablation。
+\item \textbf{定位}：v1 是 GRPO-style episode signal 加 learned step GAE correction 的原型；v2 是 GiGPO-aligned episode normalization 和 final scale 下的 shared-backbone step critic correction。
+\end{itemize}
+
+\section*{Turn 10 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+detach_value_backbone=False。然后按照你说的，episode advantage对齐GiGPO，final advantage对的。不detach。value loss coef降低。然后，还有一点，micro-batch对齐GiGPO。重写下Method，只保留确定性的方法，不要加上和v1的比较，最后加一个章节单独说明和v1的不同
+\end{Verbatim}
+
+\section*{Turn 10 | Codex}
+已重写 \path{EXPS/tex/012_step_ppo_v2_paper_method.tex}，并重新编译 \path{EXPS/012_step_ppo_v2_paper_method.pdf}。确定版 StepPPO-v2 保留如下固定设置：
+\begin{itemize}
+\item \path{detach\_value\_backbone=False}，value loss 更新 shared actor backbone 和 value head。
+\item episode advantage 对齐 GiGPO WebShop baseline，使用 \path{uid}-group \path{mean\_norm}。
+\item episode term 不额外做 batch-level whitening。
+\item final advantage 使用 direct addition：
+\[
+A_i^{\mathrm{v2}}=A_i^{\mathrm{epi}}+0.5\widehat A_i^{\mathrm{step}}.
+\]
+\item value loss coefficient 降低为 $c_v=0.03$。
+\item actor PPO micro-batch size 对齐 GiGPO，设为每 GPU $8$；rollout/ref log-probability micro-batch 保持每 GPU $16$。
+\end{itemize}
+正文只描述确定的 v2 方法，不再穿插 ablation 或不确定选项；最后单独增加 \textit{Differences from StepPPO-v1} 章节。
+
+\section*{Turn 11 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+v2_stable可以删除了，只保留现在的v2版本
+\end{Verbatim}
+
+\section*{Turn 11 | Codex}
+已删除旧脚本 \path{exps/run_webshop_step_ppo_v2_stable_4gpu_paper_align_simple.sh}，并新增正式 StepPPO-v2 脚本：
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+exps/run_webshop_step_ppo_v2_4gpu_paper_align_simple.sh
+\end{Verbatim}
+
+正式 v2 脚本启用以下确定配置：
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+algorithm.step_ppo.step_advantage_w=0.5
+algorithm.step_ppo.episode_mode=mean_norm
+algorithm.step_ppo.final_advantage_mode=direct
+algorithm.step_ppo.normalize_episode_advantage=False
+algorithm.step_ppo.normalize_step_advantage=True
+algorithm.step_ppo.normalize_final_advantage=False
+actor_rollout_ref.actor.value_head.detach_value_backbone=False
+actor_rollout_ref.actor.value_head.value_loss_coef=0.03
+actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8
+\end{Verbatim}
+
+同时补齐 \path{verl/trainer/ppo/step_ppo_algos.py}：支持 GiGPO-aligned \path{mean_norm} episode advantage，以及 \path{final_advantage_mode=direct}。默认配置仍保持 v1/v0 行为，正式 v2 只由新脚本显式启用。已通过脚本语法检查、Python 编译检查，以及一个小张量 advantage smoke test。
+
+\section*{Turn 12 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+实验失败了。分析下原因
+\end{Verbatim}
+
+\section*{Turn 12 | Codex}
+本次运行不是工程崩溃，而是算法效果失败。日志 \path{logs/webshop_step_ppo_qwen25_15b_4gpu_paper_align_simple_20260605_031621.log} 跑到 \path{step:250}，最终 validation 为：
+\[
+\mathrm{success\_rate}=0.546875,
+\qquad
+\mathrm{task\_score}=0.6619.
+\]
+最好点在 step 170 左右：
+\[
+\mathrm{success\_rate}=0.598,
+\qquad
+\mathrm{task\_score}=0.806.
+\]
+随后明显回落。
+
+主要问题是行为格式没有稳定学起来。StepPPO-v2 后期 \path{episode/valid_action_ratio} 只有约 $0.27$ 的 last-20 mean，而 GiGPO 三个 seed 后期基本接近 $0.996$--$0.998$。同时 v2 的 \path{response_length/clip_ratio} 后期约 $0.088$，显著高于 GiGPO 的约 $0.001$。validation 样例中还出现中文 reasoning 和较长无效搜索行为，说明策略格式和 action discipline 都在退化。
+
+最可疑的实现原因是：StepPPO-v2 的 episode score 当前优先使用 \path{non_tensor_batch["episode_rewards"]}，这是 rollout 阶段的原始 episode return；但 invalid action penalty 是训练阶段后来加到 \path{token_level_scores} 和 \path{step_rewards} 上的，并没有回写到 \path{episode_rewards}。因此 v2 中占主导的 episode advantage 很可能没有惩罚 invalid action。由于 v2 又使用 GiGPO-style direct addition 且不做 episode batch whitening，主导项 $A^{\mathrm{epi}}$ 会奖励成功 trajectory 里的所有 step，包括格式差或无效的 step。
+
+第二个原因是尺度不平衡。v2 使用
+\[
+A_i^{\mathrm{v2}}=A_i^{\mathrm{epi}}+0.5\widehat A_i^{\mathrm{step}}.
+\]
+其中 $A^{\mathrm{epi}}$ 是 raw mean-centered episode score，尺度接近 WebShop episode reward；而 $\widehat A^{\mathrm{step}}$ 被 batch 标准化后再乘 $0.5$。这会导致 learned step correction 很难覆盖 episode term 对坏 step 的正向强化。
+
+第三个原因是 learned critic 本身仍不稳。后期 \path{actor/value_loss} 的 last-20 mean 约为 $2.67$，\path{critic/advantages} 仍有大范围正负波动。由于 \path{detach_value_backbone=False}，value loss 会继续更新 shared actor backbone；虽然 coefficient 降到了 $0.03$，但仍可能干扰 action-format learning。
+
+额外注意：这次运行使用的是 \path{env.seed=0}，不是之前计划中的 seed 2026；因此和 GiGPO 三个 seed 的对比不是完全同 seed 对齐。但 valid action ratio 的数量级差距太大，seed mismatch 不是主要解释。
+\end{document}

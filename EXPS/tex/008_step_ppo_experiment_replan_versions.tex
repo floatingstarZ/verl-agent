@@ -1,0 +1,81 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,booktabs}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlist[itemize]{leftmargin=1.5em}
+\newcommand{\Whiten}{\operatorname{Whiten}}
+\title{008：StepPPO 实验重规划与版本定义}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{目标}
+GiGPO baseline 已经完成三个 seed。GRPO 需要作为额外 non-step baseline 跑一遍。StepPPO 第一阶段准备两个版本：v1，即当前 step-normalized 版本；v0，即不对 step advantage 做 normalization 的 base 版本。
+
+\section*{共同定义}
+episode advantage 为
+\[
+A_i^{\mathrm{epi}}=\frac{R_i^{\mathrm{epi}}-\mu_g}{\sigma_g+\epsilon}.
+\]
+step GAE advantage 为
+\[
+\delta_t=r_t+\gamma(1-d_t)V^{\mathrm{old}}_{t+1}-V^{\mathrm{old}}_t,
+\qquad
+A_t^{\mathrm{step}}=\delta_t+\gamma\lambda(1-d_t)A_{t+1}^{\mathrm{step}}.
+\]
+value target 为
+\[
+R_t^{\mathrm{step}}=A_t^{\mathrm{step}}+V_t^{\mathrm{old}}.
+\]
+
+\section*{v1：Step-Normalized 版本}
+当前 v1 版本在 valid step batch 上分别 normalize 两个信号：
+\[
+\widehat A_t^{\mathrm{epi}}=\Whiten_{\mathcal B}(A_t^{\mathrm{epi}}),
+\qquad
+\widehat A_t^{\mathrm{step}}=\Whiten_{\mathcal B}(A_t^{\mathrm{step}}).
+\]
+最终 advantage 为
+\[
+A_t^{\mathrm{final,v1}}
+=\frac{\widehat A_t^{\mathrm{epi}}+w\widehat A_t^{\mathrm{step}}}{1+w}.
+\]
+该版本测试 scale-balanced episode signal 与 step critic signal 的组合。
+
+\section*{v0：不归一化 Step Advantage}
+v0 保留 episode normalization，但直接混合 raw GAE step advantage：
+\[
+A_t^{\mathrm{final,v0}}
+=\frac{\widehat A_t^{\mathrm{epi}}+wA_t^{\mathrm{step}}}{1+w}.
+\]
+对应配置为 \path{algorithm.step_ppo.normalize_step_advantage=False}。该版本用于定位 batch-level step whitening 是否导致不稳定。
+
+\section*{GRPO Baseline}
+GRPO 只使用 episode-level relative advantage：
+\[
+A_i^{\mathrm{GRPO}}=\frac{R_i^{\mathrm{epi}}-\mu_g}{\sigma_g+\epsilon}.
+\]
+它不使用 step reward、step order、step grouping 或 learned critic，是干净的 non-step baseline。
+
+\section*{批量运行顺序}
+首轮只使用 seed 2026：
+\[
+\mathrm{StepPPO\text{-}v1}_{2026}
+\rightarrow
+\mathrm{StepPPO\text{-}v0}_{2026}
+\rightarrow
+\mathrm{GRPO}_{2026}.
+\]
+对应脚本为 \path{exps/run_webshop_step_ppo_v1_v0_grpo_seed2026.sh}。
+
+\section*{实现要求}
+v0 和 v1 应通过 wrapper script 和配置开关实现，不直接修改 baseline 脚本。实验名必须体现版本号，方便从 logs 和 W\&B 中区分。
+
+\section*{后续扩展}
+单 seed 行为明确后，再扩展 seed 2077 和 2501。如果 v1 继续不稳定，优先测试 detach value backbone、lower value coefficient、mixing 后 final-advantage whitening，以及仅用于 debug 的 lower validation frequency。
+
+\end{document}

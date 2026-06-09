@@ -11,6 +11,21 @@
 - 除 `003_shared_value_head_step_ppo_method` 这类方法/算法正式介绍外，其他文档默认以中文为主。
 - 聊天归档放在 `EXPS/Chat/`；采用 append-only 原文对话记录，PDF 放在该目录根部，TeX 源文件放在 `EXPS/Chat/tex/`。
 
+
+## StepPPO-v3 当前约定
+
+- 当前分支的 StepPPO-v3 就是 value-head-only 实验：在 GiGPO 训练上加 actor-side shared value head。
+- v3 不默认改变 GiGPO 的 policy advantage、policy loss、rollout 口径或训练 recipe。
+- v3 只回答两个问题：value head 能不能稳定学出 step-level value/return；它会不会影响 GiGPO 原本训练。
+- 主线默认 `detach_value_backbone=true`，避免 value loss 回传 actor backbone 干扰 GiGPO。
+- 不要把 v3 默认写成 pure step advantage、action-level PPO ratio、`step_ppo_v3` estimator、separate critic 或更复杂算法栈。
+
+## 当前平台 TeX 编译路径
+
+- TeX 编译器：`/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/bin/tectonic`。
+- 编译 EXPS 文档时推荐设置：`HOME=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan`、`XDG_CACHE_HOME=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache`、`TECTONIC_CACHE_DIR=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/Tectonic`。
+- 示例：`/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/bin/tectonic --outdir EXPS EXPS/tex/016_step_ppo_v3_design_review.tex`。
+
 ## 日志格式
 
 训练日志是 `logs/` 下的 plain text console log。每条 metric line 通常符合如下形式：

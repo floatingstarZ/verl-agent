@@ -1,7 +1,6 @@
 \documentclass[10pt]{ctexart}
 \usepackage[a4paper,margin=1in]{geometry}
-\usepackage{amsmath,amssymb,mathtools,bm}
-\usepackage{booktabs,longtable,array}
+\usepackage{amsmath,amssymb,booktabs,array}
 \usepackage{enumitem}
 \usepackage{listings}
 \usepackage{xcolor}
@@ -10,543 +9,137 @@
 \setlist[itemize]{leftmargin=1.5em}
 \setlist[enumerate]{leftmargin=1.8em}
 \lstset{basicstyle=\ttfamily\small,breaklines=true,columns=fullflexible,keepspaces=true,frame=single,framerule=0.2pt,xleftmargin=0.5em,xrightmargin=0.5em}
-\newcommand{\clip}{\operatorname{clip}}
-\newcommand{\uid}{\operatorname{uid}}
-\newcommand{\trajid}{\operatorname{traj\_uid}}
-\newcommand{\stepidx}{\operatorname{step\_idx}}
-\title{015: StepPPO-v3 算法改动说明}
+\title{015: StepPPO-v3 Algorithm Changes}
 \author{}
 \date{2026-06-09}
 \begin{document}
 \maketitle
 \vspace{-1.2em}
 
-本文说明从 StepPPO-v2 到 StepPPO-v3 需要做的算法和工程改动。目标是先实现一个清晰、可诊断、低干扰的 v3-core，而不是一次性加入所有可能 trick。
+\section*{Scope}
+当前 StepPPO-v3 的工程改动只服务一个目标：在 GiGPO 训练中加入 shared value head，验证 value head 是否能稳定学习 step-level return，并确认它不影响 GiGPO policy 训练。
 
-\section*{1. v2 的问题边界}
-
-StepPPO-v2 的当前配置：
-
-\begin{lstlisting}
-algorithm.step_ppo.step_advantage_w: 0.5
-algorithm.step_ppo.episode_mode: mean_norm
-algorithm.step_ppo.final_advantage_mode: direct
-algorithm.step_ppo.normalize_episode_advantage: false
-algorithm.step_ppo.normalize_step_advantage: true
-algorithm.step_ppo.normalize_final_advantage: false
-actor_rollout_ref.actor.value_head.detach_value_backbone: false
-actor_rollout_ref.actor.value_head.value_loss_coef: 0.03
-actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu: 8
-\end{lstlisting}
-
-已有日志暴露四个问题：
-
-\begin{enumerate}
-\item \texttt{detach\_value\_backbone=false} 时，value loss 会回传 actor backbone；GiGPO value-aux 已经证明仅增加 auxiliary value regression 就可能破坏原 GiGPO。
-\item StepPPO-v2 的 episode advantage 可能读取 raw \texttt{episode\_rewards}，而 step reward 包含 invalid action penalty，导致 reward 口径不一致。
-\item final advantage 同时混合 \texttt{A\_epi} 和 \texttt{A\_step}，但两者的尺度、归一化和 reward 语义不同。
-\item policy loss 仍然是 token-level clipping，而 WebShop 的 environment action 是完整 response/action string。
-\end{enumerate}
-
-v3-core 对应地做四个改动：
-
-\begin{lstlisting}
-shared value backbone update  -> value-head-only update
-raw episode reward mix        -> shaped step reward only
-episode + step hybrid adv     -> pure step GAE advantage
-token-level PPO ratio         -> action/sequence-level PPO ratio
-\end{lstlisting}
-
-\section*{2. 算法差异表}
-
-\begin{small}
-\begin{longtable}{@{}p{0.25\linewidth}p{0.32\linewidth}p{0.32\linewidth}@{}}
+因此 v3 的默认改动不是新 estimator，不是新 advantage，不是 action-level PPO。v3 默认改动表如下：
+\begin{center}
+\begin{tabular}{@{}p{0.30\linewidth}p{0.32\linewidth}p{0.28\linewidth}@{}}
 \toprule
-项目 & StepPPO-v2 & StepPPO-v3-core \\
+模块 & GiGPO baseline & StepPPO-v3 当前分支 \\
 \midrule
-MDP 粒度 & step advantage + token PPO loss & environment step / response action \\
-reward source & \texttt{episode\_rewards} + \texttt{step\_rewards} & shaped step reward only \\
-invalid penalty & step term 可见，episode term 可能不可见 & policy/value 全部可见 \\
-episode advantage & GiGPO-style \texttt{mean\_norm} & 删除 \\
-step advantage & GAE + batch whitening & GAE + uid group whitening \\
-final advantage & \texttt{A\_epi + 0.5 * A\_step} & \texttt{A\_step\_group\_norm} \\
-value head & shared head, no detach & shared head, detach backbone \\
-value loss & token-shaped/broadcast path & step scalar value loss \\
-policy ratio & token-level PPO ratio & sequence geometric ratio \\
-loss aggregation & token-oriented & \texttt{seq-mean-token-mean} \\
-primary risk & value/backbone interference, reward mismatch & value underfit, lower update strength \\
+policy advantage & GiGPO & 不变 \\
+policy loss & vanilla token-level PPO path & 不变 \\
+rollout group & GiGPO group & 不变 \\
+actor model & actor LM & actor LM + value head \\
+value target & 无 & step GAE return \\
+value gradient & 无 & 默认只更新 value head \\
+验收目标 & policy performance & value 稳定学习且不伤 policy \\
 \bottomrule
-\end{longtable}
-\end{small}
+\end{tabular}
+\end{center}
 
-
-\section*{3. New Config Namespace}
-
-建议新增独立 namespace，避免继续复用 v2 的 \texttt{algorithm.step\_ppo} 语义：
-
+\section*{复用的现有路径}
+当前 v3 应复用已有 GiGPO-v1 value-aux 路径：
 \begin{lstlisting}
-algorithm:
-  adv_estimator: step_ppo_v3
-  gamma: 0.95
-  step_ppo_v3:
-    reward_source: shaped_step
-    use_episode_advantage: false
-    step_gamma: 0.95
-    step_lam: 0.90
-    advantage_norm: uid
-    zero_no_variance_group: true
-    policy_ratio: sequence_geometric
-    final_advantage_mode: pure_step
-    min_group_std: 1.0e-6
-
-actor_rollout_ref:
-  actor:
-    policy_loss: action_level
-    loss_agg_mode: seq-mean-token-mean
-    value_head:
-      enable: true
-      value_position: pre_action_last_context_token
-      detach_value_backbone: true
-      value_loss_coef: 0.03
-      cliprange_value: 0.5
+verl/trainer/ppo/gigpo_v1_value_aux_trainer.py
+examples/gigpo_v1_value_aux_trainer/run_webshop.sh
+verl/workers/actor/value_head.py
+verl/workers/actor/step_ppo_actor.py
+verl/workers/gigpo_v1_value_aux_fsdp_workers.py
+verl/workers/sharding_manager/step_ppo_filters.py
 \end{lstlisting}
 
-保留 \texttt{algorithm.gamma=0.95} 是为了和当前 GiGPO WebShop 口径对齐。\texttt{step\_lam=0.90} 是 v3 的新默认值，用于降低 step return 方差。
-
-\section*{4. Advantage 计算改动}
-
-\subsection*{4.1 删除 episode score 输入}
-
-v2 逻辑中：
-
-\begin{lstlisting}
-if "episode_rewards" in data.non_tensor_batch:
-    episode_scores = data.non_tensor_batch["episode_rewards"]
-else:
-    episode_scores = token_level_rewards.sum(dim=-1)
-\end{lstlisting}
-
-v3 不再把 \texttt{episode\_scores} 传入 policy advantage。\texttt{episode\_rewards} 可以继续作为 logging 字段，但不能进入 \texttt{A\_v3}。
-
-\subsection*{4.2 统一 shaped step reward}
-
-新增 helper：
-
-\begin{lstlisting}
-def build_shaped_step_rewards(data, config) -> torch.Tensor:
-    rewards = raw_rewards
-    rewards -= invalid_action_penalty_coef * (1 - is_action_valid)
-    if use_kl_in_reward:
-        rewards += (token_level_rewards - token_level_scores).sum(dim=-1)
-    return rewards
-\end{lstlisting}
-
-该 helper 应同时服务：
-
-\begin{lstlisting}
-step GAE advantage
-step return target
-reward diagnostics
-\end{lstlisting}
-
-不要再出现 policy advantage 使用 raw reward、value target 使用 penalized reward 的分裂。
-
-\subsection*{4.3 新增 v3 GAE 输出}
-
-建议新增函数：
-
-\begin{lstlisting}
-def compute_step_ppo_v3_advantage_return(
-    step_rewards: torch.Tensor,
-    state_values: torch.Tensor,
-    uid: np.ndarray,
-    traj_index: np.ndarray,
-    step_index: np.ndarray,
-    gamma: float,
-    lam: float,
-    sample_index: np.ndarray | None,
-    norm: str = "uid",
-    min_group_std: float = 1e-6,
-):
-    ...
-    return advantages, step_returns, diagnostics
-\end{lstlisting}
-
-输出：
-
-\begin{lstlisting}
-advantages: shape [num_step_samples], scalar per environment action
-step_returns: shape [num_step_samples], scalar per environment action
-diagnostics:
-  raw_adv_mean/std
-  norm_adv_mean/std
-  no_variance_group_ratio
-\end{lstlisting}
-
-注意：\texttt{compute\_step\_gae\_advantage\_return} 当前已经处理了 \texttt{step\_sample\_uid} 去重逻辑，v3 应复用这部分能力，不要重新引入 duplicated row 被当作 fake transition 的问题。
-
-\subsection*{4.4 uid group whitening}
-
-新增 normalization：
-
-\begin{lstlisting}
-for each uid group:
-    group_adv = raw_adv[group_indices]
-    if group_adv.numel() <= 1 or group_adv.std() < min_group_std:
-        normalized[group_indices] = 0
-        no_variance_group_count += 1
-    else:
-        normalized[group_indices] = (group_adv - group_adv.mean()) / (group_adv.std() + eps)
-\end{lstlisting}
-
-理由：
-
-\begin{itemize}
-\item 避免不同 task difficulty 混在一个 batch 里互相缩放。
-\item 保留 GiGPO/GRPO 的 group-relative 稳定性。
-\item 对全成功或全失败、没有相对差异的 group 自动降权。
-\end{itemize}
-
-\section*{5. Policy Loss 改动}
-
-\subsection*{5.1 v2 token-level PPO}
-
-v2 当前 token-level ratio：
-
-\begin{lstlisting}
-ratio = exp(log_prob - old_log_prob)
-pg_loss = min(ratio * A_token, clip(ratio) * A_token)
-\end{lstlisting}
-
-同一个 response 内每个 token 单独 ratio、单独 clipping。
-
-\subsection*{5.2 v3 sequence geometric ratio}
-
-v3-core 使用 response/action-level ratio：
-
-\begin{lstlisting}
-token_log_ratio = (log_prob - old_log_prob) * response_mask
-seq_len = response_mask.sum(dim=-1).clamp(min=1)
-seq_log_ratio = token_log_ratio.sum(dim=-1) / seq_len
-seq_ratio = exp(seq_log_ratio)
-\end{lstlisting}
-
-然后：
-
-\begin{lstlisting}
-pg_loss_i = -min(
-    seq_ratio_i * A_i,
-    clip(seq_ratio_i, 1 - eps_low, 1 + eps_high) * A_i,
-)
-\end{lstlisting}
-
-实现选择：
-
+关键逻辑：
 \begin{enumerate}
-\item 最小改动：复用已有 \texttt{compute\_policy\_loss\_gspo}，并设置 \texttt{actor.policy\_loss=gspo} 或新增 alias \texttt{action\_level}。
-\item 更清晰改动：新增 \texttt{compute\_policy\_loss\_action\_level}，返回 action-level metrics，不复用 GSPO 命名。
+  \item trainer 保持 \path{algorithm.adv_estimator=gigpo}；
+  \item trainer 构造 value head 的 step GAE return，并写入 \path{data.batch["step_returns"]}；
+  \item actor 看到 \path{step_returns} 后启用 auxiliary value loss；
+  \item sharding manager 同步 rollout 权重时过滤 \path{value_head.*}。
 \end{enumerate}
 
-建议先走第 2 条，避免 method 文档和代码里混用 GSPO 名称。
-
-\subsection*{5.3 必加 action-level metrics}
-
-新增：
-
+\section*{新增脚本}
+新增主线脚本：
 \begin{lstlisting}
-actor/action_log_ratio_mean
-actor/action_log_ratio_std
-actor/action_ratio_mean
-actor/action_ratio_std
-actor/action_clipfrac
-actor/action_approx_kl
+exps/run_webshop_step_ppo_v3_value_head_4gpu_paper_align_simple.sh
 \end{lstlisting}
 
-token-level metrics 可以保留，但不能只看 token-level \texttt{ppo\_kl}。v3 要判断的是完整 response/action 是否被 PPO trust region 约束住。
-
-\section*{6. Value Loss 改动}
-
-\subsection*{6.1 detach backbone 默认开启}
-
-v3 script 默认：
-
+核心 overrides：
 \begin{lstlisting}
-actor_rollout_ref.actor.value_head.detach_value_backbone: true
+algorithm.adv_estimator=gigpo
+algorithm.gigpo.step_advantage_w=1.0
+algorithm.gigpo.mode=mean_norm
+algorithm.gigpo_v1_value_aux.value_target=gae_returns
+algorithm.gigpo_v1_value_aux.step_gamma=0.95
+algorithm.gigpo_v1_value_aux.step_lam=0.90
+actor_rollout_ref.actor.value_head.enable=True
+actor_rollout_ref.actor.value_head.detach_value_backbone=True
+actor_rollout_ref.actor.value_head.value_loss_coef=0.03
+actor_rollout_ref.actor.value_head.cliprange_value=0.5
 \end{lstlisting}
 
-代码已经支持该字段，\texttt{value\_head.py} 中会在 value head 前 detach hidden states。因此 v3 不需要先改 value head forward。
-
-\subsection*{6.2 scalar value loss}
-
-当前 \texttt{step\_returns} 在实现里容易沿 response token 维度 broadcast。v3 建议改成 step scalar：
-
+\section*{新增指标}
+需要在 \path{verl/workers/actor/step_ppo_actor.py} 中补充 value diagnostics：
 \begin{lstlisting}
-current_values: [batch]
-old_values: [batch]
-step_returns: [batch]
-\end{lstlisting}
-
-loss：
-
-\begin{lstlisting}
-values_clipped = old_values + clamp(current_values - old_values, -cliprange_value, cliprange_value)
-value_loss_unclipped = (current_values - step_returns).pow(2)
-value_loss_clipped = (values_clipped - step_returns).pow(2)
-value_loss = 0.5 * max(value_loss_unclipped, value_loss_clipped).mean()
-\end{lstlisting}
-
-这和现有 \texttt{StepWisePPOActor} 的核心公式一致，但 v3 要确保 value loss 是 per action/step，而不是按 response token 重复加权。
-
-\subsection*{6.3 value diagnostics}
-
-新增：
-
-\begin{lstlisting}
-value_error = current_values.detach() - step_returns
+value_error = current_values - step_returns
 value_rmse = sqrt(mean(value_error ** 2))
 value_mae = mean(abs(value_error))
-explained_variance = 1 - var(step_returns - pred) / (var(step_returns) + eps)
+value_explained_variance = 1 - var(step_returns - current_values) / var(step_returns)
 \end{lstlisting}
 
-并记录分布：
-
+训练日志应出现：
 \begin{lstlisting}
+actor/value_rmse
+actor/value_mae
+actor/value_explained_variance
 actor/value_pred_std
 actor/value_return_std
-actor/value_return_p05/p50/p95
 \end{lstlisting}
 
-invalid action 分层：
+这些指标用于判断 value head 是否学到 signal，而不是只判断 value loss 数值是否下降。
 
+\section*{DataProto 字段}
+当前 v3 需要的字段：
 \begin{lstlisting}
-actor/value_loss_valid
-actor/value_loss_invalid
-critic/adv_valid_mean
-critic/adv_invalid_mean
+data.batch["advantages"]          GiGPO policy advantage; keep unchanged
+data.batch["state_values"]        old value prediction, shape [batch]
+data.batch["step_returns"]        value target, shape [batch]
+data.batch["value_step_rewards"]  reward used for value target diagnostics
 \end{lstlisting}
 
-\section*{7. DataProto 字段约定}
+当前不需要新增 \path{step_advantages} 进入 policy loss。只要 policy advantage 改了，就不是当前 v3。
 
-v3 建议保持字段清晰：
-
-\begin{lstlisting}
-data.batch["advantages"]      token-shaped or step-shaped policy advantages
-data.batch["step_advantages"] scalar [batch] final v3 step advantage
-data.batch["step_returns"]    scalar [batch] value target
-data.batch["value_step_rewards"] scalar [batch] shaped step rewards
-data.batch["state_values"]    scalar [batch] old state values
-\end{lstlisting}
-
-如果 actor update path 仍要求 token-shaped \texttt{advantages}，可以在最后一步 broadcast：
-
-\begin{lstlisting}
-advantages_token = step_advantages.unsqueeze(-1) * response_mask
-\end{lstlisting}
-
-但 \texttt{step\_advantages} 必须保留为 scalar 字段，用于 action-level loss 和 diagnostics。
-
-\section*{8. 需要修改的文件}
-
-\subsection*{8.1 \texttt{verl/trainer/ppo/step\_ppo\_algos.py}}
-
-新增：
-
-\begin{lstlisting}
-build_shaped_step_rewards
-normalize_advantage_by_uid
-compute_step_ppo_v3_advantage_return
-compute_step_ppo_v3_advantage_data
-\end{lstlisting}
-
-或在现有 \texttt{compute\_step\_ppo\_advantage\_data} 中通过 \texttt{algorithm.adv\_estimator == "step\_ppo\_v3"} dispatch。
-
-\subsection*{8.2 \texttt{verl/trainer/ppo/core\_algos.py}}
-
-新增：
-
-\begin{lstlisting}
-compute_policy_loss_action_level
-\end{lstlisting}
-
-该函数可以从 \texttt{compute\_policy\_loss\_gspo} 拆出来，但需要返回 action-level metrics。
-
-\subsection*{8.3 \texttt{verl/workers/actor/step\_ppo\_actor.py}}
-
-改动：
-
-\begin{lstlisting}
-支持 actor.policy_loss == "action_level"
-读取 scalar step_advantages / step_returns
-计算 action-level loss
-记录 action-level ratio metrics
-记录 value RMSE/MAE/EV/quantile metrics
-\end{lstlisting}
-
-\subsection*{8.4 \texttt{verl/trainer/config/step\_ppo\_trainer.yaml}}
-
-新增：
-
-\begin{lstlisting}
-algorithm:
-  step_ppo_v3:
-    reward_source: shaped_step
-    use_episode_advantage: false
-    step_gamma: 0.95
-    step_lam: 0.90
-    advantage_norm: uid
-    zero_no_variance_group: true
-    min_group_std: 1.0e-6
-    policy_ratio: sequence_geometric
-    final_advantage_mode: pure_step
-\end{lstlisting}
-
-actor config 增加：
-
-\begin{lstlisting}
-policy_loss: token_level  # choices: token_level, gspo, action_level
-\end{lstlisting}
-
-\subsection*{8.5 \texttt{EXPS/run\_webshop\_step\_ppo\_v3\_4gpu\_paper\_align\_simple.sh}}
-
-新增主实验脚本，建议基于 v2 脚本改：
-
-\begin{lstlisting}
-bash "$BASE_SCRIPT" vllm \
-  algorithm.adv_estimator=step_ppo_v3 \
-  algorithm.gamma=0.95 \
-  algorithm.step_ppo_v3.step_gamma=0.95 \
-  algorithm.step_ppo_v3.step_lam=0.90 \
-  algorithm.step_ppo_v3.advantage_norm=uid \
-  algorithm.step_ppo_v3.use_episode_advantage=false \
-  actor_rollout_ref.actor.policy_loss=action_level \
-  actor_rollout_ref.actor.loss_agg_mode=seq-mean-token-mean \
-  actor_rollout_ref.actor.value_head.detach_value_backbone=true \
-  actor_rollout_ref.actor.value_head.value_loss_coef=0.03 \
-  actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8 \
-  trainer.experiment_name=step_ppo_v3_qwen2.5_1.5b_4gpu_paper_align_full_e250 \
-  "$@"
-\end{lstlisting}
-
-\section*{9. Smoke Test Checklist}
-
-2GPU smoke 必须先检查：
-
-\begin{lstlisting}
-1. 日志出现 actor/action_ratio_mean 和 actor/action_clipfrac。
-2. actor/value_rmse、actor/value_explained_variance 非 NaN。
-3. actor/value_loss 有值，但 detach=true 下 actor grad norm 不因 value loss 明显放大。
-4. episode/valid_action_ratio 不应长期低于 0.5。
-5. response_length/clip_ratio 不应快速升高到 v2 后期水平。
-6. no_variance_group_ratio 合理；如果长期接近 1，说明 uid group norm 没有有效 policy signal。
-\end{lstlisting}
-
-如果 smoke 中出现 \texttt{action\_ratio\_mean} 爆炸：
-
-\begin{lstlisting}
-确认用的是 sequence geometric ratio，而不是 raw exp(sum log-ratio)。
-确认 response_mask 没有包含 padding。
-确认 loss_agg_mode 是 seq-mean-token-mean。
-\end{lstlisting}
-
-如果 value metrics 全部正常但 valid action ratio 仍低：
-
-\begin{lstlisting}
-优先检查 reward parser / invalid penalty 是否进入 shaped step reward。
-再跑 v3_no_action_ratio，确认 action-level ratio 是否改变了 behavior。
-\end{lstlisting}
-
-\section*{10. Ablation Matrix}
-
-首轮不要铺太多实验，建议：
-
-\begin{small}
-\begin{longtable}{@{}p{0.25\linewidth}p{0.32\linewidth}p{0.32\linewidth}@{}}
+\section*{对照实验}
+第一轮只做 value-head 相关对照：
+\begin{center}
+\begin{tabular}{@{}p{0.32\linewidth}p{0.34\linewidth}p{0.24\linewidth}@{}}
 \toprule
-实验 & 改动 & 目的 \\
+实验 & 设置 & 目的 \\
 \midrule
-v3\_core & 默认 v3 & 主线 \\
-v3\_no\_action\_ratio & \texttt{policy\_loss=token\_level} & 判断 action-level clipping 是否必要 \\
-v3\_detach\_false & \texttt{detach\_value\_backbone=false} & 复验 shared-backbone interference \\
-v3\_lam\_1 & \texttt{step\_lam=1.0} & 判断高方差是否来自 MC target \\
-v3\_batch\_norm\_adv & \texttt{advantage\_norm=batch} & 判断 uid norm 是否必要 \\
+GiGPO no-value-head & value head off & policy baseline \\
+v3 value head detach=true & 主线 & value 学习且不干扰 policy \\
+v3 value head detach=false & value loss 回传 backbone & 复验干扰风险 \\
+v3 value coef & \path{value_loss_coef=0.01/0.03/0.05} & loss 权重敏感性 \\
+v3 value lambda & \path{step_lam=0.90/1.00} & target 方差敏感性 \\
 \bottomrule
-\end{longtable}
-\end{small}
+\end{tabular}
+\end{center}
 
+\section*{不要做的改动}
+除非用户明确要求新版本，不要在当前 v3 默认路径中加入：
+\begin{itemize}
+  \item \path{algorithm.adv_estimator=step_ppo_v3}；
+  \item pure step advantage；
+  \item action-level PPO ratio；
+  \item \path{policy_loss.loss_mode=action_level}；
+  \item separate critic；
+  \item value loss 默认更新 actor backbone。
+\end{itemize}
 
-对照必须包含：
-
-\begin{lstlisting}
-GiGPO seed 2026
-StepPPO-v2 seed 2026
-GiGPO value-aux detach=true seed 2026
-\end{lstlisting}
-
-\section*{11. 成功/失败判据}
-
-\subsection*{11.1 稳定性判据}
-
-v3\_core 最低稳定性标准：
-
-\begin{lstlisting}
-valid_action_ratio >= 0.85 after warmup
-response_clip_ratio close to GiGPO order of magnitude
-action_clipfrac not persistently > 0.3
-value_loss no repeated spikes above 8
-no validation collapse similar to value-aux step 180--185
-\end{lstlisting}
-
-\subsection*{11.2 效果判据}
-
-如果 v3\_core step 200 仍显著低于 StepPPO-v2，先不要继续加复杂 critic，优先定位：
-
-\begin{lstlisting}
-reward口径是否一致
-step_lam是否过低导致 credit 传播不足
-uid whitening是否把全部正向信号消掉
-action-level ratio是否过度保守
-\end{lstlisting}
-
-如果 v3\_core 稳定但只接近 StepPPO-v2：
-
-\begin{lstlisting}
-尝试 step_lam=0.95
-尝试 value_loss_coef=0.01/0.05
-尝试 separate value head lr
-尝试 GAGPO-style grouped value proxy 替代 learned value target
-\end{lstlisting}
-
-\section*{12. 不纳入 v3-core 的内容}
-
-以下内容不进入 v3-core，避免主线过宽：
-
+\section*{Implementation Order}
 \begin{enumerate}
-\item separate critic model。
-\item value loss 回传 backbone。
-\item in-distribution critic pretraining。
-\item Huber value loss 默认开启。
-\item PRM / external reward model。
-\item GAGPO grouped value proxy 替代 learned value。
-\item dynamic task sampling。
+  \item 保持 GiGPO value-aux trainer 路径。
+  \item 增加 v3 value-head run script。
+  \item 增加 value RMSE/MAE/EV/std diagnostics。
+  \item 编译 014--016 PDF 文档。
+  \item 提交脚本、文档、AGENTS 约定和指标代码。
 \end{enumerate}
-
-这些方向都可能有价值，但应在 v3-core 稳定后作为 v3.1/v4 单独验证。
-
-\section*{13. Implementation Order}
-
-建议实现顺序：
-
-\begin{enumerate}
-\item 新增 v3 advantage 计算和 shaped reward helper。
-\item 新增 action-level policy loss 和 metrics。
-\item 改 StepWisePPOActor 支持 scalar \texttt{step\_advantages} / \texttt{step\_returns}。
-\item 增加 value diagnostics。
-\item 增加 config namespace 和 v3 run script。
-\item 跑 2GPU smoke。
-\item 跑 seed 2026 full 250 step。
-\item 对比 GiGPO、StepPPO-v2、GiGPO value-aux detach=true。
-\end{enumerate}
-
-每一步完成后都应保留可回退的独立开关，避免 v3 出问题时只能整体回滚。
 
 \end{document}

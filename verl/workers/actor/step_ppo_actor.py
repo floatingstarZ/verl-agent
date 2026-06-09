@@ -518,14 +518,29 @@ class StepWisePPOActor(DataParallelPPOActor):
                         value_loss_clipped = (values_clipped - step_returns).pow(2)
                         value_loss = 0.5 * torch.max(value_loss_unclipped, value_loss_clipped).mean()
                         value_clipfrac = (value_loss_clipped > value_loss_unclipped).float().mean()
+                        value_error = current_values - step_returns
+                        value_mse = value_error.pow(2).mean()
+                        value_rmse = torch.sqrt(value_mse.clamp_min(0.0))
+                        value_mae = value_error.abs().mean()
+                        value_return_var = torch.var(step_returns, unbiased=False)
+                        value_residual_var = torch.var(step_returns - current_values, unbiased=False)
+                        if value_return_var.detach().item() > 1e-8:
+                            value_explained_variance = 1.0 - value_residual_var / (value_return_var + 1e-8)
+                        else:
+                            value_explained_variance = torch.zeros_like(value_return_var)
                         policy_loss = policy_loss + value_loss_coef * value_loss
                         append_to_dict(
                             metrics,
                             {
                                 "actor/value_loss": value_loss.detach().item(),
                                 "actor/value_clipfrac": value_clipfrac.detach().item(),
+                                "actor/value_rmse": value_rmse.detach().item(),
+                                "actor/value_mae": value_mae.detach().item(),
+                                "actor/value_explained_variance": value_explained_variance.detach().item(),
                                 "actor/value_pred_mean": current_values.detach().mean().item(),
+                                "actor/value_pred_std": current_values.detach().std(unbiased=False).item(),
                                 "actor/value_return_mean": step_returns.detach().mean().item(),
+                                "actor/value_return_std": step_returns.detach().std(unbiased=False).item(),
                                 "actor/value_loss_coef": value_loss_coef,
                             },
                         )

@@ -4,6 +4,9 @@
 **/wget-log
 **/_build/
 **/*.ckpt
+**/*.pth
+**/*.safetensors
+**/*.bin
 **/outputs
 **/*.tar.gz
 **/playground
@@ -117,11 +120,17 @@ ENV/
 
 # data
 *.parquet
+*.npy
+*.npz
+*.pkl
+*.pickle
 
 
-# local logs
-logs
-log
+# experiment logs
+!logs/
+!logs/**/*.log
+!log/
+!log/**/*.log
 
 # nohup
 *.out
@@ -132,3 +141,51 @@ data/
 .tmp
 *ports
 
+
+# local agent/tooling state
+.qgenie-agent/
+.codex/
+
+# packaged copy omissions / bulky local artifacts
+EXPS/repos/
+exps/
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
+*.tif
+*.tiff
+*.ico
+!VISULIZATION/figures/
+!VISULIZATION/figures/*.png
+!VISULIZATION/figures/**/*.png
+!VISULIZATION/figures/*.jpg
+!VISULIZATION/figures/**/*.jpg
+!VISULIZATION/figures/*.jpeg
+!VISULIZATION/figures/**/*.jpeg
+!VISULIZATION/figures/*.gif
+!VISULIZATION/figures/**/*.gif
+!VISULIZATION/figures/*.webp
+!VISULIZATION/figures/**/*.webp
+*.zip
+*.tar
+*.tgz
+*.tar.xz
+*.tar.bz2
+*.7z
+*.rar
+*.sqlite
+*.sqlite3
+*.db
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wav
+*.mp3
+*.flac
+.nfs*
+chromedriver

@@ -1,0 +1,429 @@
++ ENGINE=vllm
++ shift
++ ulimit -u 65536
++ export VLLM_ATTENTION_BACKEND=XFORMERS
++ VLLM_ATTENTION_BACKEND=XFORMERS
++ num_cpus_per_env_worker=0.1
++ train_data_size=16
++ val_data_size=128
++ group_size=8
++ mode=mean_norm
++ python3 -m examples.data_preprocess.prepare --mode text --train_data_size 16 --val_data_size 256
+processing data for mode: text
+Creating parquet from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 1433.46ba/s]
+Creating parquet from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 1896.16ba/s]
++ python3 -m verl.trainer.main_ppo algorithm.adv_estimator=gigpo data.train_files=/home/runai-home/data/verl-agent/text/train.parquet data.val_files=/home/runai-home/data/verl-agent/text/test.parquet data.train_batch_size=16 data.val_batch_size=128 data.max_prompt_length=4096 data.max_response_length=512 data.filter_overlong_prompts=True data.truncation=error data.return_raw_chat=True actor_rollout_ref.model.path=Qwen/Qwen2.5-1.5B-Instruct actor_rollout_ref.actor.optim.lr=1e-6 actor_rollout_ref.model.use_remove_padding=True actor_rollout_ref.actor.ppo_mini_batch_size=64 actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8 actor_rollout_ref.actor.use_kl_loss=True actor_rollout_ref.actor.kl_loss_coef=0.01 actor_rollout_ref.actor.kl_loss_type=low_var_kl actor_rollout_ref.model.enable_gradient_checkpointing=True actor_rollout_ref.actor.fsdp_config.param_offload=False actor_rollout_ref.actor.fsdp_config.optimizer_offload=False actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=16 actor_rollout_ref.rollout.tensor_model_parallel_size=2 actor_rollout_ref.rollout.name=vllm actor_rollout_ref.rollout.gpu_memory_utilization=0.6 actor_rollout_ref.rollout.enable_chunked_prefill=False actor_rollout_ref.rollout.enforce_eager=False actor_rollout_ref.rollout.free_cache_engine=False actor_rollout_ref.rollout.val_kwargs.temperature=0.4 actor_rollout_ref.rollout.val_kwargs.do_sample=True actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=16 actor_rollout_ref.ref.fsdp_config.param_offload=True actor_rollout_ref.actor.use_invalid_action_penalty=True actor_rollout_ref.actor.invalid_action_penalty_coef=0.1 algorithm.use_kl_in_reward=False algorithm.gamma=0.95 algorithm.gigpo.step_advantage_w=1.0 algorithm.gigpo.mode=mean_norm env.env_name=Webshop env.seed=0 env.max_steps=15 env.rollout.n=8 env.resources_per_worker.num_cpus=0.1 trainer.critic_warmup=0 'trainer.logger=[console,wandb]' trainer.project_name=verl_agent_webshop trainer.experiment_name=gigpo_qwen2.5_1.5b trainer.n_gpus_per_node=2 trainer.nnodes=1 trainer.save_freq=-1 trainer.test_freq=5 trainer.total_epochs=150 trainer.val_before_train=True trainer.n_gpus_per_node=4 trainer.nnodes=1 trainer.experiment_name=gigpo_qwen2.5_1.5b_paper_align_4gpu
+2026-05-28 11:31:40,270	INFO worker.py:2004 -- Started a local Ray instance. View the dashboard at [1m[32mhttp://127.0.0.1:8265 [39m[22m
+/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_private/worker.py:2052: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+[36m(TaskRunner pid=83482)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(TaskRunner pid=83482)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(TaskRunner pid=83482)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(TaskRunner pid=83482)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(pid=100398)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(pid=100398)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(pid=100398)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(pid=100398)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(pid=100410)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(pid=100410)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(pid=100410)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(pid=100410)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(WebshopWorker pid=100398)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.
+[36m(WebshopWorker pid=100398)[0m   cli: click.BaseCommand,
+[36m(pid=100525)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1[32m [repeated 126x across cluster] (Ray deduplicates logs by default. Set RAY_DEDUP_LOGS=0 to disable log deduplication, or see https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#log-deduplication for more options.)[0m
+[36m(pid=100525)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.[32m [repeated 126x across cluster][0m
+[36m(pid=100525)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.[32m [repeated 126x across cluster][0m
+[36m(pid=100525)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.[32m [repeated 126x across cluster][0m
+[36m(WebshopWorker pid=100398)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/spacy/cli/_util.py:23: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.
+[36m(WebshopWorker pid=100398)[0m   from click.parser import split_arg_string
+[36m(WebshopWorker pid=100398)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/weasel/util/config.py:8: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.
+[36m(WebshopWorker pid=100398)[0m   from click.parser import split_arg_string
+[36m(WebshopWorker pid=100398)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning
+[36m(WebshopWorker pid=100398)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
+[36m(WebshopWorker pid=100398)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead
+[36m(WebshopWorker pid=100398)[0m   parts = parts or [ast.Str("")]
+[36m(WebshopWorker pid=100398)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/ast.py:587: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead
+[36m(WebshopWorker pid=100398)[0m   return Constant(*args, **kwargs)
+[36m(WebshopWorker pid=100398)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1022: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead
+[36m(WebshopWorker pid=100398)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)
+[36m(WebshopWorker pid=100398)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 121500.07it/s]
+[36m(WebshopWorker pid=100398)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/bs4/element.py:784: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.
+[36m(WebshopWorker pid=100398)[0m   warnings.warn(
+[36m(WebshopWorker pid=100398)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/
+[36m(WebshopWorker pid=100398)[0m You can set `disable_env_checker=True` to disable this check.[0m
+[36m(WebshopWorker pid=100398)[0m   logger.warn(
+[36m(WebshopWorker pid=100434)[0m 100%|██████████| 1000/1000 [00:00<00:00, 126197.62it/s]
+[36m(WebshopWorker pid=100406)[0m 100%|██████████| 1000/1000 [00:00<00:00, 124231.50it/s]
+[36m(WebshopWorker pid=100396)[0m 100%|██████████| 1000/1000 [00:00<00:00, 134153.33it/s]
+[36m(WebshopWorker pid=100426)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.[32m [repeated 45x across cluster][0m
+[36m(WebshopWorker pid=100426)[0m   cli: click.BaseCommand,[32m [repeated 45x across cluster][0m
+[36m(WebshopWorker pid=100425)[0m 100%|██████████| 1000/1000 [00:00<00:00, 125371.51it/s]
+[36m(WebshopWorker pid=100420)[0m 100%|██████████| 1000/1000 [00:00<00:00, 125292.87it/s]
+[36m(WebshopWorker pid=100426)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/weasel/util/config.py:8: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.[32m [repeated 90x across cluster][0m
+[36m(WebshopWorker pid=100426)[0m   from click.parser import split_arg_string[32m [repeated 90x across cluster][0m
+[36m(WebshopWorker pid=100420)[0m 
+[36m(WebshopWorker pid=100437)[0m 100%|██████████| 1000/1000 [00:00<00:00, 126574.64it/s]
+[36m(WebshopWorker pid=100424)[0m 100%|██████████| 1000/1000 [00:00<00:00, 131548.86it/s]
+[36m(WebshopWorker pid=100426)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 45x across cluster][0m
+[36m(WebshopWorker pid=100426)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 45x across cluster][0m
+[36m(WebshopWorker pid=100416)[0m 100%|██████████| 1000/1000 [00:00<00:00, 122208.09it/s]
+[36m(WebshopWorker pid=100443)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead[32m [repeated 46x across cluster][0m
+[36m(WebshopWorker pid=100443)[0m   parts = parts or [ast.Str("")][32m [repeated 46x across cluster][0m
+[36m(WebshopWorker pid=100443)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1022: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead[32m [repeated 92x across cluster][0m
+[36m(WebshopWorker pid=100443)[0m   return Constant(*args, **kwargs)[32m [repeated 46x across cluster][0m
+[36m(WebshopWorker pid=100443)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)[32m [repeated 46x across cluster][0m
+[36m(WebshopWorker pid=100426)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 130635.19it/s][32m [repeated 45x across cluster][0m
+[36m(WebshopWorker pid=100426)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/bs4/element.py:784: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 45x across cluster][0m
+[36m(WebshopWorker pid=100426)[0m   warnings.warn([32m [repeated 45x across cluster][0m
+[36m(WebshopWorker pid=100426)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 45x across cluster][0m
+[36m(WebshopWorker pid=100426)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 45x across cluster][0m
+[36m(WebshopWorker pid=100426)[0m   logger.warn([32m [repeated 45x across cluster][0m
+[36m(WebshopWorker pid=100455)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.[32m [repeated 5x across cluster][0m
+[36m(WebshopWorker pid=100455)[0m   cli: click.BaseCommand,[32m [repeated 5x across cluster][0m
+[36m(WebshopWorker pid=100465)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/weasel/util/config.py:8: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.[32m [repeated 8x across cluster][0m
+[36m(WebshopWorker pid=100465)[0m   from click.parser import split_arg_string[32m [repeated 8x across cluster][0m
+[36m(WebshopWorker pid=100465)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100465)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100465)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100465)[0m   parts = parts or [ast.Str("")][32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100465)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1022: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=100465)[0m   return Constant(*args, **kwargs)[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100465)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100465)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 116417.90it/s][32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100451)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/bs4/element.py:784: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100451)[0m   warnings.warn([32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100451)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100451)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100451)[0m   logger.warn([32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100447)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.
+[36m(WebshopWorker pid=100447)[0m   cli: click.BaseCommand,
+[36m(WebshopWorker pid=100447)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/weasel/util/config.py:8: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.[32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100447)[0m   from click.parser import split_arg_string[32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100455)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning
+[36m(WebshopWorker pid=100455)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
+[36m(WebshopWorker pid=100455)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead
+[36m(WebshopWorker pid=100455)[0m   parts = parts or [ast.Str("")]
+[36m(WebshopWorker pid=100455)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1022: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100455)[0m   return Constant(*args, **kwargs)
+[36m(WebshopWorker pid=100455)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)
+[36m(WebshopWorker pid=100455)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 109549.04it/s]
+[36m(WebshopWorker pid=100455)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/bs4/element.py:784: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100455)[0m   warnings.warn([32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100455)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100455)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100455)[0m   logger.warn([32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100524)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.
+[36m(WebshopWorker pid=100524)[0m   cli: click.BaseCommand,
+[36m(WebshopWorker pid=100447)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning
+[36m(WebshopWorker pid=100447)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
+[36m(WebshopWorker pid=100447)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead
+[36m(WebshopWorker pid=100447)[0m   parts = parts or [ast.Str("")]
+[36m(WebshopWorker pid=100447)[0m   return Constant(*args, **kwargs)
+[36m(WebshopWorker pid=100447)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)
+[36m(WebshopWorker pid=100447)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 123678.35it/s]
+[36m(WebshopWorker pid=100449)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/weasel/util/config.py:8: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=100449)[0m   from click.parser import split_arg_string[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1022: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/bs4/element.py:784: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m   warnings.warn([32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m   logger.warn([32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100449)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100449)[0m   cli: click.BaseCommand,[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m   parts = parts or [ast.Str("")][32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m   return Constant(*args, **kwargs)[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100444)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 123430.86it/s][32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100506)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/weasel/util/config.py:8: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.[32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100506)[0m   from click.parser import split_arg_string[32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100506)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1022: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=100467)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/bs4/element.py:784: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100467)[0m   warnings.warn([32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100467)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100467)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100467)[0m   logger.warn([32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100506)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100506)[0m   cli: click.BaseCommand,[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=100506)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100506)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100506)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100506)[0m   parts = parts or [ast.Str("")][32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100506)[0m   return Constant(*args, **kwargs)[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100506)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=100467)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 120765.43it/s][32m [repeated 2x across cluster][0m
+[36m(pid=124231)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(pid=124231)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(pid=124231)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(pid=124231)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(WebshopWorker pid=124613)[0m <jemalloc>: arena 0 background thread creation failed (11)
+[36m(WebshopWorker pid=100464)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/engine/engine.py:260: TqdmMonitorWarning: tqdm:disabling monitor support (monitor_interval = 0) due to:
+[36m(WebshopWorker pid=100464)[0m can't start new thread
+[36m(WebshopWorker pid=100464)[0m   for i, p in tqdm(enumerate(products), total=len(products)):
+[36m(WebshopWorker pid=100477)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/weasel/util/config.py:8: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.[32m [repeated 46x across cluster][0m
+[36m(WebshopWorker pid=100477)[0m   from click.parser import split_arg_string[32m [repeated 46x across cluster][0m
+[36m(WebshopWorker pid=100464)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1022: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead[32m [repeated 12x across cluster][0m
+[36m(WebshopWorker pid=100466)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/bs4/element.py:784: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100466)[0m   warnings.warn([32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100466)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100466)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100466)[0m   logger.warn([32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=100496)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.[32m [repeated 55x across cluster][0m
+[36m(WebshopWorker pid=100496)[0m   cli: click.BaseCommand,[32m [repeated 55x across cluster][0m
+[36m(WebshopWorker pid=100483)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 20x across cluster][0m
+[36m(WebshopWorker pid=100483)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 20x across cluster][0m
+[36m(WebshopWorker pid=100464)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=100464)[0m   parts = parts or [ast.Str("")][32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=100464)[0m   return Constant(*args, **kwargs)[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=100464)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=100464)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 114056.24it/s][32m [repeated 7x across cluster][0m
+[36m(WebshopWorker pid=100463)[0m 100%|██████████| 1000/1000 [00:00<00:00, 101539.79it/s]
+[36m(WebshopWorker pid=100482)[0m 100%|██████████| 1000/1000 [00:00<00:00, 121065.20it/s]
+[36m(WebshopWorker pid=100461)[0m 100%|██████████| 1000/1000 [00:00<00:00, 103112.42it/s]
+[36m(WebshopWorker pid=124855)[0m Exception raised in creation task: The actor died because of an error raised in its creation task, [36mray::WebshopWorker.__init__()[39m (pid=124855, ip=172.19.42.58, actor_id=87a238dc0f9165fab0a4432b01000000, repr=<agent_system.environments.env_package.webshop.envs.WebshopWorker object at 0x7ed13c1f1580>)
+[36m(WebshopWorker pid=124855)[0m            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[36m(WebshopWorker pid=124855)[0m            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[36m(WebshopWorker pid=124855)[0m   File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/envs.py", line 35, in __init__
+[36m(WebshopWorker pid=124855)[0m     from web_agent_site.envs import WebAgentTextEnv  # noqa: WPS433 (runtime import)
+[36m(WebshopWorker pid=124855)[0m     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[36m(WebshopWorker pid=124855)[0m   File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/__init__.py", line 3, in <module>
+[36m(WebshopWorker pid=124855)[0m     from web_agent_site.envs.web_agent_site_env import WebAgentSiteEnv
+[36m(WebshopWorker pid=124855)[0m   File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_site_env.py", line 16, in <module>
+[36m(WebshopWorker pid=124855)[0m     from web_agent_site.engine.engine import parse_action, END_BUTTON
+[36m(WebshopWorker pid=124855)[0m   File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/engine/engine.py", line 16, in <module>
+[36m(WebshopWorker pid=124855)[0m     from pyserini.search.lucene import LuceneSearcher
+[36m(WebshopWorker pid=124855)[0m   File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/pyserini/search/__init__.py", line 17, in <module>
+[36m(WebshopWorker pid=124855)[0m     from ._base import JQuery, JQueryGenerator, JDisjunctionMaxQueryGenerator, get_topics,\
+[36m(WebshopWorker pid=124855)[0m   File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/pyserini/search/_base.py", line 31, in <module>
+[36m(WebshopWorker pid=124855)[0m     JQuery = autoclass('org.apache.lucene.search.Query')
+[36m(WebshopWorker pid=124855)[0m              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[36m(WebshopWorker pid=124855)[0m   File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/jnius/reflect.py", line 209, in autoclass
+[36m(WebshopWorker pid=124855)[0m     c = find_javaclass(clsname)
+[36m(WebshopWorker pid=124855)[0m         ^^^^^^^^^^^^^^^^^^^^^^^
+[36m(WebshopWorker pid=124855)[0m   File "jnius/jnius_export_func.pxi", line 22, in jnius.find_javaclass
+[36m(WebshopWorker pid=124855)[0m   File "jnius/jnius_utils.pxi", line 79, in jnius.check_exception
+[36m(WebshopWorker pid=124855)[0m jnius.JavaException: JVM exception occurred: java.lang.OutOfMemoryError: unable to create native thread: possibly out of memory or process/resource limits reached
+[36m(WebshopWorker pid=124855)[0m java.lang.OutOfMemoryError: unable to create native thread: possibly out of memory or process/resource limits reached
+[36m(WebshopWorker pid=124855)[0m 	java.base/java.lang.Thread.start0(Native Method)
+[36m(WebshopWorker pid=124855)[0m 	java.base/java.lang.Thread.start(Thread.java:798)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.ref.CleanerImpl.start(CleanerImpl.java:118)
+[36m(WebshopWorker pid=124855)[0m 	java.base/java.lang.ref.Cleaner.create(Cleaner.java:203)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.ref.CleanerFactory.<clinit>(CleanerFactory.java:40)
+[36m(WebshopWorker pid=124855)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.<init>(ZipFile.java:740)
+[36m(WebshopWorker pid=124855)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.get(ZipFile.java:860)
+[36m(WebshopWorker pid=124855)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:258)
+[36m(WebshopWorker pid=124855)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:187)
+[36m(WebshopWorker pid=124855)[0m 	java.base/java.util.jar.JarFile.<init>(JarFile.java:348)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.getJarFile(URLClassPath.java:816)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:761)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:754)
+[36m(WebshopWorker pid=124855)[0m 	java.base/java.security.AccessController.doPrivileged(Native Method)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.ensureOpen(URLClassPath.java:753)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.<init>(URLClassPath.java:728)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:496)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:479)
+[36m(WebshopWorker pid=124855)[0m 	java.base/java.security.AccessController.doPrivileged(Native Method)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:478)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:447)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.URLClassPath.getResource(URLClassPath.java:316)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.findClassOnClassPathOrNull(BuiltinClassLoader.java:695)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClassOrNull(BuiltinClassLoader.java:621)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:579)
+[36m(WebshopWorker pid=124855)[0m 	java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:178)
+[36m(WebshopWorker pid=124855)[0m 	java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:527)
+[36m(pid=124863)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1[32m [repeated 127x across cluster][0m
+[36m(pid=124863)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.[32m [repeated 127x across cluster][0m
+[36m(pid=124863)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.[32m [repeated 127x across cluster][0m
+[36m(pid=124863)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.[32m [repeated 127x across cluster][0m
+[36m(WebshopWorker pid=124863)[0m <jemalloc>: arena 0 background thread creation failed (11)[32m [repeated 81x across cluster][0m
+[36m(WebshopWorker pid=100507)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/engine/engine.py:260: TqdmMonitorWarning: tqdm:disabling monitor support (monitor_interval = 0) due to:[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=100507)[0m can't start new thread[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=100507)[0m   for i, p in tqdm(enumerate(products), total=len(products)):[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=100507)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/weasel/util/config.py:8: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.[32m [repeated 96x across cluster][0m
+[36m(WebshopWorker pid=100507)[0m   from click.parser import split_arg_string[32m [repeated 96x across cluster][0m
+[36m(WebshopWorker pid=100497)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1022: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead[32m [repeated 130x across cluster][0m
+[36m(WebshopWorker pid=100511)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/bs4/element.py:784: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 68x across cluster][0m
+[36m(WebshopWorker pid=100511)[0m   warnings.warn([32m [repeated 68x across cluster][0m
+[36m(WebshopWorker pid=100511)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 68x across cluster][0m
+[36m(WebshopWorker pid=100511)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 68x across cluster][0m
+[36m(WebshopWorker pid=100511)[0m   logger.warn([32m [repeated 68x across cluster][0m
+[36m(WebshopWorker pid=100507)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.[32m [repeated 16x across cluster][0m
+[36m(WebshopWorker pid=100507)[0m   cli: click.BaseCommand,[32m [repeated 16x across cluster][0m
+[36m(WebshopWorker pid=100497)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 51x across cluster][0m
+[36m(WebshopWorker pid=100497)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 51x across cluster][0m
+[36m(WebshopWorker pid=100496)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=100496)[0m   parts = parts or [ast.Str("")][32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=100497)[0m   return Constant(*args, **kwargs)[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=100497)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=100507)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 114498.36it/s][32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=124812)[0m 	java.base/java.lang.Thread.start(Thread.java:798)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.ref.CleanerImpl.start(CleanerImpl.java:118)
+[36m(WebshopWorker pid=124812)[0m 	java.base/java.lang.ref.Cleaner.create(Cleaner.java:203)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.ref.CleanerFactory.<clinit>(CleanerFactory.java:40)
+[36m(WebshopWorker pid=124812)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.<init>(ZipFile.java:740)
+[36m(WebshopWorker pid=124812)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.get(ZipFile.java:860)
+[36m(WebshopWorker pid=124812)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:258)
+[36m(WebshopWorker pid=124812)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:187)
+[36m(WebshopWorker pid=124812)[0m 	java.base/java.util.jar.JarFile.<init>(JarFile.java:348)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.getJarFile(URLClassPath.java:816)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:761)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:754)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.ensureOpen(URLClassPath.java:753)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.<init>(URLClassPath.java:728)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:496)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:479)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:478)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:447)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.URLClassPath.getResource(URLClassPath.java:316)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.findClassOnClassPathOrNull(BuiltinClassLoader.java:695)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClassOrNull(BuiltinClassLoader.java:621)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:579)
+[36m(WebshopWorker pid=124812)[0m 	java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:178)
+[36m(WebshopWorker pid=124812)[0m 	java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:527)
+[36m(WebshopWorker pid=124818)[0m 	java.base/java.lang.Thread.start(Thread.java:798)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.ref.CleanerImpl.start(CleanerImpl.java:118)
+[36m(WebshopWorker pid=124818)[0m 	java.base/java.lang.ref.Cleaner.create(Cleaner.java:203)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.ref.CleanerFactory.<clinit>(CleanerFactory.java:40)
+[36m(WebshopWorker pid=124818)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.<init>(ZipFile.java:740)
+[36m(WebshopWorker pid=124818)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.get(ZipFile.java:860)
+[36m(WebshopWorker pid=124818)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:258)
+[36m(WebshopWorker pid=124818)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:187)
+[36m(WebshopWorker pid=124818)[0m 	java.base/java.util.jar.JarFile.<init>(JarFile.java:348)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.getJarFile(URLClassPath.java:816)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:761)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:754)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.ensureOpen(URLClassPath.java:753)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.<init>(URLClassPath.java:728)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:496)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:479)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:478)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:447)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.URLClassPath.getResource(URLClassPath.java:316)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.findClassOnClassPathOrNull(BuiltinClassLoader.java:695)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClassOrNull(BuiltinClassLoader.java:621)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:579)
+[36m(WebshopWorker pid=124818)[0m 	java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:178)
+[36m(WebshopWorker pid=124818)[0m 	java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:527)
+[36m(WebshopWorker pid=124854)[0m 	java.base/java.lang.Thread.start(Thread.java:798)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.ref.CleanerImpl.start(CleanerImpl.java:118)
+[36m(WebshopWorker pid=124854)[0m 	java.base/java.lang.ref.Cleaner.create(Cleaner.java:203)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.ref.CleanerFactory.<clinit>(CleanerFactory.java:40)
+[36m(WebshopWorker pid=124854)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.<init>(ZipFile.java:740)
+[36m(WebshopWorker pid=124854)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.get(ZipFile.java:860)
+[36m(WebshopWorker pid=124854)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:258)
+[36m(WebshopWorker pid=124854)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:187)
+[36m(WebshopWorker pid=124854)[0m 	java.base/java.util.jar.JarFile.<init>(JarFile.java:348)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.getJarFile(URLClassPath.java:816)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:761)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:754)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.ensureOpen(URLClassPath.java:753)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.<init>(URLClassPath.java:728)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:496)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:479)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:478)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:447)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.URLClassPath.getResource(URLClassPath.java:316)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.findClassOnClassPathOrNull(BuiltinClassLoader.java:695)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClassOrNull(BuiltinClassLoader.java:621)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:579)
+[36m(WebshopWorker pid=124854)[0m 	java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:178)
+[36m(WebshopWorker pid=124854)[0m 	java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:527)
+[36m(WebshopWorker pid=123954)[0m 	java.base/java.lang.Thread.start(Thread.java:798)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.ref.CleanerImpl.start(CleanerImpl.java:118)
+[36m(WebshopWorker pid=123954)[0m 	java.base/java.lang.ref.Cleaner.create(Cleaner.java:203)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.ref.CleanerFactory.<clinit>(CleanerFactory.java:40)
+[36m(WebshopWorker pid=123954)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.<init>(ZipFile.java:740)
+[36m(WebshopWorker pid=123954)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.get(ZipFile.java:860)
+[36m(WebshopWorker pid=123954)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:258)
+[36m(WebshopWorker pid=123954)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:187)
+[36m(WebshopWorker pid=123954)[0m 	java.base/java.util.jar.JarFile.<init>(JarFile.java:348)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.getJarFile(URLClassPath.java:816)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:761)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:754)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.ensureOpen(URLClassPath.java:753)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.<init>(URLClassPath.java:728)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:496)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:479)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:478)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:447)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.URLClassPath.getResource(URLClassPath.java:316)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.findClassOnClassPathOrNull(BuiltinClassLoader.java:695)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClassOrNull(BuiltinClassLoader.java:621)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:579)
+[36m(WebshopWorker pid=123954)[0m 	java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:178)
+[36m(WebshopWorker pid=123954)[0m 	java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:527)
+[36m(WebshopWorker pid=124424)[0m 	java.base/java.lang.Thread.start(Thread.java:798)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.ref.CleanerImpl.start(CleanerImpl.java:118)
+[36m(WebshopWorker pid=124424)[0m 	java.base/java.lang.ref.Cleaner.create(Cleaner.java:203)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.ref.CleanerFactory.<clinit>(CleanerFactory.java:40)
+[36m(WebshopWorker pid=124424)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.<init>(ZipFile.java:740)
+[36m(WebshopWorker pid=124424)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.get(ZipFile.java:860)
+[36m(WebshopWorker pid=124424)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:258)
+[36m(WebshopWorker pid=124424)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:187)
+[36m(WebshopWorker pid=124424)[0m 	java.base/java.util.jar.JarFile.<init>(JarFile.java:348)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.getJarFile(URLClassPath.java:816)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:761)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:754)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.ensureOpen(URLClassPath.java:753)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.<init>(URLClassPath.java:728)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:496)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:479)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:478)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:447)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.URLClassPath.getResource(URLClassPath.java:316)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.findClassOnClassPathOrNull(BuiltinClassLoader.java:695)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClassOrNull(BuiltinClassLoader.java:621)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:579)
+[36m(WebshopWorker pid=124424)[0m 	java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:178)
+[36m(WebshopWorker pid=124424)[0m 	java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:527)
+[36m(WebshopWorker pid=124473)[0m 	java.base/java.lang.Thread.start(Thread.java:798)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.ref.CleanerImpl.start(CleanerImpl.java:118)
+[36m(WebshopWorker pid=124473)[0m 	java.base/java.lang.ref.Cleaner.create(Cleaner.java:203)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.ref.CleanerFactory.<clinit>(CleanerFactory.java:40)
+[36m(WebshopWorker pid=124473)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.<init>(ZipFile.java:740)
+[36m(WebshopWorker pid=124473)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.get(ZipFile.java:860)
+[36m(WebshopWorker pid=124473)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:258)
+[36m(WebshopWorker pid=124473)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:187)
+[36m(WebshopWorker pid=124473)[0m 	java.base/java.util.jar.JarFile.<init>(JarFile.java:348)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.getJarFile(URLClassPath.java:816)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:761)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:754)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.ensureOpen(URLClassPath.java:753)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.<init>(URLClassPath.java:728)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:496)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:479)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:478)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:447)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.URLClassPath.getResource(URLClassPath.java:316)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.findClassOnClassPathOrNull(BuiltinClassLoader.java:695)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClassOrNull(BuiltinClassLoader.java:621)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:579)
+[36m(WebshopWorker pid=124473)[0m 	java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:178)
+[36m(WebshopWorker pid=124473)[0m 	java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:527)
+[36m(WebshopWorker pid=124613)[0m 	java.base/java.lang.Thread.start(Thread.java:798)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.ref.CleanerImpl.start(CleanerImpl.java:118)
+[36m(WebshopWorker pid=124613)[0m 	java.base/java.lang.ref.Cleaner.create(Cleaner.java:203)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.ref.CleanerFactory.<clinit>(CleanerFactory.java:40)
+[36m(WebshopWorker pid=124613)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.<init>(ZipFile.java:740)
+[36m(WebshopWorker pid=124613)[0m 	java.base/java.util.zip.ZipFile$CleanableResource.get(ZipFile.java:860)
+[36m(WebshopWorker pid=124613)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:258)
+[36m(WebshopWorker pid=124613)[0m 	java.base/java.util.zip.ZipFile.<init>(ZipFile.java:187)
+[36m(WebshopWorker pid=124613)[0m 	java.base/java.util.jar.JarFile.<init>(JarFile.java:348)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.getJarFile(URLClassPath.java:816)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:761)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader$1.run(URLClassPath.java:754)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.ensureOpen(URLClassPath.java:753)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.URLClassPath$JarLoader.<init>(URLClassPath.java:728)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:496)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.URLClassPath$3.run(URLClassPath.java:479)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:478)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.URLClassPath.getLoader(URLClassPath.java:447)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.URLClassPath.getResource(URLClassPath.java:316)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.findClassOnClassPathOrNull(BuiltinClassLoader.java:695)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClassOrNull(BuiltinClassLoader.java:621)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:579)
+[36m(WebshopWorker pid=124613)[0m 	java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:178)
+[36m(WebshopWorker pid=124613)[0m 	java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:527)

@@ -1,0 +1,756 @@
++ ENGINE=vllm
++ shift
++ PYTHON_BIN=/opt/conda/bin/python
++ user_name=ziyuhuan
++ cache_root=/tmp/ziyuhuan/.cache
++ data_root=/tmp/ziyuhuan/data/verl-agent
++ export XDG_CACHE_HOME=/tmp/ziyuhuan/.cache
++ XDG_CACHE_HOME=/tmp/ziyuhuan/.cache
++ export HF_HOME=/tmp/ziyuhuan/.cache/huggingface
++ HF_HOME=/tmp/ziyuhuan/.cache/huggingface
++ export HUGGINGFACE_HUB_CACHE=/tmp/ziyuhuan/.cache/huggingface/hub
++ HUGGINGFACE_HUB_CACHE=/tmp/ziyuhuan/.cache/huggingface/hub
++ export TRANSFORMERS_CACHE=/tmp/ziyuhuan/.cache/huggingface/hub
++ TRANSFORMERS_CACHE=/tmp/ziyuhuan/.cache/huggingface/hub
++ export TRITON_CACHE_DIR=/tmp/ziyuhuan/.triton-cache
++ TRITON_CACHE_DIR=/tmp/ziyuhuan/.triton-cache
++ export TORCH_HOME=/tmp/ziyuhuan/.cache/torch
++ TORCH_HOME=/tmp/ziyuhuan/.cache/torch
++ export VLLM_CONFIG_ROOT=/tmp/ziyuhuan/.vllm
++ VLLM_CONFIG_ROOT=/tmp/ziyuhuan/.vllm
++ mkdir -p /tmp/ziyuhuan/.cache/huggingface /tmp/ziyuhuan/.cache/huggingface/hub /tmp/ziyuhuan/.triton-cache /tmp/ziyuhuan/.cache/torch /tmp/ziyuhuan/.vllm
++ mkdir -p /tmp/ziyuhuan/data/verl-agent
+++ ulimit -Hu
++ hard_nproc_limit=unlimited
++ '[' unlimited = unlimited ']'
++ ulimit -Su unlimited
++ export 'JAVA_TOOL_OPTIONS= -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1'
++ JAVA_TOOL_OPTIONS=' -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1'
++ export VLLM_ATTENTION_BACKEND=FLASH_ATTN
++ VLLM_ATTENTION_BACKEND=FLASH_ATTN
++ num_cpus_per_env_worker=0.1
++ train_data_size=16
++ val_data_size=128
++ group_size=8
++ mode=mean_norm
+++ pwd
++ PYTHONPATH=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent:
++ /opt/conda/bin/python examples/data_preprocess/prepare.py --mode text --local_dir /tmp/ziyuhuan/data/verl-agent --train_data_size 16 --val_data_size 256
+/opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+processing data for mode: text
+Map (num_proc=8):   0%|          | 0/16 [00:00<?, ? examples/s]Map (num_proc=8):  12%|█▎        | 2/16 [00:00<00:01, 13.01 examples/s]Map (num_proc=8): 100%|██████████| 16/16 [00:00<00:00, 47.89 examples/s]
+Map (num_proc=8):   0%|          | 0/256 [00:00<?, ? examples/s]Map (num_proc=8):   4%|▍         | 10/256 [00:00<00:03, 66.97 examples/s]Map (num_proc=8):  59%|█████▊    | 150/256 [00:00<00:00, 707.24 examples/s]Map (num_proc=8):  95%|█████████▍| 243/256 [00:00<00:00, 792.44 examples/s]Map (num_proc=8): 100%|██████████| 256/256 [00:00<00:00, 542.69 examples/s]
+Creating parquet from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 1202.84ba/s]
+Creating parquet from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 1976.58ba/s]
++ /opt/conda/bin/python -m verl.trainer.main_ppo algorithm.adv_estimator=gigpo data.train_files=/tmp/ziyuhuan/data/verl-agent/text/train.parquet data.val_files=/tmp/ziyuhuan/data/verl-agent/text/test.parquet data.train_batch_size=16 data.val_batch_size=128 data.max_prompt_length=4096 data.max_response_length=512 data.filter_overlong_prompts=True data.truncation=error data.return_raw_chat=True actor_rollout_ref.model.path=Qwen/Qwen2.5-1.5B-Instruct actor_rollout_ref.actor.optim.lr=1e-6 actor_rollout_ref.model.use_remove_padding=True actor_rollout_ref.actor.ppo_mini_batch_size=64 actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8 actor_rollout_ref.actor.use_kl_loss=True actor_rollout_ref.actor.kl_loss_coef=0.01 actor_rollout_ref.actor.kl_loss_type=low_var_kl actor_rollout_ref.model.enable_gradient_checkpointing=True actor_rollout_ref.actor.fsdp_config.param_offload=False actor_rollout_ref.actor.fsdp_config.optimizer_offload=False actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=16 actor_rollout_ref.rollout.tensor_model_parallel_size=2 actor_rollout_ref.rollout.name=vllm actor_rollout_ref.rollout.gpu_memory_utilization=0.6 actor_rollout_ref.rollout.enable_chunked_prefill=False actor_rollout_ref.rollout.enforce_eager=True actor_rollout_ref.rollout.free_cache_engine=False actor_rollout_ref.rollout.val_kwargs.temperature=0.4 actor_rollout_ref.rollout.val_kwargs.do_sample=True actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=16 actor_rollout_ref.ref.fsdp_config.param_offload=True actor_rollout_ref.actor.use_invalid_action_penalty=True actor_rollout_ref.actor.invalid_action_penalty_coef=0.1 algorithm.use_kl_in_reward=False algorithm.gamma=0.95 algorithm.gigpo.step_advantage_w=1.0 algorithm.gigpo.mode=mean_norm env.env_name=Webshop env.seed=0 env.max_steps=15 env.rollout.n=8 env.resources_per_worker.num_cpus=0.1 trainer.critic_warmup=0 'trainer.logger=[console,wandb]' trainer.project_name=verl_agent_webshop trainer.experiment_name=gigpo_qwen2.5_1.5b trainer.n_gpus_per_node=2 trainer.nnodes=1 trainer.save_freq=-1 trainer.test_freq=5 trainer.total_epochs=150 trainer.val_before_train=True data.train_batch_size=4 data.val_batch_size=8 actor_rollout_ref.actor.ppo_mini_batch_size=4 actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1 actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1 actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1 env.rollout.n=4 trainer.n_gpus_per_node=2 trainer.nnodes=1 actor_rollout_ref.rollout.tensor_model_parallel_size=2 trainer.experiment_name=gigpo_qwen2.5_1.5b_2gpu_paper_align_simple trainer.val_before_train=False trainer.total_epochs=1 trainer.test_freq=-1 ray_init.num_cpus=32 env.resources_per_worker.num_cpus=0.1
+/opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+ray init kwargs: {'num_cpus': 32, 'runtime_env': {'env_vars': {'NCCL_DEBUG': 'WARN', 'VLLM_LOGGING_LEVEL': 'WARN', 'VLLM_ALLOW_RUNTIME_LORA_UPDATING': 'true', 'VLLM_ALLREDUCE_USE_SYMM_MEM': '0', 'CUDA_DEVICE_MAX_CONNECTIONS': '1', 'NCCL_CUMEM_ENABLE': '0'}, 'working_dir': None}}
+2026-05-30 07:02:10,946	INFO worker.py:1998 -- Started a local Ray instance. View the dashboard at [1m[32mhttp://127.0.0.1:8265 [39m[22m
+/opt/conda/lib/python3.11/site-packages/ray/_private/worker.py:2046: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+[36m(pid=32156)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(pid=32156)[0m   warnings.warn(
+[36m(TaskRunner pid=32156)[0m {'actor_rollout_ref': {'actor': {'checkpoint': {'contents': ['model',
+[36m(TaskRunner pid=32156)[0m                                                              'optimizer',
+[36m(TaskRunner pid=32156)[0m                                                              'extra']},
+[36m(TaskRunner pid=32156)[0m                                  'clip_ratio': 0.2,
+[36m(TaskRunner pid=32156)[0m                                  'clip_ratio_c': 3.0,
+[36m(TaskRunner pid=32156)[0m                                  'clip_ratio_high': 0.2,
+[36m(TaskRunner pid=32156)[0m                                  'clip_ratio_low': 0.2,
+[36m(TaskRunner pid=32156)[0m                                  'entropy_coeff': 0.001,
+[36m(TaskRunner pid=32156)[0m                                  'fsdp_config': {'fsdp_size': -1,
+[36m(TaskRunner pid=32156)[0m                                                  'offload_policy': False,
+[36m(TaskRunner pid=32156)[0m                                                  'optimizer_offload': False,
+[36m(TaskRunner pid=32156)[0m                                                  'param_offload': False,
+[36m(TaskRunner pid=32156)[0m                                                  'reshard_after_forward': True,
+[36m(TaskRunner pid=32156)[0m                                                  'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=32156)[0m                                  'grad_clip': 1.0,
+[36m(TaskRunner pid=32156)[0m                                  'invalid_action_penalty_coef': 0.1,
+[36m(TaskRunner pid=32156)[0m                                  'kl_loss_coef': 0.01,
+[36m(TaskRunner pid=32156)[0m                                  'kl_loss_type': 'low_var_kl',
+[36m(TaskRunner pid=32156)[0m                                  'loss_agg_mode': 'token-mean',
+[36m(TaskRunner pid=32156)[0m                                  'optim': {'lr': 1e-06,
+[36m(TaskRunner pid=32156)[0m                                            'lr_warmup_steps': -1,
+[36m(TaskRunner pid=32156)[0m                                            'lr_warmup_steps_ratio': 0.0,
+[36m(TaskRunner pid=32156)[0m                                            'min_lr_ratio': 0.0,
+[36m(TaskRunner pid=32156)[0m                                            'num_cycles': 0.5,
+[36m(TaskRunner pid=32156)[0m                                            'total_training_steps': -1,
+[36m(TaskRunner pid=32156)[0m                                            'warmup_style': 'constant',
+[36m(TaskRunner pid=32156)[0m                                            'weight_decay': 0.01},
+[36m(TaskRunner pid=32156)[0m                                  'policy_loss': {'loss_mode': 'vanilla'},
+[36m(TaskRunner pid=32156)[0m                                  'ppo_epochs': 1,
+[36m(TaskRunner pid=32156)[0m                                  'ppo_max_token_len_per_gpu': 16384,
+[36m(TaskRunner pid=32156)[0m                                  'ppo_micro_batch_size': None,
+[36m(TaskRunner pid=32156)[0m                                  'ppo_micro_batch_size_per_gpu': 1,
+[36m(TaskRunner pid=32156)[0m                                  'ppo_mini_batch_size': 4,
+[36m(TaskRunner pid=32156)[0m                                  'shuffle': False,
+[36m(TaskRunner pid=32156)[0m                                  'strategy': 'fsdp',
+[36m(TaskRunner pid=32156)[0m                                  'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=32156)[0m                                  'use_dynamic_bsz': False,
+[36m(TaskRunner pid=32156)[0m                                  'use_invalid_action_penalty': True,
+[36m(TaskRunner pid=32156)[0m                                  'use_kl_loss': True,
+[36m(TaskRunner pid=32156)[0m                                  'use_torch_compile': True},
+[36m(TaskRunner pid=32156)[0m                        'hybrid_engine': True,
+[36m(TaskRunner pid=32156)[0m                        'model': {'enable_activation_offload': False,
+[36m(TaskRunner pid=32156)[0m                                  'enable_gradient_checkpointing': True,
+[36m(TaskRunner pid=32156)[0m                                  'external_lib': None,
+[36m(TaskRunner pid=32156)[0m                                  'lora_alpha': 16,
+[36m(TaskRunner pid=32156)[0m                                  'lora_rank': 0,
+[36m(TaskRunner pid=32156)[0m                                  'override_config': {},
+[36m(TaskRunner pid=32156)[0m                                  'path': 'Qwen/Qwen2.5-1.5B-Instruct',
+[36m(TaskRunner pid=32156)[0m                                  'target_modules': 'all-linear',
+[36m(TaskRunner pid=32156)[0m                                  'trust_remote_code': False,
+[36m(TaskRunner pid=32156)[0m                                  'use_fused_kernels': False,
+[36m(TaskRunner pid=32156)[0m                                  'use_liger': False,
+[36m(TaskRunner pid=32156)[0m                                  'use_remove_padding': True,
+[36m(TaskRunner pid=32156)[0m                                  'use_shm': False},
+[36m(TaskRunner pid=32156)[0m                        'ref': {'fsdp_config': {'param_offload': True,
+[36m(TaskRunner pid=32156)[0m                                                'reshard_after_forward': True,
+[36m(TaskRunner pid=32156)[0m                                                'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=32156)[0m                                'log_prob_max_token_len_per_gpu': 16384,
+[36m(TaskRunner pid=32156)[0m                                'log_prob_micro_batch_size': None,
+[36m(TaskRunner pid=32156)[0m                                'log_prob_micro_batch_size_per_gpu': 1,
+[36m(TaskRunner pid=32156)[0m                                'log_prob_use_dynamic_bsz': False,
+[36m(TaskRunner pid=32156)[0m                                'strategy': 'fsdp',
+[36m(TaskRunner pid=32156)[0m                                'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=32156)[0m                                'use_torch_compile': True},
+[36m(TaskRunner pid=32156)[0m                        'rollout': {'chat_scheduler': None,
+[36m(TaskRunner pid=32156)[0m                                    'disable_log_stats': True,
+[36m(TaskRunner pid=32156)[0m                                    'do_sample': True,
+[36m(TaskRunner pid=32156)[0m                                    'dtype': 'bfloat16',
+[36m(TaskRunner pid=32156)[0m                                    'enable_chunked_prefill': False,
+[36m(TaskRunner pid=32156)[0m                                    'enforce_eager': True,
+[36m(TaskRunner pid=32156)[0m                                    'engine_kwargs': {'sglang': {'attention_backend': None},
+[36m(TaskRunner pid=32156)[0m                                                      'vllm': {'swap_space': None}},
+[36m(TaskRunner pid=32156)[0m                                    'free_cache_engine': False,
+[36m(TaskRunner pid=32156)[0m                                    'gpu_memory_utilization': 0.6,
+[36m(TaskRunner pid=32156)[0m                                    'ignore_eos': False,
+[36m(TaskRunner pid=32156)[0m                                    'layered_summon': False,
+[36m(TaskRunner pid=32156)[0m                                    'load_format': 'dummy_dtensor',
+[36m(TaskRunner pid=32156)[0m                                    'log_prob_max_token_len_per_gpu': 16384,
+[36m(TaskRunner pid=32156)[0m                                    'log_prob_micro_batch_size': None,
+[36m(TaskRunner pid=32156)[0m                                    'log_prob_micro_batch_size_per_gpu': 1,
+[36m(TaskRunner pid=32156)[0m                                    'log_prob_use_dynamic_bsz': False,
+[36m(TaskRunner pid=32156)[0m                                    'max_model_len': None,
+[36m(TaskRunner pid=32156)[0m                                    'max_num_batched_tokens': 8192,
+[36m(TaskRunner pid=32156)[0m                                    'max_num_seqs': 1024,
+[36m(TaskRunner pid=32156)[0m                                    'mode': 'sync',
+[36m(TaskRunner pid=32156)[0m                                    'multi_turn': {'enable': False,
+[36m(TaskRunner pid=32156)[0m                                                   'format': 'chatml',
+[36m(TaskRunner pid=32156)[0m                                                   'max_turns': None,
+[36m(TaskRunner pid=32156)[0m                                                   'tool_config_path': None},
+[36m(TaskRunner pid=32156)[0m                                    'n': 1,
+[36m(TaskRunner pid=32156)[0m                                    'name': 'vllm',
+[36m(TaskRunner pid=32156)[0m                                    'prompt_length': 4096,
+[36m(TaskRunner pid=32156)[0m                                    'response_length': 512,
+[36m(TaskRunner pid=32156)[0m                                    'temperature': 1.0,
+[36m(TaskRunner pid=32156)[0m                                    'tensor_model_parallel_size': 2,
+[36m(TaskRunner pid=32156)[0m                                    'top_k': -1,
+[36m(TaskRunner pid=32156)[0m                                    'top_p': 1,
+[36m(TaskRunner pid=32156)[0m                                    'use_fire_sampling': False,
+[36m(TaskRunner pid=32156)[0m                                    'val_kwargs': {'do_sample': True,
+[36m(TaskRunner pid=32156)[0m                                                   'n': 1,
+[36m(TaskRunner pid=32156)[0m                                                   'temperature': 0.4,
+[36m(TaskRunner pid=32156)[0m                                                   'top_k': -1,
+[36m(TaskRunner pid=32156)[0m                                                   'top_p': 1.0}}},
+[36m(TaskRunner pid=32156)[0m  'algorithm': {'adv_estimator': 'gigpo',
+[36m(TaskRunner pid=32156)[0m                'filter_groups': {'enable': False, 'max_num_gen_batches': 10},
+[36m(TaskRunner pid=32156)[0m                'gamma': 0.95,
+[36m(TaskRunner pid=32156)[0m                'gigpo': {'enable_similarity': False,
+[36m(TaskRunner pid=32156)[0m                          'mode': 'mean_norm',
+[36m(TaskRunner pid=32156)[0m                          'similarity_thresh': 0.95,
+[36m(TaskRunner pid=32156)[0m                          'step_advantage_w': 1.0},
+[36m(TaskRunner pid=32156)[0m                'kl_ctrl': {'horizon': 10000,
+[36m(TaskRunner pid=32156)[0m                            'kl_coef': 0.001,
+[36m(TaskRunner pid=32156)[0m                            'target_kl': 0.1,
+[36m(TaskRunner pid=32156)[0m                            'type': 'fixed'},
+[36m(TaskRunner pid=32156)[0m                'kl_penalty': 'kl',
+[36m(TaskRunner pid=32156)[0m                'lam': 1.0,
+[36m(TaskRunner pid=32156)[0m                'norm_adv_by_std_in_grpo': True,
+[36m(TaskRunner pid=32156)[0m                'pf_ppo': {'reweight_method': 'pow', 'weight_pow': 2.0},
+[36m(TaskRunner pid=32156)[0m                'use_kl_in_reward': False,
+[36m(TaskRunner pid=32156)[0m                'use_pf_ppo': False},
+[36m(TaskRunner pid=32156)[0m  'critic': {'checkpoint': {'contents': ['model', 'optimizer', 'extra']},
+[36m(TaskRunner pid=32156)[0m             'cliprange_value': 0.5,
+[36m(TaskRunner pid=32156)[0m             'forward_max_token_len_per_gpu': 32768,
+[36m(TaskRunner pid=32156)[0m             'forward_micro_batch_size': None,
+[36m(TaskRunner pid=32156)[0m             'forward_micro_batch_size_per_gpu': None,
+[36m(TaskRunner pid=32156)[0m             'grad_clip': 1.0,
+[36m(TaskRunner pid=32156)[0m             'loss_agg_mode': 'token-mean',
+[36m(TaskRunner pid=32156)[0m             'model': {'enable_activation_offload': False,
+[36m(TaskRunner pid=32156)[0m                       'enable_gradient_checkpointing': True,
+[36m(TaskRunner pid=32156)[0m                       'external_lib': None,
+[36m(TaskRunner pid=32156)[0m                       'fsdp_config': {'fsdp_size': -1,
+[36m(TaskRunner pid=32156)[0m                                       'offload_policy': False,
+[36m(TaskRunner pid=32156)[0m                                       'optimizer_offload': False,
+[36m(TaskRunner pid=32156)[0m                                       'param_offload': False,
+[36m(TaskRunner pid=32156)[0m                                       'reshard_after_forward': True,
+[36m(TaskRunner pid=32156)[0m                                       'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=32156)[0m                       'lora_alpha': 16,
+[36m(TaskRunner pid=32156)[0m                       'lora_rank': 0,
+[36m(TaskRunner pid=32156)[0m                       'override_config': {},
+[36m(TaskRunner pid=32156)[0m                       'path': '~/models/deepseek-llm-7b-chat',
+[36m(TaskRunner pid=32156)[0m                       'target_modules': 'all-linear',
+[36m(TaskRunner pid=32156)[0m                       'tokenizer_path': 'Qwen/Qwen2.5-1.5B-Instruct',
+[36m(TaskRunner pid=32156)[0m                       'trust_remote_code': False,
+[36m(TaskRunner pid=32156)[0m                       'use_remove_padding': False,
+[36m(TaskRunner pid=32156)[0m                       'use_shm': False},
+[36m(TaskRunner pid=32156)[0m             'optim': {'lr': 1e-05,
+[36m(TaskRunner pid=32156)[0m                       'lr_warmup_steps_ratio': 0.0,
+[36m(TaskRunner pid=32156)[0m                       'min_lr_ratio': None,
+[36m(TaskRunner pid=32156)[0m                       'total_training_steps': -1,
+[36m(TaskRunner pid=32156)[0m                       'warmup_style': 'constant',
+[36m(TaskRunner pid=32156)[0m                       'weight_decay': 0.01},
+[36m(TaskRunner pid=32156)[0m             'ppo_epochs': 1,
+[36m(TaskRunner pid=32156)[0m             'ppo_max_token_len_per_gpu': 32768,
+[36m(TaskRunner pid=32156)[0m             'ppo_micro_batch_size': None,
+[36m(TaskRunner pid=32156)[0m             'ppo_micro_batch_size_per_gpu': None,
+[36m(TaskRunner pid=32156)[0m             'ppo_mini_batch_size': 4,
+[36m(TaskRunner pid=32156)[0m             'rollout_n': 1,
+[36m(TaskRunner pid=32156)[0m             'shuffle': False,
+[36m(TaskRunner pid=32156)[0m             'strategy': 'fsdp',
+[36m(TaskRunner pid=32156)[0m             'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=32156)[0m             'use_dynamic_bsz': False},
+[36m(TaskRunner pid=32156)[0m  'custom_reward_function': {'name': 'compute_score', 'path': None},
+[36m(TaskRunner pid=32156)[0m  'data': {'apply_chat_template_kwargs': {},
+[36m(TaskRunner pid=32156)[0m           'custom_cls': {'name': None, 'path': None},
+[36m(TaskRunner pid=32156)[0m           'filter_overlong_prompts': True,
+[36m(TaskRunner pid=32156)[0m           'filter_overlong_prompts_workers': 1,
+[36m(TaskRunner pid=32156)[0m           'image_key': 'images',
+[36m(TaskRunner pid=32156)[0m           'max_prompt_length': 4096,
+[36m(TaskRunner pid=32156)[0m           'max_response_length': 512,
+[36m(TaskRunner pid=32156)[0m           'prompt_key': 'prompt',
+[36m(TaskRunner pid=32156)[0m           'return_full_prompt': False,
+[36m(TaskRunner pid=32156)[0m           'return_raw_chat': True,
+[36m(TaskRunner pid=32156)[0m           'return_raw_input_ids': False,
+[36m(TaskRunner pid=32156)[0m           'reward_fn_key': 'data_source',
+[36m(TaskRunner pid=32156)[0m           'shuffle': True,
+[36m(TaskRunner pid=32156)[0m           'tokenizer': None,
+[36m(TaskRunner pid=32156)[0m           'train_batch_size': 4,
+[36m(TaskRunner pid=32156)[0m           'train_files': '/tmp/ziyuhuan/data/verl-agent/text/train.parquet',
+[36m(TaskRunner pid=32156)[0m           'truncation': 'error',
+[36m(TaskRunner pid=32156)[0m           'trust_remote_code': False,
+[36m(TaskRunner pid=32156)[0m           'use_shm': False,
+[36m(TaskRunner pid=32156)[0m           'val_batch_size': 8,
+[36m(TaskRunner pid=32156)[0m           'val_files': '/tmp/ziyuhuan/data/verl-agent/text/test.parquet',
+[36m(TaskRunner pid=32156)[0m           'video_key': 'videos'},
+[36m(TaskRunner pid=32156)[0m  'env': {'alfworld': {'eval_dataset': 'eval_in_distribution'},
+[36m(TaskRunner pid=32156)[0m          'env_name': 'Webshop',
+[36m(TaskRunner pid=32156)[0m          'history_length': 2,
+[36m(TaskRunner pid=32156)[0m          'max_steps': 15,
+[36m(TaskRunner pid=32156)[0m          'resources_per_worker': {'num_cpus': 0.1, 'num_gpus': 0},
+[36m(TaskRunner pid=32156)[0m          'rollout': {'n': 4},
+[36m(TaskRunner pid=32156)[0m          'search': {'log_requests': False,
+[36m(TaskRunner pid=32156)[0m                     'search_url': 'http://127.0.0.1:8000/retrieve',
+[36m(TaskRunner pid=32156)[0m                     'timeout': 60,
+[36m(TaskRunner pid=32156)[0m                     'topk': 3},
+[36m(TaskRunner pid=32156)[0m          'seed': 0,
+[36m(TaskRunner pid=32156)[0m          'sokoban': {'dim_room': [6, 6],
+[36m(TaskRunner pid=32156)[0m                      'mode': 'tiny_rgb_array',
+[36m(TaskRunner pid=32156)[0m                      'num_boxes': 1,
+[36m(TaskRunner pid=32156)[0m                      'search_depth': 30},
+[36m(TaskRunner pid=32156)[0m          'webshop': {'human_goals': False, 'use_small': True}},
+[36m(TaskRunner pid=32156)[0m  'ray_init': {'num_cpus': 32},
+[36m(TaskRunner pid=32156)[0m  'reward_model': {'enable': False,
+[36m(TaskRunner pid=32156)[0m                   'forward_max_token_len_per_gpu': 32768,
+[36m(TaskRunner pid=32156)[0m                   'launch_reward_fn_async': False,
+[36m(TaskRunner pid=32156)[0m                   'max_length': None,
+[36m(TaskRunner pid=32156)[0m                   'micro_batch_size': None,
+[36m(TaskRunner pid=32156)[0m                   'micro_batch_size_per_gpu': None,
+[36m(TaskRunner pid=32156)[0m                   'model': {'external_lib': None,
+[36m(TaskRunner pid=32156)[0m                             'fsdp_config': {'fsdp_size': -1,
+[36m(TaskRunner pid=32156)[0m                                             'param_offload': False,
+[36m(TaskRunner pid=32156)[0m                                             'reshard_after_forward': True,
+[36m(TaskRunner pid=32156)[0m                                             'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=32156)[0m                             'input_tokenizer': 'Qwen/Qwen2.5-1.5B-Instruct',
+[36m(TaskRunner pid=32156)[0m                             'path': '~/models/FsfairX-LLaMA3-RM-v0.1',
+[36m(TaskRunner pid=32156)[0m                             'trust_remote_code': False,
+[36m(TaskRunner pid=32156)[0m                             'use_fused_kernels': False,
+[36m(TaskRunner pid=32156)[0m                             'use_remove_padding': False,
+[36m(TaskRunner pid=32156)[0m                             'use_shm': False},
+[36m(TaskRunner pid=32156)[0m                   'reward_manager': 'episode',
+[36m(TaskRunner pid=32156)[0m                   'sandbox_fusion': {'max_concurrent': 64, 'url': None},
+[36m(TaskRunner pid=32156)[0m                   'strategy': 'fsdp',
+[36m(TaskRunner pid=32156)[0m                   'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=32156)[0m                   'use_dynamic_bsz': False},
+[36m(TaskRunner pid=32156)[0m  'trainer': {'balance_batch': True,
+[36m(TaskRunner pid=32156)[0m              'critic_warmup': 0,
+[36m(TaskRunner pid=32156)[0m              'default_hdfs_dir': None,
+[36m(TaskRunner pid=32156)[0m              'default_local_dir': 'checkpoints/verl_agent_webshop/gigpo_qwen2.5_1.5b_2gpu_paper_align_simple',
+[36m(TaskRunner pid=32156)[0m              'del_local_ckpt_after_load': False,
+[36m(TaskRunner pid=32156)[0m              'device': 'cuda',
+[36m(TaskRunner pid=32156)[0m              'experiment_name': 'gigpo_qwen2.5_1.5b_2gpu_paper_align_simple',
+[36m(TaskRunner pid=32156)[0m              'log_val_generations': 0,
+[36m(TaskRunner pid=32156)[0m              'logger': ['console', 'wandb'],
+[36m(TaskRunner pid=32156)[0m              'max_actor_ckpt_to_keep': None,
+[36m(TaskRunner pid=32156)[0m              'max_critic_ckpt_to_keep': None,
+[36m(TaskRunner pid=32156)[0m              'n_gpus_per_node': 2,
+[36m(TaskRunner pid=32156)[0m              'nnodes': 1,
+[36m(TaskRunner pid=32156)[0m              'project_name': 'verl_agent_webshop',
+[36m(TaskRunner pid=32156)[0m              'ray_wait_register_center_timeout': 300,
+[36m(TaskRunner pid=32156)[0m              'resume_from_path': None,
+[36m(TaskRunner pid=32156)[0m              'resume_mode': 'auto',
+[36m(TaskRunner pid=32156)[0m              'rollout_data_dir': None,
+[36m(TaskRunner pid=32156)[0m              'save_freq': -1,
+[36m(TaskRunner pid=32156)[0m              'test_freq': -1,
+[36m(TaskRunner pid=32156)[0m              'total_epochs': 1,
+[36m(TaskRunner pid=32156)[0m              'total_training_steps': None,
+[36m(TaskRunner pid=32156)[0m              'val_before_train': False,
+[36m(TaskRunner pid=32156)[0m              'val_only': False,
+[36m(TaskRunner pid=32156)[0m              'validation_data_dir': None}}
+[36m(TaskRunner pid=32156)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(TaskRunner pid=32156)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(TaskRunner pid=32156)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(TaskRunner pid=32156)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(WebshopWorker pid=32347)[0m Picked up JAVA_TOOL_OPTIONS:  -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1
+[36m(WebshopWorker pid=32337)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(WebshopWorker pid=32337)[0m   warnings.warn(
+[36m(pid=32348)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1[32m [repeated 16x across cluster] (Ray deduplicates logs by default. Set RAY_DEDUP_LOGS=0 to disable log deduplication, or see https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#log-deduplication for more options.)[0m
+[36m(pid=32348)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.[32m [repeated 16x across cluster][0m
+[36m(pid=32348)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.[32m [repeated 16x across cluster][0m
+[36m(pid=32348)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.[32m [repeated 16x across cluster][0m
+[36m(WebshopWorker pid=32337)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning
+[36m(WebshopWorker pid=32337)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
+[36m(WebshopWorker pid=32348)[0m Picked up JAVA_TOOL_OPTIONS:  -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1[32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=32337)[0m   0%|          | 0/1000 [00:00<?, ?it/s]
+[36m(WebshopWorker pid=32337)[0m Products loaded.
+[36m(WebshopWorker pid=32337)[0m Keys cleaned.
+[36m(WebshopWorker pid=32337)[0m Attributes loaded.
+[36m(WebshopWorker pid=32337)[0m 100%|██████████| 1000/1000 [00:00<00:00, 130076.10it/s]
+[36m(WebshopWorker pid=32337)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.
+[36m(WebshopWorker pid=32337)[0m   texts = self._parse_html(html).findAll(text=True)
+[36m(WebshopWorker pid=32337)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/
+[36m(WebshopWorker pid=32337)[0m You can set `disable_env_checker=True` to disable this check.[0m
+[36m(WebshopWorker pid=32337)[0m   logger.warn(
+[36m(WebshopWorker pid=32337)[0m Loaded 6910 goals.
+[36m(WebshopWorker pid=32345)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.[32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=32345)[0m   warnings.warn([32m [repeated 15x across cluster][0m
+[36m(TaskRunner pid=32156)[0m range(500, 6910)
+[36m(WebshopWorker pid=32344)[0m 100%|██████████| 1000/1000 [00:00<00:00, 131850.74it/s]
+[36m(pid=33785)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(pid=33785)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(pid=33785)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(pid=33785)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(WebshopWorker pid=32345)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=32345)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=33785)[0m Picked up JAVA_TOOL_OPTIONS:  -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1
+[36m(WebshopWorker pid=32345)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 130007.56it/s][32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=32345)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=32345)[0m   texts = self._parse_html(html).findAll(text=True)[32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=32345)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=32345)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=32345)[0m   logger.warn([32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=33780)[0m Picked up JAVA_TOOL_OPTIONS:  -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1
+[36m(WebshopWorker pid=33781)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(WebshopWorker pid=33781)[0m   warnings.warn(
+[36m(WebshopWorker pid=33785)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(WebshopWorker pid=33785)[0m   warnings.warn(
+[36m(pid=33782)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1[32m [repeated 7x across cluster][0m
+[36m(pid=33782)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.[32m [repeated 7x across cluster][0m
+[36m(pid=33782)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.[32m [repeated 7x across cluster][0m
+[36m(pid=33782)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.[32m [repeated 7x across cluster][0m
+[36m(WebshopWorker pid=33781)[0m Products loaded.[32m [repeated 16x across cluster][0m
+[36m(WebshopWorker pid=33781)[0m Keys cleaned.[32m [repeated 16x across cluster][0m
+[36m(WebshopWorker pid=32345)[0m Attributes loaded.[32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=32345)[0m Loaded 6910 goals.[32m [repeated 15x across cluster][0m
+[36m(WebshopWorker pid=33785)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=33785)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=33781)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 124047.79it/s]
+[36m(WebshopWorker pid=33782)[0m Picked up JAVA_TOOL_OPTIONS:  -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=33785)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 130679.96it/s]
+[36m(WebshopWorker pid=33781)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.
+[36m(WebshopWorker pid=33781)[0m   texts = self._parse_html(html).findAll(text=True)
+[36m(WebshopWorker pid=33781)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/
+[36m(WebshopWorker pid=33781)[0m You can set `disable_env_checker=True` to disable this check.[0m
+[36m(WebshopWorker pid=33781)[0m   logger.warn(
+[36m(WebshopWorker pid=33780)[0m 100%|██████████| 1000/1000 [00:00<00:00, 130501.06it/s]
+[36m(WebshopWorker pid=33784)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=33784)[0m   warnings.warn([32m [repeated 6x across cluster][0m
+[36m(TaskRunner pid=32156)[0m range(0, 500)
+[36m(TaskRunner pid=32156)[0m <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+[36m(TaskRunner pid=32156)[0m <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+[36m(WebshopWorker pid=33782)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=33782)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=33784)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 132554.96it/s][32m [repeated 6x across cluster][0m
+[36m(WebshopWorker pid=33784)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 7x across cluster][0m
+[36m(WebshopWorker pid=33784)[0m   texts = self._parse_html(html).findAll(text=True)[32m [repeated 7x across cluster][0m
+[36m(WebshopWorker pid=33784)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 7x across cluster][0m
+[36m(WebshopWorker pid=33784)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 7x across cluster][0m
+[36m(WebshopWorker pid=33784)[0m   logger.warn([32m [repeated 7x across cluster][0m
+[36m(TaskRunner pid=32156)[0m W0530 07:02:47.158000 32156 site-packages/torch/utils/cpp_extension.py:117] No CUDA runtime is found, using CUDA_HOME='/usr/local/cuda'
+[36m(TaskRunner pid=32156)[0m /opt/conda/lib/python3.11/site-packages/tvm_ffi/_optional_torch_c_dlpack.py:174: UserWarning: Failed to JIT torch c dlpack extension, EnvTensorAllocator will not be enabled.
+[36m(TaskRunner pid=32156)[0m We recommend installing via `pip install torch-c-dlpack-ext`
+[36m(TaskRunner pid=32156)[0m   warnings.warn(
+[36m(TaskRunner pid=32156)[0m Using dataset class: RLHFDataset
+[36m(WebshopWorker pid=33782)[0m Products loaded.[32m [repeated 7x across cluster][0m
+[36m(WebshopWorker pid=33782)[0m Keys cleaned.[32m [repeated 7x across cluster][0m
+[36m(WebshopWorker pid=33784)[0m Attributes loaded.[32m [repeated 8x across cluster][0m
+[36m(WebshopWorker pid=33784)[0m Loaded 6910 goals.[32m [repeated 8x across cluster][0m
+[36m(TaskRunner pid=32156)[0m Generating train split: 0 examples [00:00, ? examples/s]Generating train split: 16 examples [00:00, 4522.47 examples/s]
+[36m(TaskRunner pid=32156)[0m dataset len: 16
+[36m(TaskRunner pid=32156)[0m filter dataset len: 16
+[36m(TaskRunner pid=32156)[0m Using dataset class: RLHFDataset
+[36m(TaskRunner pid=32156)[0m Filtering prompts longer than 4096 tokens:   0%|          | 0/16 [00:00<?, ? examples/s]Filtering prompts longer than 4096 tokens: 100%|██████████| 16/16 [00:00<00:00, 892.62 examples/s]
+[36m(TaskRunner pid=32156)[0m dataset len: 256
+[36m(TaskRunner pid=32156)[0m Generating train split: 0 examples [00:00, ? examples/s]Generating train split: 256 examples [00:00, 101670.47 examples/s]
+[36m(TaskRunner pid=32156)[0m filter dataset len: 256
+[36m(TaskRunner pid=32156)[0m WARNING: val_batch_size is deprecated. Validation datasets are sent to inference engines as a whole batch, which will schedule the memory themselves.
+[36m(TaskRunner pid=32156)[0m [validate_config] All configuration checks passed successfully!
+[36m(TaskRunner pid=32156)[0m Size of train dataloader: 4, Size of val dataloader: 32
+[36m(TaskRunner pid=32156)[0m Total training steps: 4
+[36m(TaskRunner pid=32156)[0m Filtering prompts longer than 4096 tokens:   0%|          | 0/256 [00:00<?, ? examples/s]Filtering prompts longer than 4096 tokens: 100%|██████████| 256/256 [00:00<00:00, 7239.80 examples/s]
+[36m(TaskRunner pid=32156)[0m DeprecationWarning: `ray.state.available_resources_per_node` is a private attribute and access will be removed in a future Ray version.
+[36m(TaskRunner pid=32156)[0m colocated worker base class <class 'verl.single_controller.base.worker.Worker'>
+[36m(TaskRunner pid=32156)[0m WARNING:2026-05-30 07:02:51,837:Waiting for register center actor DHtpEz_register_center to be ready. Elapsed time: 0 seconds out of 300 seconds.
+[36m(pid=34652)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(pid=34652)[0m   warnings.warn(
+[36m(WorkerDict pid=34652)[0m [W530 07:03:00.054212724 socket.cpp:209] [c10d] The hostname of the client socket cannot be retrieved. err=-3
+[36m(pid=34812)[0m   warnings.warn(
+[36m(pid=34812)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(WorkerDict pid=34652)[0m [Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[36m(WorkerDict pid=34812)[0m [W530 07:03:06.353445522 socket.cpp:209] [c10d] The hostname of the client socket cannot be retrieved. err=-3
+[36m(WorkerDict pid=34652)[0m Model config after override: Qwen2Config {
+[36m(WorkerDict pid=34652)[0m   "architectures": [
+[36m(WorkerDict pid=34652)[0m     "Qwen2ForCausalLM"
+[36m(WorkerDict pid=34652)[0m   ],
+[36m(WorkerDict pid=34652)[0m   "attention_dropout": 0.0,
+[36m(WorkerDict pid=34652)[0m   "dtype": "bfloat16",
+[36m(WorkerDict pid=34652)[0m   "eos_token_id": 151645,
+[36m(WorkerDict pid=34652)[0m   "hidden_act": "silu",
+[36m(WorkerDict pid=34652)[0m   "hidden_size": 1536,
+[36m(WorkerDict pid=34652)[0m   "initializer_range": 0.02,
+[36m(WorkerDict pid=34652)[0m   "intermediate_size": 8960,
+[36m(WorkerDict pid=34652)[0m   "layer_types": [
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention"
+[36m(WorkerDict pid=34652)[0m   ],
+[36m(WorkerDict pid=34652)[0m   "max_position_embeddings": 32768,
+[36m(WorkerDict pid=34652)[0m   "max_window_layers": 21,
+[36m(WorkerDict pid=34652)[0m   "model_type": "qwen2",
+[36m(WorkerDict pid=34652)[0m   "num_attention_heads": 12,
+[36m(WorkerDict pid=34652)[0m   "num_hidden_layers": 28,
+[36m(WorkerDict pid=34652)[0m   "num_key_value_heads": 2,
+[36m(WorkerDict pid=34652)[0m   "pad_token_id": 151643,
+[36m(WorkerDict pid=34652)[0m   "rms_norm_eps": 1e-06,
+[36m(WorkerDict pid=34652)[0m   "rope_scaling": null,
+[36m(WorkerDict pid=34652)[0m   "rope_theta": 1000000.0,
+[36m(WorkerDict pid=34652)[0m   "sliding_window": null,
+[36m(WorkerDict pid=34652)[0m   "tie_word_embeddings": true,
+[36m(WorkerDict pid=34652)[0m   "transformers_version": "4.57.1",
+[36m(WorkerDict pid=34652)[0m   "use_cache": true,
+[36m(WorkerDict pid=34652)[0m   "use_sliding_window": false,
+[36m(WorkerDict pid=34652)[0m   "vocab_size": 151936
+[36m(WorkerDict pid=34652)[0m }
+[36m(WorkerDict pid=34652)[0m 
+[36m(WorkerDict pid=34652)[0m `torch_dtype` is deprecated! Use `dtype` instead!
+[36m(WorkerDict pid=34652)[0m Monkey patch state_dict in AutoModelForCausalLMWithValueHead. 
+[36m(WorkerDict pid=34652)[0m Monkey patch _flash_attention_forward in transformers.integrations.flash_attention
+[36m(WorkerDict pid=34652)[0m Skipping monkey patch for Qwen2ForCausalLM as use_fused_kernels is False or fused_kernels_backend is None
+[36m(WorkerDict pid=34652)[0m Qwen2ForCausalLM contains 1.54B parameters
+[36m(WorkerDict pid=34652)[0m wrap_policy: functools.partial(<function _or_policy at 0x7f3d69777920>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7f3d697777e0>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])
+[36m(WorkerDict pid=34812)[0m [Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[36m(WorkerDict pid=34652)[0m NCCL version 2.27.5+cuda12.9
+[36m(WorkerDict pid=34652)[0m Actor use_remove_padding=True
+[36m(WorkerDict pid=34652)[0m Actor use_fused_kernels=False
+[36m(WorkerDict pid=34652)[0m Flash Attention 2 only supports torch.float16 and torch.bfloat16 dtypes, but the current dype in Qwen2ForCausalLM is torch.float32. You should run training or inference using Automatic Mixed-Precision via the `with torch.autocast(device_type='torch_device'):` decorator, or load the model with the `dtype` argument. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="flash_attention_2", dtype=torch.float16)`
+[36m(WorkerDict pid=34652)[0m Flash Attention 2 only supports torch.float16 and torch.bfloat16 dtypes, but the current dype in Qwen2Model is torch.float32. You should run training or inference using Automatic Mixed-Precision via the `with torch.autocast(device_type='torch_device'):` decorator, or load the model with the `dtype` argument. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="flash_attention_2", dtype=torch.float16)`
+[36m(WorkerDict pid=34812)[0m `torch_dtype` is deprecated! Use `dtype` instead!
+[36m(WorkerDict pid=34652)[0m Model config after override: Qwen2Config {
+[36m(WorkerDict pid=34652)[0m   "architectures": [
+[36m(WorkerDict pid=34652)[0m     "Qwen2ForCausalLM"
+[36m(WorkerDict pid=34652)[0m   ],
+[36m(WorkerDict pid=34652)[0m   "attention_dropout": 0.0,
+[36m(WorkerDict pid=34652)[0m   "dtype": "bfloat16",
+[36m(WorkerDict pid=34652)[0m   "eos_token_id": 151645,
+[36m(WorkerDict pid=34652)[0m   "hidden_act": "silu",
+[36m(WorkerDict pid=34652)[0m   "hidden_size": 1536,
+[36m(WorkerDict pid=34652)[0m   "initializer_range": 0.02,
+[36m(WorkerDict pid=34652)[0m   "intermediate_size": 8960,
+[36m(WorkerDict pid=34652)[0m   "layer_types": [
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention",
+[36m(WorkerDict pid=34652)[0m     "full_attention"
+[36m(WorkerDict pid=34652)[0m   ],
+[36m(WorkerDict pid=34652)[0m   "max_position_embeddings": 32768,
+[36m(WorkerDict pid=34652)[0m   "max_window_layers": 21,
+[36m(WorkerDict pid=34652)[0m   "model_type": "qwen2",
+[36m(WorkerDict pid=34652)[0m   "num_attention_heads": 12,
+[36m(WorkerDict pid=34652)[0m   "num_hidden_layers": 28,
+[36m(WorkerDict pid=34652)[0m   "num_key_value_heads": 2,
+[36m(WorkerDict pid=34652)[0m   "pad_token_id": 151643,
+[36m(WorkerDict pid=34652)[0m   "rms_norm_eps": 1e-06,
+[36m(WorkerDict pid=34652)[0m   "rope_scaling": null,
+[36m(WorkerDict pid=34652)[0m   "rope_theta": 1000000.0,
+[36m(WorkerDict pid=34652)[0m   "sliding_window": null,
+[36m(WorkerDict pid=34652)[0m   "tie_word_embeddings": true,
+[36m(WorkerDict pid=34652)[0m   "transformers_version": "4.57.1",
+[36m(WorkerDict pid=34652)[0m   "use_cache": true,
+[36m(WorkerDict pid=34652)[0m   "use_sliding_window": false,
+[36m(WorkerDict pid=34652)[0m   "vocab_size": 151936
+[36m(WorkerDict pid=34652)[0m }
+[36m(WorkerDict pid=34652)[0m 
+[36m(WorkerDict pid=34812)[0m Monkey patch state_dict in AutoModelForCausalLMWithValueHead. 
+[36m(WorkerDict pid=34812)[0m Monkey patch _flash_attention_forward in transformers.integrations.flash_attention
+[36m(WorkerDict pid=34812)[0m Skipping monkey patch for Qwen2ForCausalLM as use_fused_kernels is False or fused_kernels_backend is None
+[36m(WorkerDict pid=34812)[0m wrap_policy: functools.partial(<function _or_policy at 0x7f216816b920>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7f216816b7e0>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])
+[36m(WorkerDict pid=34812)[0m Monkey patch state_dict in AutoModelForCausalLMWithValueHead. 
+[36m(WorkerDict pid=34812)[0m Monkey patch _flash_attention_forward in transformers.integrations.flash_attention
+[36m(WorkerDict pid=34812)[0m Skipping monkey patch for Qwen2ForCausalLM as use_fused_kernels is False or fused_kernels_backend is None
+[36m(WorkerDict pid=34812)[0m Actor use_remove_padding=True
+[36m(WorkerDict pid=34812)[0m Actor use_fused_kernels=False
+[36m(WorkerDict pid=34652)[0m Qwen2ForCausalLM contains 1.54B parameters
+[36m(WorkerDict pid=34652)[0m wrap_policy: functools.partial(<function _or_policy at 0x7f3d69777920>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7f3d697777e0>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])
+[36m(WorkerDict pid=34652)[0m Total steps: 4, num_warmup_steps: 0
+[36m(WorkerDict pid=34652)[0m Actor use_remove_padding=True
+[36m(WorkerDict pid=34652)[0m Actor use_fused_kernels=False
+[36m(WorkerDict pid=34652)[0m [Gloo] Rank 0 is connected to 0 peer ranks. Expected number of connected peer ranks is : 0
+[36m(WorkerDict pid=34652)[0m [Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[36m(WorkerDict pid=34652)[0m /opt/conda/lib/python3.11/site-packages/tvm_ffi/_optional_torch_c_dlpack.py:174: UserWarning: Failed to JIT torch c dlpack extension, EnvTensorAllocator will not be enabled.
+[36m(WorkerDict pid=34652)[0m We recommend installing via `pip install torch-c-dlpack-ext`
+[36m(WorkerDict pid=34652)[0m   warnings.warn(
+[36m(WorkerDict pid=34812)[0m Flash Attention 2 only supports torch.float16 and torch.bfloat16 dtypes, but the current dype in Qwen2Model is torch.float32. You should run training or inference using Automatic Mixed-Precision via the `with torch.autocast(device_type='torch_device'):` decorator, or load the model with the `dtype` argument. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="flash_attention_2", dtype=torch.float16)`[32m [repeated 2x across cluster][0m
+[36m(WorkerDict pid=34652)[0m WARNING 05-30 07:03:43 [arg_utils.py:1909] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+[36m(WorkerDict pid=34652)[0m WARNING 05-30 07:03:43 [vllm.py:662] Enforce eager set, overriding optimization level to -O0
+[36m(WorkerDict pid=34652)[0m Monkey patch state_dict in AutoModelForCausalLMWithValueHead. 
+[36m(WorkerDict pid=34652)[0m Monkey patch _flash_attention_forward in transformers.integrations.flash_attention
+[36m(WorkerDict pid=34652)[0m Skipping monkey patch for Qwen2ForCausalLM as use_fused_kernels is False or fused_kernels_backend is None
+[36m(WorkerDict pid=34812)[0m wrap_policy: functools.partial(<function _or_policy at 0x7f216816b920>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7f216816b7e0>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])
+[36m(WorkerDict pid=34812)[0m Total steps: 4, num_warmup_steps: 0
+[36m(WorkerDict pid=34812)[0m Actor use_remove_padding=True
+[36m(WorkerDict pid=34812)[0m Actor use_fused_kernels=False
+[36m(WorkerDict pid=34812)[0m [Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1[32m [repeated 2x across cluster][0m
+Error executing job with overrides: ['algorithm.adv_estimator=gigpo', 'data.train_files=/tmp/ziyuhuan/data/verl-agent/text/train.parquet', 'data.val_files=/tmp/ziyuhuan/data/verl-agent/text/test.parquet', 'data.train_batch_size=16', 'data.val_batch_size=128', 'data.max_prompt_length=4096', 'data.max_response_length=512', 'data.filter_overlong_prompts=True', 'data.truncation=error', 'data.return_raw_chat=True', 'actor_rollout_ref.model.path=Qwen/Qwen2.5-1.5B-Instruct', 'actor_rollout_ref.actor.optim.lr=1e-6', 'actor_rollout_ref.model.use_remove_padding=True', 'actor_rollout_ref.actor.ppo_mini_batch_size=64', 'actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8', 'actor_rollout_ref.actor.use_kl_loss=True', 'actor_rollout_ref.actor.kl_loss_coef=0.01', 'actor_rollout_ref.actor.kl_loss_type=low_var_kl', 'actor_rollout_ref.model.enable_gradient_checkpointing=True', 'actor_rollout_ref.actor.fsdp_config.param_offload=False', 'actor_rollout_ref.actor.fsdp_config.optimizer_offload=False', 'actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=16', 'actor_rollout_ref.rollout.tensor_model_parallel_size=2', 'actor_rollout_ref.rollout.name=vllm', 'actor_rollout_ref.rollout.gpu_memory_utilization=0.6', 'actor_rollout_ref.rollout.enable_chunked_prefill=False', 'actor_rollout_ref.rollout.enforce_eager=True', 'actor_rollout_ref.rollout.free_cache_engine=False', 'actor_rollout_ref.rollout.val_kwargs.temperature=0.4', 'actor_rollout_ref.rollout.val_kwargs.do_sample=True', 'actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=16', 'actor_rollout_ref.ref.fsdp_config.param_offload=True', 'actor_rollout_ref.actor.use_invalid_action_penalty=True', 'actor_rollout_ref.actor.invalid_action_penalty_coef=0.1', 'algorithm.use_kl_in_reward=False', 'algorithm.gamma=0.95', 'algorithm.gigpo.step_advantage_w=1.0', 'algorithm.gigpo.mode=mean_norm', 'env.env_name=Webshop', 'env.seed=0', 'env.max_steps=15', 'env.rollout.n=8', 'env.resources_per_worker.num_cpus=0.1', 'trainer.critic_warmup=0', 'trainer.logger=[console,wandb]', 'trainer.project_name=verl_agent_webshop', 'trainer.experiment_name=gigpo_qwen2.5_1.5b', 'trainer.n_gpus_per_node=2', 'trainer.nnodes=1', 'trainer.save_freq=-1', 'trainer.test_freq=5', 'trainer.total_epochs=150', 'trainer.val_before_train=True', 'data.train_batch_size=4', 'data.val_batch_size=8', 'actor_rollout_ref.actor.ppo_mini_batch_size=4', 'actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=1', 'actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1', 'actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1', 'env.rollout.n=4', 'trainer.n_gpus_per_node=2', 'trainer.nnodes=1', 'actor_rollout_ref.rollout.tensor_model_parallel_size=2', 'trainer.experiment_name=gigpo_qwen2.5_1.5b_2gpu_paper_align_simple', 'trainer.val_before_train=False', 'trainer.total_epochs=1', 'trainer.test_freq=-1', 'ray_init.num_cpus=32', 'env.resources_per_worker.num_cpus=0.1']
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/trainer/main_ppo.py", line 251, in <module>
+    main()
+  File "/opt/conda/lib/python3.11/site-packages/hydra/main.py", line 94, in decorated_main
+    _run_hydra(
+  File "/opt/conda/lib/python3.11/site-packages/hydra/_internal/utils.py", line 394, in _run_hydra
+    _run_app(
+  File "/opt/conda/lib/python3.11/site-packages/hydra/_internal/utils.py", line 457, in _run_app
+    run_and_report(
+  File "/opt/conda/lib/python3.11/site-packages/hydra/_internal/utils.py", line 223, in run_and_report
+    raise ex
+  File "/opt/conda/lib/python3.11/site-packages/hydra/_internal/utils.py", line 220, in run_and_report
+    return func()
+           ^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/hydra/_internal/utils.py", line 458, in <lambda>
+    lambda: hydra.run(
+            ^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/hydra/_internal/hydra.py", line 132, in run
+    _ = ret.return_value
+        ^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/hydra/core/utils.py", line 260, in return_value
+    raise self._return_value
+  File "/opt/conda/lib/python3.11/site-packages/hydra/core/utils.py", line 186, in run_job
+    ret.return_value = task_function(task_cfg)
+                       ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/trainer/main_ppo.py", line 31, in main
+    run_ppo(config)
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/trainer/main_ppo.py", line 51, in run_ppo
+    ray.get(runner.run.remote(config))
+  File "/opt/conda/lib/python3.11/site-packages/ray/_private/auto_init_hook.py", line 22, in auto_init_wrapper
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/ray/_private/client_mode_hook.py", line 104, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/ray/_private/worker.py", line 2967, in get
+    values, debugger_breakpoint = worker.get_objects(
+                                  ^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/ray/_private/worker.py", line 1015, in get_objects
+    raise value.as_instanceof_cause()
+ray.exceptions.RayTaskError(PermissionError): [36mray::TaskRunner.run()[39m (pid=32156, ip=172.19.54.136, actor_id=fb2da81f0d491480ab2657a901000000, repr=<main_ppo.TaskRunner object at 0x7f42333a4e90>)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/trainer/main_ppo.py", line 187, in run
+    trainer.init_workers()
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/trainer/ppo/ray_trainer.py", line 900, in init_workers
+    self.actor_rollout_wg.init_model()
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/single_controller/ray/base.py", line 51, in __call__
+    output = ray.get(output)
+             ^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^
+                                  ^^^^^^^^^^^^^^^^^^^
+ray.exceptions.RayTaskError(PermissionError): [36mray::WorkerDict.actor_rollout_init_model()[39m (pid=34812, ip=172.19.54.136, actor_id=59d736c9af8381254201ef4201000000, repr=<verl.single_controller.ray.base.WorkerDict object at 0x7f1f3d681210>)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/single_controller/ray/base.py", line 645, in func
+    return getattr(self.worker_dict[key], name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/single_controller/base/decorator.py", line 534, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/workers/fsdp_workers.py", line 569, in init_model
+    self.rollout, self.rollout_sharding_manager = self._build_rollout(trust_remote_code=self.config.model.get("trust_remote_code", False))
+                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/workers/fsdp_workers.py", line 433, in _build_rollout
+    rollout = vllm_rollout_cls(
+              ^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/workers/rollout/vllm_rollout/vllm_rollout_spmd.py", line 185, in __init__
+    self.inference_engine = LLM(
+                            ^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/entrypoints/llm.py", line 334, in __init__
+    self.llm_engine = LLMEngine.from_engine_args(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/llm_engine.py", line 172, in from_engine_args
+    return cls(
+           ^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/llm_engine.py", line 106, in __init__
+    self.engine_core = EngineCoreClient.make_client(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core_client.py", line 96, in make_client
+    return InprocClient(vllm_config, executor_class, log_stats)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core_client.py", line 269, in __init__
+    self.engine_core = EngineCore(*args, **kwargs)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core.py", line 105, in __init__
+    self.model_executor = executor_class(vllm_config)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/executor/abstract.py", line 101, in __init__
+    self._init_executor()
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py", line 163, in _init_executor
+    super()._init_executor()
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py", line 48, in _init_executor
+    self.driver_worker.load_model()
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/worker/gpu_worker.py", line 275, in load_model
+    self.model_runner.load_model(eep_scale_up=eep_scale_up)
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/worker/gpu_model_runner.py", line 4040, in load_model
+    self.model = model_loader.load_model(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/model_executor/model_loader/base_loader.py", line 50, in load_model
+    model = initialize_model(
+            ^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/model_executor/model_loader/utils.py", line 48, in initialize_model
+    return model_class(vllm_config=vllm_config, prefix=prefix)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/model_executor/models/qwen2.py", line 543, in __init__
+    self.model = Qwen2Model(
+                 ^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/compilation/decorators.py", line 306, in __init__
+    old_init(self, **kwargs)
+  File "/opt/conda/lib/python3.11/site-packages/vllm/model_executor/models/qwen2.py", line 394, in __init__
+    self.start_layer, self.end_layer, self.layers = make_layers(
+                                                    ^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/model_executor/models/utils.py", line 706, in make_layers
+    + [
+      ^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/model_executor/models/utils.py", line 707, in <listcomp>
+    maybe_offload_to_cpu(layer_fn(prefix=f"{prefix}.{idx}"))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/model_executor/models/qwen2.py", line 396, in <lambda>
+    lambda prefix: decoder_layer_type(
+                   ^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/model_executor/models/qwen2.py", line 260, in __init__
+    self.self_attn = Qwen2Attention(
+                     ^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/model_executor/models/qwen2.py", line 186, in __init__
+    self.attn = attn_cls(
+                ^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/attention/layer.py", line 234, in __init__
+    self.attn_backend = get_attn_backend(
+                        ^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/attention/selector.py", line 83, in get_attn_backend
+    return _cached_get_attn_backend(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/attention/selector.py", line 96, in _cached_get_attn_backend
+    attention_cls = current_platform.get_attn_backend_cls(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/platforms/cuda.py", line 333, in get_attn_backend_cls
+    valid_backends_priorities, invalid_reasons = cls.get_valid_backends(
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/platforms/cuda.py", line 288, in get_valid_backends
+    backend_class = backend.get_class()
+                    ^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/attention/backends/registry.py", line 114, in get_class
+    return resolve_obj_by_qualname(self.get_path())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/utils/import_utils.py", line 111, in resolve_obj_by_qualname
+    module = importlib.import_module(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/attention/backends/flashinfer.py", line 10, in <module>
+    from flashinfer import (
+  File "/opt/conda/lib/python3.11/site-packages/flashinfer/__init__.py", line 23, in <module>
+    from . import jit as jit
+  File "/opt/conda/lib/python3.11/site-packages/flashinfer/jit/__init__.py", line 22, in <module>
+    from . import cubin_loader
+  File "/opt/conda/lib/python3.11/site-packages/flashinfer/jit/cubin_loader.py", line 27, in <module>
+    from .core import logger
+  File "/opt/conda/lib/python3.11/site-packages/flashinfer/jit/core.py", line 18, in <module>
+    os.makedirs(jit_env.FLASHINFER_WORKSPACE_DIR, exist_ok=True)
+  File "<frozen os>", line 215, in makedirs
+  File "<frozen os>", line 215, in makedirs
+  File "<frozen os>", line 215, in makedirs
+  File "<frozen os>", line 225, in makedirs
+PermissionError: [Errno 13] Permission denied: '/usr2/ziyuhuan/.cache'
+[36m(WorkerDict pid=34812)[0m WARNING 05-30 07:03:43 [arg_utils.py:1909] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+[36m(WorkerDict pid=34812)[0m WARNING 05-30 07:03:43 [vllm.py:662] Enforce eager set, overriding optimization level to -O0
+[36m(WorkerDict pid=34812)[0m /opt/conda/lib/python3.11/site-packages/tvm_ffi/_optional_torch_c_dlpack.py:174: UserWarning: Failed to JIT torch c dlpack extension, EnvTensorAllocator will not be enabled.
+[36m(WorkerDict pid=34812)[0m We recommend installing via `pip install torch-c-dlpack-ext`
+[36m(WorkerDict pid=34812)[0m   warnings.warn(

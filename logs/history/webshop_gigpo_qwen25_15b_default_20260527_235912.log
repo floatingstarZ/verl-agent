@@ -1,0 +1,1299 @@
++ ENGINE=vllm
++ ulimit -u 65536
++ export VLLM_ATTENTION_BACKEND=XFORMERS
++ VLLM_ATTENTION_BACKEND=XFORMERS
++ num_cpus_per_env_worker=0.1
++ train_data_size=16
++ val_data_size=128
++ group_size=8
++ mode=mean_norm
++ python3 -m examples.data_preprocess.prepare --mode text --train_data_size 16 --val_data_size 256
+processing data for mode: text
+Creating parquet from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 1111.96ba/s]
+Creating parquet from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 1612.57ba/s]
++ python3 -m verl.trainer.main_ppo algorithm.adv_estimator=gigpo data.train_files=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent/text/train.parquet data.val_files=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent/text/test.parquet data.train_batch_size=16 data.val_batch_size=128 data.max_prompt_length=4096 data.max_response_length=512 data.filter_overlong_prompts=True data.truncation=error data.return_raw_chat=True actor_rollout_ref.model.path=Qwen/Qwen2.5-1.5B-Instruct actor_rollout_ref.actor.optim.lr=1e-6 actor_rollout_ref.model.use_remove_padding=True actor_rollout_ref.actor.ppo_mini_batch_size=64 actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8 actor_rollout_ref.actor.use_kl_loss=True actor_rollout_ref.actor.kl_loss_coef=0.01 actor_rollout_ref.actor.kl_loss_type=low_var_kl actor_rollout_ref.model.enable_gradient_checkpointing=True actor_rollout_ref.actor.fsdp_config.param_offload=False actor_rollout_ref.actor.fsdp_config.optimizer_offload=False actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=16 actor_rollout_ref.rollout.tensor_model_parallel_size=2 actor_rollout_ref.rollout.name=vllm actor_rollout_ref.rollout.gpu_memory_utilization=0.6 actor_rollout_ref.rollout.enable_chunked_prefill=False actor_rollout_ref.rollout.enforce_eager=False actor_rollout_ref.rollout.free_cache_engine=False actor_rollout_ref.rollout.val_kwargs.temperature=0.4 actor_rollout_ref.rollout.val_kwargs.do_sample=True actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=16 actor_rollout_ref.ref.fsdp_config.param_offload=True actor_rollout_ref.actor.use_invalid_action_penalty=True actor_rollout_ref.actor.invalid_action_penalty_coef=0.1 algorithm.use_kl_in_reward=False algorithm.gamma=0.95 algorithm.gigpo.step_advantage_w=1.0 algorithm.gigpo.mode=mean_norm env.env_name=Webshop env.seed=0 env.max_steps=15 env.rollout.n=8 env.resources_per_worker.num_cpus=0.1 trainer.critic_warmup=0 'trainer.logger=[console,wandb]' trainer.project_name=verl_agent_webshop trainer.experiment_name=gigpo_qwen2.5_1.5b trainer.n_gpus_per_node=2 trainer.nnodes=1 trainer.save_freq=-1 trainer.test_freq=5 trainer.total_epochs=150 trainer.val_before_train=True
+ray init kwargs: {'num_cpus': None, 'runtime_env': {'env_vars': {'TOKENIZERS_PARALLELISM': 'true', 'NCCL_DEBUG': 'WARN', 'VLLM_LOGGING_LEVEL': 'WARN', 'VLLM_ALLOW_RUNTIME_LORA_UPDATING': 'true', 'VLLM_ALLREDUCE_USE_SYMM_MEM': '0', 'CUDA_DEVICE_MAX_CONNECTIONS': '1', 'NCCL_CUMEM_ENABLE': '0'}, 'working_dir': None}}
+2026-05-27 23:59:48,562	INFO worker.py:2004 -- Started a local Ray instance. View the dashboard at [1m[32mhttp://127.0.0.1:8265 [39m[22m
+/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_private/worker.py:2052: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+[36m(TaskRunner pid=287729)[0m {'actor_rollout_ref': {'actor': {'checkpoint': {'contents': ['model',
+[36m(TaskRunner pid=287729)[0m                                                              'optimizer',
+[36m(TaskRunner pid=287729)[0m                                                              'extra']},
+[36m(TaskRunner pid=287729)[0m                                  'clip_ratio': 0.2,
+[36m(TaskRunner pid=287729)[0m                                  'clip_ratio_c': 3.0,
+[36m(TaskRunner pid=287729)[0m                                  'clip_ratio_high': 0.2,
+[36m(TaskRunner pid=287729)[0m                                  'clip_ratio_low': 0.2,
+[36m(TaskRunner pid=287729)[0m                                  'entropy_coeff': 0.001,
+[36m(TaskRunner pid=287729)[0m                                  'fsdp_config': {'fsdp_size': -1,
+[36m(TaskRunner pid=287729)[0m                                                  'offload_policy': False,
+[36m(TaskRunner pid=287729)[0m                                                  'optimizer_offload': False,
+[36m(TaskRunner pid=287729)[0m                                                  'param_offload': False,
+[36m(TaskRunner pid=287729)[0m                                                  'reshard_after_forward': True,
+[36m(TaskRunner pid=287729)[0m                                                  'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=287729)[0m                                  'grad_clip': 1.0,
+[36m(TaskRunner pid=287729)[0m                                  'invalid_action_penalty_coef': 0.1,
+[36m(TaskRunner pid=287729)[0m                                  'kl_loss_coef': 0.01,
+[36m(TaskRunner pid=287729)[0m                                  'kl_loss_type': 'low_var_kl',
+[36m(TaskRunner pid=287729)[0m                                  'loss_agg_mode': 'token-mean',
+[36m(TaskRunner pid=287729)[0m                                  'optim': {'lr': 1e-06,
+[36m(TaskRunner pid=287729)[0m                                            'lr_warmup_steps': -1,
+[36m(TaskRunner pid=287729)[0m                                            'lr_warmup_steps_ratio': 0.0,
+[36m(TaskRunner pid=287729)[0m                                            'min_lr_ratio': 0.0,
+[36m(TaskRunner pid=287729)[0m                                            'num_cycles': 0.5,
+[36m(TaskRunner pid=287729)[0m                                            'total_training_steps': -1,
+[36m(TaskRunner pid=287729)[0m                                            'warmup_style': 'constant',
+[36m(TaskRunner pid=287729)[0m                                            'weight_decay': 0.01},
+[36m(TaskRunner pid=287729)[0m                                  'policy_loss': {'loss_mode': 'vanilla'},
+[36m(TaskRunner pid=287729)[0m                                  'ppo_epochs': 1,
+[36m(TaskRunner pid=287729)[0m                                  'ppo_max_token_len_per_gpu': 16384,
+[36m(TaskRunner pid=287729)[0m                                  'ppo_micro_batch_size': None,
+[36m(TaskRunner pid=287729)[0m                                  'ppo_micro_batch_size_per_gpu': 8,
+[36m(TaskRunner pid=287729)[0m                                  'ppo_mini_batch_size': 64,
+[36m(TaskRunner pid=287729)[0m                                  'shuffle': False,
+[36m(TaskRunner pid=287729)[0m                                  'strategy': 'fsdp',
+[36m(TaskRunner pid=287729)[0m                                  'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=287729)[0m                                  'use_dynamic_bsz': False,
+[36m(TaskRunner pid=287729)[0m                                  'use_invalid_action_penalty': True,
+[36m(TaskRunner pid=287729)[0m                                  'use_kl_loss': True,
+[36m(TaskRunner pid=287729)[0m                                  'use_torch_compile': True},
+[36m(TaskRunner pid=287729)[0m                        'hybrid_engine': True,
+[36m(TaskRunner pid=287729)[0m                        'model': {'enable_activation_offload': False,
+[36m(TaskRunner pid=287729)[0m                                  'enable_gradient_checkpointing': True,
+[36m(TaskRunner pid=287729)[0m                                  'external_lib': None,
+[36m(TaskRunner pid=287729)[0m                                  'lora_alpha': 16,
+[36m(TaskRunner pid=287729)[0m                                  'lora_rank': 0,
+[36m(TaskRunner pid=287729)[0m                                  'override_config': {},
+[36m(TaskRunner pid=287729)[0m                                  'path': 'Qwen/Qwen2.5-1.5B-Instruct',
+[36m(TaskRunner pid=287729)[0m                                  'target_modules': 'all-linear',
+[36m(TaskRunner pid=287729)[0m                                  'trust_remote_code': False,
+[36m(TaskRunner pid=287729)[0m                                  'use_fused_kernels': False,
+[36m(TaskRunner pid=287729)[0m                                  'use_liger': False,
+[36m(TaskRunner pid=287729)[0m                                  'use_remove_padding': True,
+[36m(TaskRunner pid=287729)[0m                                  'use_shm': False},
+[36m(TaskRunner pid=287729)[0m                        'ref': {'fsdp_config': {'param_offload': True,
+[36m(TaskRunner pid=287729)[0m                                                'reshard_after_forward': True,
+[36m(TaskRunner pid=287729)[0m                                                'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=287729)[0m                                'log_prob_max_token_len_per_gpu': 16384,
+[36m(TaskRunner pid=287729)[0m                                'log_prob_micro_batch_size': None,
+[36m(TaskRunner pid=287729)[0m                                'log_prob_micro_batch_size_per_gpu': 16,
+[36m(TaskRunner pid=287729)[0m                                'log_prob_use_dynamic_bsz': False,
+[36m(TaskRunner pid=287729)[0m                                'strategy': 'fsdp',
+[36m(TaskRunner pid=287729)[0m                                'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=287729)[0m                                'use_torch_compile': True},
+[36m(TaskRunner pid=287729)[0m                        'rollout': {'chat_scheduler': None,
+[36m(TaskRunner pid=287729)[0m                                    'disable_log_stats': True,
+[36m(TaskRunner pid=287729)[0m                                    'do_sample': True,
+[36m(TaskRunner pid=287729)[0m                                    'dtype': 'bfloat16',
+[36m(TaskRunner pid=287729)[0m                                    'enable_chunked_prefill': False,
+[36m(TaskRunner pid=287729)[0m                                    'enforce_eager': False,
+[36m(TaskRunner pid=287729)[0m                                    'engine_kwargs': {'sglang': {'attention_backend': None},
+[36m(TaskRunner pid=287729)[0m                                                      'vllm': {'swap_space': None}},
+[36m(TaskRunner pid=287729)[0m                                    'free_cache_engine': False,
+[36m(TaskRunner pid=287729)[0m                                    'gpu_memory_utilization': 0.6,
+[36m(TaskRunner pid=287729)[0m                                    'ignore_eos': False,
+[36m(TaskRunner pid=287729)[0m                                    'layered_summon': False,
+[36m(TaskRunner pid=287729)[0m                                    'load_format': 'dummy_dtensor',
+[36m(TaskRunner pid=287729)[0m                                    'log_prob_max_token_len_per_gpu': 16384,
+[36m(TaskRunner pid=287729)[0m                                    'log_prob_micro_batch_size': None,
+[36m(TaskRunner pid=287729)[0m                                    'log_prob_micro_batch_size_per_gpu': 16,
+[36m(TaskRunner pid=287729)[0m                                    'log_prob_use_dynamic_bsz': False,
+[36m(TaskRunner pid=287729)[0m                                    'max_model_len': None,
+[36m(TaskRunner pid=287729)[0m                                    'max_num_batched_tokens': 8192,
+[36m(TaskRunner pid=287729)[0m                                    'max_num_seqs': 1024,
+[36m(TaskRunner pid=287729)[0m                                    'mode': 'sync',
+[36m(TaskRunner pid=287729)[0m                                    'multi_turn': {'enable': False,
+[36m(TaskRunner pid=287729)[0m                                                   'format': 'chatml',
+[36m(TaskRunner pid=287729)[0m                                                   'max_turns': None,
+[36m(TaskRunner pid=287729)[0m                                                   'tool_config_path': None},
+[36m(TaskRunner pid=287729)[0m                                    'n': 1,
+[36m(TaskRunner pid=287729)[0m                                    'name': 'vllm',
+[36m(TaskRunner pid=287729)[0m                                    'prompt_length': 4096,
+[36m(TaskRunner pid=287729)[0m                                    'response_length': 512,
+[36m(TaskRunner pid=287729)[0m                                    'temperature': 1.0,
+[36m(TaskRunner pid=287729)[0m                                    'tensor_model_parallel_size': 2,
+[36m(TaskRunner pid=287729)[0m                                    'top_k': -1,
+[36m(TaskRunner pid=287729)[0m                                    'top_p': 1,
+[36m(TaskRunner pid=287729)[0m                                    'use_fire_sampling': False,
+[36m(TaskRunner pid=287729)[0m                                    'val_kwargs': {'do_sample': True,
+[36m(TaskRunner pid=287729)[0m                                                   'n': 1,
+[36m(TaskRunner pid=287729)[0m                                                   'temperature': 0.4,
+[36m(TaskRunner pid=287729)[0m                                                   'top_k': -1,
+[36m(TaskRunner pid=287729)[0m                                                   'top_p': 1.0}}},
+[36m(TaskRunner pid=287729)[0m  'algorithm': {'adv_estimator': 'gigpo',
+[36m(TaskRunner pid=287729)[0m                'filter_groups': {'enable': False, 'max_num_gen_batches': 10},
+[36m(TaskRunner pid=287729)[0m                'gamma': 0.95,
+[36m(TaskRunner pid=287729)[0m                'gigpo': {'enable_similarity': False,
+[36m(TaskRunner pid=287729)[0m                          'mode': 'mean_norm',
+[36m(TaskRunner pid=287729)[0m                          'similarity_thresh': 0.95,
+[36m(TaskRunner pid=287729)[0m                          'step_advantage_w': 1.0},
+[36m(TaskRunner pid=287729)[0m                'kl_ctrl': {'horizon': 10000,
+[36m(TaskRunner pid=287729)[0m                            'kl_coef': 0.001,
+[36m(TaskRunner pid=287729)[0m                            'target_kl': 0.1,
+[36m(TaskRunner pid=287729)[0m                            'type': 'fixed'},
+[36m(TaskRunner pid=287729)[0m                'kl_penalty': 'kl',
+[36m(TaskRunner pid=287729)[0m                'lam': 1.0,
+[36m(TaskRunner pid=287729)[0m                'norm_adv_by_std_in_grpo': True,
+[36m(TaskRunner pid=287729)[0m                'pf_ppo': {'reweight_method': 'pow', 'weight_pow': 2.0},
+[36m(TaskRunner pid=287729)[0m                'use_kl_in_reward': False,
+[36m(TaskRunner pid=287729)[0m                'use_pf_ppo': False},
+[36m(TaskRunner pid=287729)[0m  'critic': {'checkpoint': {'contents': ['model', 'optimizer', 'extra']},
+[36m(TaskRunner pid=287729)[0m             'cliprange_value': 0.5,
+[36m(TaskRunner pid=287729)[0m             'forward_max_token_len_per_gpu': 32768,
+[36m(TaskRunner pid=287729)[0m             'forward_micro_batch_size': None,
+[36m(TaskRunner pid=287729)[0m             'forward_micro_batch_size_per_gpu': None,
+[36m(TaskRunner pid=287729)[0m             'grad_clip': 1.0,
+[36m(TaskRunner pid=287729)[0m             'loss_agg_mode': 'token-mean',
+[36m(TaskRunner pid=287729)[0m             'model': {'enable_activation_offload': False,
+[36m(TaskRunner pid=287729)[0m                       'enable_gradient_checkpointing': True,
+[36m(TaskRunner pid=287729)[0m                       'external_lib': None,
+[36m(TaskRunner pid=287729)[0m                       'fsdp_config': {'fsdp_size': -1,
+[36m(TaskRunner pid=287729)[0m                                       'offload_policy': False,
+[36m(TaskRunner pid=287729)[0m                                       'optimizer_offload': False,
+[36m(TaskRunner pid=287729)[0m                                       'param_offload': False,
+[36m(TaskRunner pid=287729)[0m                                       'reshard_after_forward': True,
+[36m(TaskRunner pid=287729)[0m                                       'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=287729)[0m                       'lora_alpha': 16,
+[36m(TaskRunner pid=287729)[0m                       'lora_rank': 0,
+[36m(TaskRunner pid=287729)[0m                       'override_config': {},
+[36m(TaskRunner pid=287729)[0m                       'path': '~/models/deepseek-llm-7b-chat',
+[36m(TaskRunner pid=287729)[0m                       'target_modules': 'all-linear',
+[36m(TaskRunner pid=287729)[0m                       'tokenizer_path': 'Qwen/Qwen2.5-1.5B-Instruct',
+[36m(TaskRunner pid=287729)[0m                       'trust_remote_code': False,
+[36m(TaskRunner pid=287729)[0m                       'use_remove_padding': False,
+[36m(TaskRunner pid=287729)[0m                       'use_shm': False},
+[36m(TaskRunner pid=287729)[0m             'optim': {'lr': 1e-05,
+[36m(TaskRunner pid=287729)[0m                       'lr_warmup_steps_ratio': 0.0,
+[36m(TaskRunner pid=287729)[0m                       'min_lr_ratio': None,
+[36m(TaskRunner pid=287729)[0m                       'total_training_steps': -1,
+[36m(TaskRunner pid=287729)[0m                       'warmup_style': 'constant',
+[36m(TaskRunner pid=287729)[0m                       'weight_decay': 0.01},
+[36m(TaskRunner pid=287729)[0m             'ppo_epochs': 1,
+[36m(TaskRunner pid=287729)[0m             'ppo_max_token_len_per_gpu': 32768,
+[36m(TaskRunner pid=287729)[0m             'ppo_micro_batch_size': None,
+[36m(TaskRunner pid=287729)[0m             'ppo_micro_batch_size_per_gpu': None,
+[36m(TaskRunner pid=287729)[0m             'ppo_mini_batch_size': 64,
+[36m(TaskRunner pid=287729)[0m             'rollout_n': 1,
+[36m(TaskRunner pid=287729)[0m             'shuffle': False,
+[36m(TaskRunner pid=287729)[0m             'strategy': 'fsdp',
+[36m(TaskRunner pid=287729)[0m             'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=287729)[0m             'use_dynamic_bsz': False},
+[36m(TaskRunner pid=287729)[0m  'custom_reward_function': {'name': 'compute_score', 'path': None},
+[36m(TaskRunner pid=287729)[0m  'data': {'apply_chat_template_kwargs': {},
+[36m(TaskRunner pid=287729)[0m           'custom_cls': {'name': None, 'path': None},
+[36m(TaskRunner pid=287729)[0m           'filter_overlong_prompts': True,
+[36m(TaskRunner pid=287729)[0m           'filter_overlong_prompts_workers': 1,
+[36m(TaskRunner pid=287729)[0m           'image_key': 'images',
+[36m(TaskRunner pid=287729)[0m           'max_prompt_length': 4096,
+[36m(TaskRunner pid=287729)[0m           'max_response_length': 512,
+[36m(TaskRunner pid=287729)[0m           'prompt_key': 'prompt',
+[36m(TaskRunner pid=287729)[0m           'return_full_prompt': False,
+[36m(TaskRunner pid=287729)[0m           'return_raw_chat': True,
+[36m(TaskRunner pid=287729)[0m           'return_raw_input_ids': False,
+[36m(TaskRunner pid=287729)[0m           'reward_fn_key': 'data_source',
+[36m(TaskRunner pid=287729)[0m           'shuffle': True,
+[36m(TaskRunner pid=287729)[0m           'tokenizer': None,
+[36m(TaskRunner pid=287729)[0m           'train_batch_size': 16,
+[36m(TaskRunner pid=287729)[0m           'train_files': '/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent/text/train.parquet',
+[36m(TaskRunner pid=287729)[0m           'truncation': 'error',
+[36m(TaskRunner pid=287729)[0m           'trust_remote_code': False,
+[36m(TaskRunner pid=287729)[0m           'use_shm': False,
+[36m(TaskRunner pid=287729)[0m           'val_batch_size': 128,
+[36m(TaskRunner pid=287729)[0m           'val_files': '/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent/text/test.parquet',
+[36m(TaskRunner pid=287729)[0m           'video_key': 'videos'},
+[36m(TaskRunner pid=287729)[0m  'env': {'alfworld': {'eval_dataset': 'eval_in_distribution'},
+[36m(TaskRunner pid=287729)[0m          'env_name': 'Webshop',
+[36m(TaskRunner pid=287729)[0m          'history_length': 2,
+[36m(TaskRunner pid=287729)[0m          'max_steps': 15,
+[36m(TaskRunner pid=287729)[0m          'resources_per_worker': {'num_cpus': 0.1, 'num_gpus': 0},
+[36m(TaskRunner pid=287729)[0m          'rollout': {'n': 8},
+[36m(TaskRunner pid=287729)[0m          'search': {'log_requests': False,
+[36m(TaskRunner pid=287729)[0m                     'search_url': 'http://127.0.0.1:8000/retrieve',
+[36m(TaskRunner pid=287729)[0m                     'timeout': 60,
+[36m(TaskRunner pid=287729)[0m                     'topk': 3},
+[36m(TaskRunner pid=287729)[0m          'seed': 0,
+[36m(TaskRunner pid=287729)[0m          'sokoban': {'dim_room': [6, 6],
+[36m(TaskRunner pid=287729)[0m                      'mode': 'tiny_rgb_array',
+[36m(TaskRunner pid=287729)[0m                      'num_boxes': 1,
+[36m(TaskRunner pid=287729)[0m                      'search_depth': 30},
+[36m(TaskRunner pid=287729)[0m          'webshop': {'human_goals': False, 'use_small': True}},
+[36m(TaskRunner pid=287729)[0m  'ray_init': {'num_cpus': None},
+[36m(TaskRunner pid=287729)[0m  'reward_model': {'enable': False,
+[36m(TaskRunner pid=287729)[0m                   'forward_max_token_len_per_gpu': 32768,
+[36m(TaskRunner pid=287729)[0m                   'launch_reward_fn_async': False,
+[36m(TaskRunner pid=287729)[0m                   'max_length': None,
+[36m(TaskRunner pid=287729)[0m                   'micro_batch_size': None,
+[36m(TaskRunner pid=287729)[0m                   'micro_batch_size_per_gpu': None,
+[36m(TaskRunner pid=287729)[0m                   'model': {'external_lib': None,
+[36m(TaskRunner pid=287729)[0m                             'fsdp_config': {'fsdp_size': -1,
+[36m(TaskRunner pid=287729)[0m                                             'param_offload': False,
+[36m(TaskRunner pid=287729)[0m                                             'reshard_after_forward': True,
+[36m(TaskRunner pid=287729)[0m                                             'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=287729)[0m                             'input_tokenizer': 'Qwen/Qwen2.5-1.5B-Instruct',
+[36m(TaskRunner pid=287729)[0m                             'path': '~/models/FsfairX-LLaMA3-RM-v0.1',
+[36m(TaskRunner pid=287729)[0m                             'trust_remote_code': False,
+[36m(TaskRunner pid=287729)[0m                             'use_fused_kernels': False,
+[36m(TaskRunner pid=287729)[0m                             'use_remove_padding': False,
+[36m(TaskRunner pid=287729)[0m                             'use_shm': False},
+[36m(TaskRunner pid=287729)[0m                   'reward_manager': 'episode',
+[36m(TaskRunner pid=287729)[0m                   'sandbox_fusion': {'max_concurrent': 64, 'url': None},
+[36m(TaskRunner pid=287729)[0m                   'strategy': 'fsdp',
+[36m(TaskRunner pid=287729)[0m                   'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=287729)[0m                   'use_dynamic_bsz': False},
+[36m(TaskRunner pid=287729)[0m  'trainer': {'balance_batch': True,
+[36m(TaskRunner pid=287729)[0m              'critic_warmup': 0,
+[36m(TaskRunner pid=287729)[0m              'default_hdfs_dir': None,
+[36m(TaskRunner pid=287729)[0m              'default_local_dir': 'checkpoints/verl_agent_webshop/gigpo_qwen2.5_1.5b',
+[36m(TaskRunner pid=287729)[0m              'del_local_ckpt_after_load': False,
+[36m(TaskRunner pid=287729)[0m              'device': 'cuda',
+[36m(TaskRunner pid=287729)[0m              'experiment_name': 'gigpo_qwen2.5_1.5b',
+[36m(TaskRunner pid=287729)[0m              'log_val_generations': 0,
+[36m(TaskRunner pid=287729)[0m              'logger': ['console', 'wandb'],
+[36m(TaskRunner pid=287729)[0m              'max_actor_ckpt_to_keep': None,
+[36m(TaskRunner pid=287729)[0m              'max_critic_ckpt_to_keep': None,
+[36m(TaskRunner pid=287729)[0m              'n_gpus_per_node': 2,
+[36m(TaskRunner pid=287729)[0m              'nnodes': 1,
+[36m(TaskRunner pid=287729)[0m              'project_name': 'verl_agent_webshop',
+[36m(TaskRunner pid=287729)[0m              'ray_wait_register_center_timeout': 300,
+[36m(TaskRunner pid=287729)[0m              'resume_from_path': None,
+[36m(TaskRunner pid=287729)[0m              'resume_mode': 'auto',
+[36m(TaskRunner pid=287729)[0m              'rollout_data_dir': None,
+[36m(TaskRunner pid=287729)[0m              'save_freq': -1,
+[36m(TaskRunner pid=287729)[0m              'test_freq': 5,
+[36m(TaskRunner pid=287729)[0m              'total_epochs': 150,
+[36m(TaskRunner pid=287729)[0m              'total_training_steps': None,
+[36m(TaskRunner pid=287729)[0m              'val_before_train': True,
+[36m(TaskRunner pid=287729)[0m              'val_only': False,
+[36m(TaskRunner pid=287729)[0m              'validation_data_dir': None}}
+[36m(TaskRunner pid=287729)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(TaskRunner pid=287729)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(TaskRunner pid=287729)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(TaskRunner pid=287729)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(pid=304679)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(pid=304679)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(pid=304679)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(pid=304679)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(pid=304701)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(pid=304701)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(pid=304701)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(pid=304701)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(WebshopWorker pid=304645)[0m [0;93m2026-05-28 00:01:09.963622718 [W:onnxruntime:Default, device_discovery.cc:283 GetGpuDevices] Failed to detect devices under "/sys/class/drm/card0": device_discovery.cc:93 ReadFileContents Failed to open file: "/sys/class/drm/card0/device/vendor"[m
+[36m(pid=304665)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1[32m [repeated 126x across cluster] (Ray deduplicates logs by default. Set RAY_DEDUP_LOGS=0 to disable log deduplication, or see https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#log-deduplication for more options.)[0m
+[36m(pid=304665)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.[32m [repeated 126x across cluster][0m
+[36m(pid=304665)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.[32m [repeated 126x across cluster][0m
+[36m(pid=304665)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.[32m [repeated 126x across cluster][0m
+[36m(WebshopWorker pid=304623)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.
+[36m(WebshopWorker pid=304623)[0m   cli: click.BaseCommand,
+[36m(WebshopWorker pid=304600)[0m [0;93m2026-05-28 00:01:14.738920885 [W:onnxruntime:Default, device_discovery.cc:283 GetGpuDevices] Failed to detect devices under "/sys/class/drm/card0": device_discovery.cc:93 ReadFileContents Failed to open file: "/sys/class/drm/card0/device/vendor"[m[32m [repeated 31x across cluster][0m
+[36m(WebshopWorker pid=304623)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/spacy/cli/_util.py:23: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.
+[36m(WebshopWorker pid=304623)[0m   from click.parser import split_arg_string
+[36m(WebshopWorker pid=304623)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning
+[36m(WebshopWorker pid=304623)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
+[36m(WebshopWorker pid=304629)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead
+[36m(WebshopWorker pid=304629)[0m   parts = parts or [ast.Str("")]
+[36m(WebshopWorker pid=304629)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/ast.py:587: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead
+[36m(WebshopWorker pid=304629)[0m   return Constant(*args, **kwargs)
+[36m(WebshopWorker pid=304629)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1022: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead
+[36m(WebshopWorker pid=304629)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)
+[36m(WebshopWorker pid=304579)[0m Products loaded.
+[36m(WebshopWorker pid=304579)[0m Keys cleaned.
+[36m(WebshopWorker pid=304629)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 131652.09it/s]
+[36m(WebshopWorker pid=304579)[0m Attributes loaded.
+[36m(WebshopWorker pid=304678)[0m 100%|██████████| 1000/1000 [00:00<00:00, 95303.43it/s]
+[36m(WebshopWorker pid=304640)[0m 100%|██████████| 1000/1000 [00:00<00:00, 128494.09it/s]
+[36m(WebshopWorker pid=304591)[0m 100%|██████████| 1000/1000 [00:00<00:00, 122354.26it/s]
+[36m(WebshopWorker pid=304654)[0m 100%|██████████| 1000/1000 [00:00<00:00, 85739.77it/s]
+[36m(WebshopWorker pid=304623)[0m Loaded 6910 goals.
+[36m(WebshopWorker pid=304689)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/bs4/element.py:784: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.
+[36m(WebshopWorker pid=304689)[0m   warnings.warn(
+[36m(WebshopWorker pid=304689)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/
+[36m(WebshopWorker pid=304689)[0m You can set `disable_env_checker=True` to disable this check.[0m
+[36m(WebshopWorker pid=304689)[0m   logger.warn(
+[36m(WebshopWorker pid=304698)[0m 100%|██████████| 1000/1000 [00:00<00:00, 121100.16it/s]
+[36m(WebshopWorker pid=304638)[0m 100%|██████████| 1000/1000 [00:00<00:00, 131031.05it/s]
+[36m(WebshopWorker pid=304633)[0m 100%|██████████| 1000/1000 [00:00<00:00, 132249.85it/s]
+[36m(WebshopWorker pid=304643)[0m 100%|██████████| 1000/1000 [00:00<00:00, 105344.82it/s]
+[36m(WebshopWorker pid=304590)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.[32m [repeated 43x across cluster][0m
+[36m(WebshopWorker pid=304590)[0m   cli: click.BaseCommand,[32m [repeated 43x across cluster][0m
+[36m(WebshopWorker pid=304639)[0m 100%|██████████| 1000/1000 [00:00<00:00, 125604.29it/s]
+[36m(WebshopWorker pid=304681)[0m 100%|██████████| 1000/1000 [00:00<00:00, 127540.72it/s]
+[36m(WebshopWorker pid=304648)[0m 100%|██████████| 1000/1000 [00:00<00:00, 117903.64it/s]
+[36m(WebshopWorker pid=304649)[0m 100%|██████████| 1000/1000 [00:00<00:00, 108641.02it/s]
+[36m(WebshopWorker pid=304584)[0m 100%|██████████| 1000/1000 [00:00<00:00, 107612.48it/s]
+[36m(WebshopWorker pid=304625)[0m [0;93m2026-05-28 00:01:19.944125310 [W:onnxruntime:Default, device_discovery.cc:283 GetGpuDevices] Failed to detect devices under "/sys/class/drm/card0": device_discovery.cc:93 ReadFileContents Failed to open file: "/sys/class/drm/card0/device/vendor"[m[32m [repeated 36x across cluster][0m
+[36m(WebshopWorker pid=304635)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/weasel/util/config.py:8: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.[32m [repeated 99x across cluster][0m
+[36m(WebshopWorker pid=304635)[0m   from click.parser import split_arg_string[32m [repeated 99x across cluster][0m
+[36m(WebshopWorker pid=304590)[0m 100%|██████████| 1000/1000 [00:00<00:00, 125135.87it/s]
+[36m(WebshopWorker pid=304597)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 52x across cluster][0m
+[36m(WebshopWorker pid=304597)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 52x across cluster][0m
+[36m(WebshopWorker pid=304666)[0m 100%|██████████| 1000/1000 [00:00<00:00, 135470.56it/s]
+[36m(WebshopWorker pid=304576)[0m 100%|██████████| 1000/1000 [00:00<00:00, 131726.52it/s]
+[36m(WebshopWorker pid=304597)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead[32m [repeated 52x across cluster][0m
+[36m(WebshopWorker pid=304597)[0m   parts = parts or [ast.Str("")][32m [repeated 52x across cluster][0m
+[36m(WebshopWorker pid=304597)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1022: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead[32m [repeated 104x across cluster][0m
+[36m(WebshopWorker pid=304597)[0m   return Constant(*args, **kwargs)[32m [repeated 52x across cluster][0m
+[36m(WebshopWorker pid=304597)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)[32m [repeated 52x across cluster][0m
+[36m(WebshopWorker pid=304674)[0m Products loaded.[32m [repeated 53x across cluster][0m
+[36m(WebshopWorker pid=304674)[0m Keys cleaned.[32m [repeated 53x across cluster][0m
+[36m(WebshopWorker pid=304597)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 132487.97it/s][32m [repeated 52x across cluster][0m
+[36m(WebshopWorker pid=304609)[0m Attributes loaded.[32m [repeated 54x across cluster][0m
+[36m(WebshopWorker pid=304609)[0m 100%|██████████| 1000/1000 [00:00<00:00, 92989.78it/s]
+[36m(WebshopWorker pid=304596)[0m 100%|██████████| 1000/1000 [00:00<00:00, 129947.15it/s]
+[36m(WebshopWorker pid=304667)[0m 100%|██████████| 1000/1000 [00:00<00:00, 117097.18it/s]
+[36m(WebshopWorker pid=304581)[0m 100%|██████████| 1000/1000 [00:00<00:00, 120008.70it/s]
+[36m(WebshopWorker pid=304587)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/bs4/element.py:784: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 54x across cluster][0m
+[36m(WebshopWorker pid=304587)[0m   warnings.warn([32m [repeated 54x across cluster][0m
+[36m(WebshopWorker pid=304587)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 54x across cluster][0m
+[36m(WebshopWorker pid=304587)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 54x across cluster][0m
+[36m(WebshopWorker pid=304587)[0m   logger.warn([32m [repeated 54x across cluster][0m
+[36m(WebshopWorker pid=304596)[0m Loaded 6910 goals.[32m [repeated 56x across cluster][0m
+[36m(WebshopWorker pid=304651)[0m 100%|██████████| 1000/1000 [00:00<00:00, 129525.79it/s]
+[36m(WebshopWorker pid=304670)[0m 100%|██████████| 1000/1000 [00:00<00:00, 118013.11it/s]
+[36m(WebshopWorker pid=304663)[0m 100%|██████████| 1000/1000 [00:00<00:00, 126884.80it/s]
+[36m(WebshopWorker pid=304646)[0m 100%|██████████| 1000/1000 [00:00<00:00, 106690.00it/s]
+[36m(WebshopWorker pid=304606)[0m 100%|██████████| 1000/1000 [00:00<00:00, 133457.55it/s]
+[36m(WebshopWorker pid=304642)[0m 100%|██████████| 1000/1000 [00:00<00:00, 129334.07it/s]
+[36m(WebshopWorker pid=304617)[0m 100%|██████████| 1000/1000 [00:00<00:00, 88892.51it/s]
+[36m(WebshopWorker pid=304656)[0m 100%|██████████| 1000/1000 [00:00<00:00, 102857.03it/s]
+[36m(WebshopWorker pid=304669)[0m 100%|██████████| 1000/1000 [00:00<00:00, 83576.85it/s]
+[36m(WebshopWorker pid=304690)[0m 100%|██████████| 1000/1000 [00:00<00:00, 68207.83it/s]
+[36m(WebshopWorker pid=304594)[0m 100%|██████████| 1000/1000 [00:00<00:00, 73149.24it/s]
+[36m(WebshopWorker pid=304647)[0m 100%|██████████| 1000/1000 [00:00<00:00, 124231.50it/s]
+[36m(WebshopWorker pid=304595)[0m 100%|██████████| 1000/1000 [00:00<00:00, 101436.65it/s]
+[36m(WebshopWorker pid=304626)[0m 100%|██████████| 1000/1000 [00:00<00:00, 71499.51it/s]
+[36m(WebshopWorker pid=304680)[0m 100%|██████████| 1000/1000 [00:00<00:00, 98004.63it/s]
+[36m(WebshopWorker pid=304658)[0m 100%|██████████| 1000/1000 [00:00<00:00, 79905.20it/s]
+[36m(TaskRunner pid=287729)[0m range(500, 6910)
+[36m(WebshopWorker pid=304688)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/typer/completion.py:122: DeprecationWarning: 'BaseCommand' is deprecated and will be removed in Click 9.0. Use 'Command' instead.[32m [repeated 84x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m   cli: click.BaseCommand,[32m [repeated 84x across cluster][0m
+[36m(pid=335687)[0m [2026-05-28 00:01:47,694 E 335687 341575] logging.cc:118: Unhandled exception: N5boost10wrapexceptINS_6system12system_errorEEE. what(): thread: Resource temporarily unavailable [system:11]
+[36m(WebshopWorker pid=304660)[0m [0;93m2026-05-28 00:01:20.849438417 [W:onnxruntime:Default, device_discovery.cc:283 GetGpuDevices] Failed to detect devices under "/sys/class/drm/card0": device_discovery.cc:93 ReadFileContents Failed to open file: "/sys/class/drm/card0/device/vendor"[m[32m [repeated 60x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/weasel/util/config.py:8: DeprecationWarning: Importing 'parser.split_arg_string' is deprecated, it will only be available in 'shell_completion' in Click 9.0.[32m [repeated 156x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m   from click.parser import split_arg_string[32m [repeated 156x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 75x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 75x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1017: DeprecationWarning: ast.Str is deprecated and will be removed in Python 3.14; use ast.Constant instead[32m [repeated 75x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m   parts = parts or [ast.Str("")][32m [repeated 75x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/werkzeug/routing.py:1022: DeprecationWarning: Attribute s is deprecated and will be removed in Python 3.14; use value instead[32m [repeated 150x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m   return Constant(*args, **kwargs)[32m [repeated 75x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m   ret[-1] = ast.Str(ret[-1].s + p.s)[32m [repeated 75x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 129585.81it/s][32m [repeated 75x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/bs4/element.py:784: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 73x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m   warnings.warn([32m [repeated 73x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 73x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 73x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m   logger.warn([32m [repeated 73x across cluster][0m
+[36m(pid=335697)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(pid=335697)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(pid=335697)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(pid=335697)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(pid=335697)[0m [2026-05-28 00:01:48,265 E 335697 340206] logging.cc:125: Stack trace: 
+[36m(pid=335697)[0m  /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x15c789a) [0x79dff5aab89a] ray::operator<<()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x15ca8d2) [0x79dff5aae8d2] ray::TerminateHandler()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x79dff431affa] __cxxabiv1::__terminate()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(_ZSt10unexpectedv+0) [0x79dff430862e] std::unexpected()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x79dff431b297]
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x78ac88) [0x79dff4c6ec88] boost::throw_exception<>()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xefac6b) [0x79dff53dec6b] boost::asio::detail::do_throw_error()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xefb68b) [0x79dff53df68b] boost::asio::detail::posix_thread::start_thread()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xefbb6c) [0x79dff53dfb6c] boost::asio::thread_pool::thread_pool()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xc5c364) [0x79dff5140364] ray::rpc::(anonymous namespace)::_GetServerCallExecutor()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(_ZN3ray3rpc21GetServerCallExecutorEv+0x9) [0x79dff51403f9] ray::rpc::GetServerCallExecutor()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(_ZNSt17_Function_handlerIFvN3ray6StatusESt8functionIFvvEES4_EZNS0_3rpc14ServerCallImplINS6_24CoreWorkerServiceHandlerENS6_25GetCoreWorkerStatsRequestENS6_23GetCoreWorkerStatsReplyELNS6_8AuthTypeE0EE17HandleRequestImplEbEUlS1_S4_S4_E0_E9_M_invokeERKSt9_Any_dataOS1_OS4_SJ_+0x12b) [0x79dff4f2e53b] std::_Function_handler<>::_M_invoke()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(_ZN3ray4core10CoreWorker24HandleGetCoreWorkerStatsENS_3rpc25GetCoreWorkerStatsRequestEPNS2_23GetCoreWorkerStatsReplyESt8functionIFvNS_6StatusES6_IFvvEES9_EE+0x80d) [0x79dff4ec0fed] ray::core::CoreWorker::HandleGetCoreWorkerStats()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(_ZN3ray4core29CoreWorkerServiceHandlerProxy24HandleGetCoreWorkerStatsENS_3rpc25GetCoreWorkerStatsRequestEPNS2_23GetCoreWorkerStatsReplyESt8functionIFvNS_6StatusES6_IFvvEES9_EE+0x5c) [0x79dff4ee5ddc] ray::core::CoreWorkerServiceHandlerProxy::HandleGetCoreWorkerStats()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(_ZN3ray3rpc14ServerCallImplINS0_24CoreWorkerServiceHandlerENS0_25GetCoreWorkerStatsRequestENS0_23GetCoreWorkerStatsReplyELNS0_8AuthTypeE0EE17HandleRequestImplEb+0x11c) [0x79dff4f3d7cc] ray::rpc::ServerCallImpl<>::HandleRequestImpl()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xe686b8) [0x79dff534c6b8] EventTracker::RecordExecution()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xe60857) [0x79dff5344857] std::_Function_handler<>::_M_invoke()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xaf029b) [0x79dff4fd429b] boost::asio::detail::executor_op<>::do_complete()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xef82fb) [0x79dff53dc2fb] boost::asio::detail::scheduler::do_run_one()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xef9c79) [0x79dff53ddc79] boost::asio::detail::scheduler::run()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xefa382) [0x79dff53de382] boost::asio::io_context::run()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x79dff4ecdda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335697)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xb11b70) [0x79dff4ff5b70] thread_proxy
+[36m(pid=335697)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x79dff67a3ac3]
+[36m(pid=335697)[0m /lib/x86_64-linux-gnu/libc.so.6(clone+0x44) [0x79dff6834a04] __clone
+[36m(pid=335697)[0m 
+[36m(pid=335697)[0m *** SIGABRT received at time=1779951708 on cpu 8 ***
+[36m(pid=335685)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x73f6fa3f3ffa] __cxxabiv1::__terminate()
+[36m(pid=335685)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x73f6fa3f4297]
+[36m(pid=335685)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x73f6fafa6da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335685)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x73f6fc87cac3]
+[36m(pid=335685)[0m 
+[36m(pid=335685)[0m PC: @     0x73f6fc87e9fc  (unknown)  pthread_kill
+[36m(pid=335723)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x799e8045cffa] __cxxabiv1::__terminate()
+[36m(pid=335723)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x799e8045d297]
+[36m(pid=335723)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x799e8100fda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335723)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x799e827e5ac3]
+[36m(pid=335723)[0m 
+[36m(pid=335737)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7c2e5be3fffa] __cxxabiv1::__terminate()
+[36m(pid=335737)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7c2e5be40297]
+[36m(pid=335737)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7c2e5c9f2da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335737)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7c2e5e2c8ac3]
+[36m(pid=335737)[0m 
+[36m(pid=335686)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7775f446dffa] __cxxabiv1::__terminate()
+[36m(pid=335686)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7775f446e297]
+[36m(pid=335686)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7775f5020da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335686)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7775f68f6ac3]
+[36m(pid=335686)[0m 
+[36m(pid=335735)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7c21c1a76ffa] __cxxabiv1::__terminate()
+[36m(pid=335735)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7c21c1a77297]
+[36m(pid=335735)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7c21c2629da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335735)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7c21c3effac3]
+[36m(pid=335735)[0m 
+[36m(pid=335730)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x78f017cf1ffa] __cxxabiv1::__terminate()
+[36m(pid=335730)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x78f017cf2297]
+[36m(pid=335730)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x78f0188a4da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335730)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x78f01a17aac3]
+[36m(pid=335730)[0m 
+[36m(pid=335583)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x778b8fd89ffa] __cxxabiv1::__terminate()
+[36m(pid=335583)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x778b8fd8a297]
+[36m(pid=335583)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x778b9093cda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335583)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x778b92212ac3]
+[36m(pid=335583)[0m 
+[36m(pid=335634)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x71d1abb12ffa] __cxxabiv1::__terminate()
+[36m(pid=335634)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x71d1abb13297]
+[36m(pid=335634)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x71d1ac6c5da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335634)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x71d1adf9bac3]
+[36m(pid=335634)[0m 
+[36m(pid=335681)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7365eb6aeffa] __cxxabiv1::__terminate()
+[36m(pid=335681)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7365eb6af297]
+[36m(pid=335681)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7365ec261da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335681)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7365edb37ac3]
+[36m(pid=335681)[0m 
+[36m(pid=335681)[0m     @     0x7365edae5520  (unknown)  (unknown)
+[36m(pid=335717)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x777b4b1eeffa] __cxxabiv1::__terminate()
+[36m(pid=335717)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x777b4b1ef297]
+[36m(pid=335717)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x777b4bda1da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335717)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x777b4d677ac3]
+[36m(pid=335717)[0m 
+[36m(pid=335745)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x72eef045fffa] __cxxabiv1::__terminate()
+[36m(pid=335745)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x72eef0460297]
+[36m(pid=335745)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x72eef1012da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335745)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x72eef28e8ac3]
+[36m(pid=335745)[0m 
+[36m(pid=335690)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7e471b3a6ffa] __cxxabiv1::__terminate()
+[36m(pid=335690)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7e471b3a7297]
+[36m(pid=335690)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7e471bf59da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335690)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7e471d82fac3]
+[36m(pid=335690)[0m 
+[36m(pid=335749)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7539aa815ffa] __cxxabiv1::__terminate()
+[36m(pid=335749)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7539aa816297]
+[36m(pid=335749)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7539ab3c8da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335749)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7539acc9eac3]
+[36m(pid=335749)[0m 
+[36m(pid=335724)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x703cb87fcffa] __cxxabiv1::__terminate()
+[36m(pid=335724)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x703cb87fd297]
+[36m(pid=335724)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x703cb93afda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335724)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x703cbab85ac3]
+[36m(pid=335724)[0m 
+[36m(pid=335724)[0m [2026-05-28 00:01:48,283 E 335724 339657] logging.cc:474: *** SIGABRT received at time=1779951708 on cpu 144 ***
+[36m(pid=335724)[0m [2026-05-28 00:01:48,283 E 335724 339657] logging.cc:474: PC: @     0x703cbab879fc  (unknown)  pthread_kill
+[36m(pid=335493)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x70a943d1dffa] __cxxabiv1::__terminate()
+[36m(pid=335493)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x70a943d1e297]
+[36m(pid=335493)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x70a9448d0da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335493)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x70a9461a6ac3]
+[36m(pid=335493)[0m 
+[36m(pid=335760)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7c0279eadffa] __cxxabiv1::__terminate()
+[36m(pid=335760)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7c0279eae297]
+[36m(pid=335760)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7c027aa60da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335760)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7c027c336ac3]
+[36m(pid=335760)[0m 
+[36m(pid=334693)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x74ff00946ffa] __cxxabiv1::__terminate()
+[36m(pid=334693)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x74ff00947297]
+[36m(pid=334693)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x74ff014f9da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=334693)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x74ff02dcfac3]
+[36m(pid=334693)[0m 
+[36m(pid=335633)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x764880a97ffa] __cxxabiv1::__terminate()
+[36m(pid=335633)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x764880a98297]
+[36m(pid=335633)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x76488164ada4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335633)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x764882f20ac3]
+[36m(pid=335633)[0m 
+[36m(pid=335736)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7ee82d205ffa] __cxxabiv1::__terminate()
+[36m(pid=335736)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7ee82d206297]
+[36m(pid=335736)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7ee82ddb8da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335736)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7ee82f68eac3]
+[36m(pid=335736)[0m 
+[36m(pid=335721)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7086d7747ffa] __cxxabiv1::__terminate()
+[36m(pid=335721)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7086d7748297]
+[36m(pid=335721)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7086d82fada4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335721)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7086d9bd0ac3]
+[36m(pid=335721)[0m 
+[36m(pid=335754)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x750a629b7ffa] __cxxabiv1::__terminate()
+[36m(pid=335754)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x750a629b8297]
+[36m(pid=335754)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x750a6356ada4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335754)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x750a64e40ac3]
+[36m(pid=335754)[0m 
+[36m(pid=335767)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x74186eae1ffa] __cxxabiv1::__terminate()
+[36m(pid=335767)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x74186eae2297]
+[36m(pid=335767)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x74186f694da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335767)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x741870f6aac3]
+[36m(pid=335767)[0m 
+[36m(pid=335725)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7c7b5760fffa] __cxxabiv1::__terminate()
+[36m(pid=335725)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7c7b57610297]
+[36m(pid=335725)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7c7b581c2da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335725)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7c7b59a98ac3]
+[36m(pid=335725)[0m 
+[36m(pid=335714)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7754c3374ffa] __cxxabiv1::__terminate()
+[36m(pid=335714)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7754c3375297]
+[36m(pid=335714)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7754c3f27da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335714)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7754c56fdac3]
+[36m(pid=335714)[0m 
+[36m(pid=335738)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7d948f843ffa] __cxxabiv1::__terminate()
+[36m(pid=335738)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7d948f844297]
+[36m(pid=335738)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7d94903f6da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335738)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7d9491cccac3]
+[36m(pid=335738)[0m 
+[36m(pid=335026)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7d7f4aafcffa] __cxxabiv1::__terminate()
+[36m(pid=335026)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7d7f4aafd297]
+[36m(pid=335026)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7d7f4b6afda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335026)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7d7f4ce85ac3]
+[36m(pid=335026)[0m 
+[36m(pid=335731)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x77586d262ffa] __cxxabiv1::__terminate()
+[36m(pid=335731)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x77586d263297]
+[36m(pid=335731)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x77586de15da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335731)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x77586f6ebac3]
+[36m(pid=335731)[0m 
+[36m(pid=335720)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x79de6bf65ffa] __cxxabiv1::__terminate()
+[36m(pid=335720)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x79de6bf66297]
+[36m(pid=335720)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x79de6cb18da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335720)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x79de6e3eeac3]
+[36m(pid=335720)[0m 
+[36m(pid=335700)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x73d462009ffa] __cxxabiv1::__terminate()
+[36m(pid=335700)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x73d46200a297]
+[36m(pid=335700)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x73d462bbcda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335700)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x73d464492ac3]
+[36m(pid=335700)[0m 
+[36m(pid=335729)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7a10b99e1ffa] __cxxabiv1::__terminate()
+[36m(pid=335729)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7a10b99e2297]
+[36m(pid=335729)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7a10ba594da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335729)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7a10bbe6aac3]
+[36m(pid=335729)[0m 
+[36m(pid=335572)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x736bd5e21ffa] __cxxabiv1::__terminate()
+[36m(pid=335572)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x736bd5e22297]
+[36m(pid=335572)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x736bd69d4da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335572)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x736bd82aaac3]
+[36m(pid=335572)[0m 
+[36m(pid=335728)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7617caffeffa] __cxxabiv1::__terminate()
+[36m(pid=335728)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7617cafff297]
+[36m(pid=335728)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7617cbbb1da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335728)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7617cd487ac3]
+[36m(pid=335728)[0m 
+[36m(pid=335706)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x79276fa98ffa] __cxxabiv1::__terminate()
+[36m(pid=335706)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x79276fa99297]
+[36m(pid=335706)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x79277064bda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335706)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x792771e21ac3]
+[36m(pid=335706)[0m 
+[36m(pid=335706)[0m [2026-05-28 00:01:48,296 E 335706 340885] logging.cc:474:     @     0x792771dcf520  (unknown)  (unknown)
+[36m(pid=335706)[0m Fatal Python error: Aborted
+[36m(pid=335706)[0m 
+[36m(pid=335706)[0m 
+[36m(pid=335706)[0m Extension modules: msgpack._cmsgpack, psutil._psutil_linux, psutil._psutil_posix, google._upb._message, charset_normalizer.md, charset_normalizer.cd, requests.packages.charset_normalizer.md, requests.packages.chardet.md, requests.packages.charset_normalizer.cd, requests.packages.chardet.cd, yaml._yaml, uvloop.loop, ray._raylet, numpy.core._multiarray_umath, numpy.core._multiarray_tests, numpy.linalg._umath_linalg, numpy.fft._pocketfft_internal, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._mt19937, numpy.random.mtrand, numpy.random._philox, numpy.random._pcg64, numpy.random._sfc64, numpy.random._generator, torch._C, torch._C._dynamo.autograd_compiler, torch._C._dynamo.eval_frame, torch._C._dynamo.guards, torch._C._dynamo.utils, torch._C._fft, torch._C._linalg, torch._C._nested, torch._C._nn, torch._C._sparse, torch._C._special (total: 37)
+[36m(pid=335713)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x713e5499cffa] __cxxabiv1::__terminate()
+[36m(pid=335713)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x713e5499d297]
+[36m(pid=335713)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x713e5554fda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335713)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x713e56d25ac3]
+[36m(pid=335713)[0m 
+[36m(pid=335751)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x72bbd1e50ffa] __cxxabiv1::__terminate()
+[36m(pid=335751)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x72bbd1e51297]
+[36m(pid=335751)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x72bbd2a03da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335751)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x72bbd41d9ac3]
+[36m(pid=335751)[0m 
+[36m(pid=335751)[0m 
+[36m(pid=335751)[0m 
+[36m(pid=335743)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7cb1e9a60ffa] __cxxabiv1::__terminate()
+[36m(pid=335743)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7cb1e9a61297]
+[36m(pid=335743)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7cb1ea613da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335743)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7cb1ebde9ac3]
+[36m(pid=335743)[0m 
+[36m(pid=335743)[0m 
+[36m(pid=335743)[0m 
+[36m(pid=335687)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x70e4c9f44ffa] __cxxabiv1::__terminate()
+[36m(pid=335687)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x70e4c9f45297]
+[36m(pid=335687)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x70e4caaf7da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335687)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x70e4cc2cdac3]
+[36m(pid=335687)[0m 
+[36m(pid=335687)[0m 
+[36m(pid=335687)[0m 
+[36m(pid=335762)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7b097afeeffa] __cxxabiv1::__terminate()
+[36m(pid=335762)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7b097afef297]
+[36m(pid=335762)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7b097bba1da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335762)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7b097d477ac3]
+[36m(pid=335762)[0m 
+[36m(pid=335762)[0m 
+[36m(pid=335762)[0m 
+[36m(pid=335752)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7ad580cb6ffa] __cxxabiv1::__terminate()
+[36m(pid=335752)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7ad580cb7297]
+[36m(pid=335752)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7ad581869da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335752)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7ad58313fac3]
+[36m(pid=335752)[0m 
+[36m(pid=335752)[0m 
+[36m(pid=335752)[0m 
+[36m(pid=335757)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7fb88863cffa] __cxxabiv1::__terminate()
+[36m(pid=335757)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7fb88863d297]
+[36m(pid=335757)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7fb8891efda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335757)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7fb88a9c5ac3]
+[36m(pid=335757)[0m 
+[36m(pid=335757)[0m 
+[36m(pid=335757)[0m 
+[36m(pid=335772)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x74c429c54ffa] __cxxabiv1::__terminate()
+[36m(pid=335772)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x74c429c55297]
+[36m(pid=335772)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x74c42a807da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335772)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x74c42bfddac3]
+[36m(pid=335772)[0m 
+[36m(pid=335772)[0m 
+[36m(pid=335772)[0m 
+[36m(pid=335746)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7a6a283eeffa] __cxxabiv1::__terminate()
+[36m(pid=335746)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7a6a283ef297]
+[36m(pid=335746)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7a6a28fa1da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335746)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7a6a2a877ac3]
+[36m(pid=335746)[0m 
+[36m(pid=335746)[0m 
+[36m(pid=335746)[0m 
+[36m(pid=335763)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x70466c768ffa] __cxxabiv1::__terminate()
+[36m(pid=335763)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x70466c769297]
+[36m(pid=335763)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x70466d31bda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335763)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x70466eaf1ac3]
+[36m(pid=335763)[0m 
+[36m(pid=335763)[0m 
+[36m(pid=335763)[0m 
+[36m(pid=335771)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7aa7d97f2ffa] __cxxabiv1::__terminate()
+[36m(pid=335771)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7aa7d97f3297]
+[36m(pid=335771)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7aa7da3a5da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335771)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7aa7dbc7bac3]
+[36m(pid=335771)[0m 
+[36m(pid=335771)[0m 
+[36m(pid=335771)[0m 
+[36m(pid=335712)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7a07b4e36ffa] __cxxabiv1::__terminate()
+[36m(pid=335712)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7a07b4e37297]
+[36m(pid=335712)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7a07b59e9da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335712)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7a07b72bfac3]
+[36m(pid=335712)[0m 
+[36m(pid=335712)[0m 
+[36m(pid=335712)[0m 
+[36m(pid=335747)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7dfee21feffa] __cxxabiv1::__terminate()
+[36m(pid=335747)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7dfee21ff297]
+[36m(pid=335747)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7dfee2db1da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335747)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7dfee4687ac3]
+[36m(pid=335747)[0m 
+[36m(pid=335747)[0m 
+[36m(pid=335747)[0m 
+[36m(pid=335756)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x768c6b9c5ffa] __cxxabiv1::__terminate()
+[36m(pid=335756)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x768c6b9c6297]
+[36m(pid=335756)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x768c6c578da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335756)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x768c6de4eac3]
+[36m(pid=335756)[0m 
+[36m(pid=335756)[0m 
+[36m(pid=335756)[0m 
+[36m(pid=335761)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7c8d5074bffa] __cxxabiv1::__terminate()
+[36m(pid=335761)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7c8d5074c297]
+[36m(pid=335761)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7c8d512feda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335761)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7c8d52bd4ac3]
+[36m(pid=335761)[0m 
+[36m(pid=335761)[0m 
+[36m(pid=335761)[0m 
+[36m(pid=335698)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7012a82c3ffa] __cxxabiv1::__terminate()
+[36m(pid=335698)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7012a82c4297]
+[36m(pid=335698)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7012a8e76da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335698)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7012aa74cac3]
+[36m(pid=335698)[0m 
+[36m(pid=335698)[0m 
+[36m(pid=335698)[0m 
+[36m(pid=335733)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x73d284a0fffa] __cxxabiv1::__terminate()
+[36m(pid=335733)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x73d284a10297]
+[36m(pid=335733)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x73d2855c2da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335733)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x73d286e98ac3]
+[36m(pid=335733)[0m 
+[36m(pid=335733)[0m 
+[36m(pid=335733)[0m 
+[36m(pid=335750)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x78e45022dffa] __cxxabiv1::__terminate()
+[36m(pid=335750)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x78e45022e297]
+[36m(pid=335750)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x78e450de0da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335750)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x78e4526b6ac3]
+[36m(pid=335750)[0m 
+[36m(pid=335750)[0m 
+[36m(pid=335750)[0m 
+[36m(pid=335778)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x72f85e34dffa] __cxxabiv1::__terminate()
+[36m(pid=335778)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x72f85e34e297]
+[36m(pid=335778)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x72f85ef00da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335778)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x72f8607d6ac3]
+[36m(pid=335778)[0m 
+[36m(pid=335778)[0m 
+[36m(pid=335778)[0m 
+[36m(pid=335766)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7d33dbfa3ffa] __cxxabiv1::__terminate()
+[36m(pid=335766)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7d33dbfa4297]
+[36m(pid=335766)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7d33dcb56da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335766)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7d33de42cac3]
+[36m(pid=335766)[0m 
+[36m(pid=335766)[0m 
+[36m(pid=335766)[0m 
+[36m(pid=335769)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x70080d922ffa] __cxxabiv1::__terminate()
+[36m(pid=335769)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x70080d923297]
+[36m(pid=335769)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x70080e4d5da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335769)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x70080fdabac3]
+[36m(pid=335769)[0m 
+[36m(pid=335769)[0m 
+[36m(pid=335769)[0m 
+[36m(pid=335779)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x70a022108ffa] __cxxabiv1::__terminate()
+[36m(pid=335779)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x70a022109297]
+[36m(pid=335779)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x70a022cbbda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335779)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x70a024491ac3]
+[36m(pid=335779)[0m 
+[36m(pid=335779)[0m 
+[36m(pid=335779)[0m 
+[36m(pid=335783)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7f570371fffa] __cxxabiv1::__terminate()
+[36m(pid=335783)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7f5703720297]
+[36m(pid=335783)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7f57042d2da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335783)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7f5705ba8ac3]
+[36m(pid=335783)[0m 
+[36m(pid=335783)[0m 
+[36m(pid=335783)[0m 
+[36m(pid=335753)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x74acc67ffffa] __cxxabiv1::__terminate()
+[36m(pid=335753)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x74acc6800297]
+[36m(pid=335753)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x74acc73b2da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335753)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x74acc8c88ac3]
+[36m(pid=335753)[0m 
+[36m(pid=335753)[0m 
+[36m(pid=335753)[0m 
+[36m(pid=335768)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7aec9424fffa] __cxxabiv1::__terminate()
+[36m(pid=335768)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7aec94250297]
+[36m(pid=335768)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7aec94e02da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335768)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7aec966d8ac3]
+[36m(pid=335768)[0m 
+[36m(pid=335768)[0m 
+[36m(pid=335768)[0m 
+[36m(pid=335774)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7d6753646ffa] __cxxabiv1::__terminate()
+[36m(pid=335774)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7d6753647297]
+[36m(pid=335774)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7d67541f9da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335774)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7d6755acfac3]
+[36m(pid=335774)[0m 
+[36m(pid=335774)[0m 
+[36m(pid=335774)[0m 
+[36m(pid=335773)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x720bd2ff1ffa] __cxxabiv1::__terminate()
+[36m(pid=335773)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x720bd2ff2297]
+[36m(pid=335773)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x720bd3ba4da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335773)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x720bd547aac3]
+[36m(pid=335773)[0m 
+[36m(pid=335773)[0m 
+[36m(pid=335773)[0m 
+[36m(pid=335770)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7e004687affa] __cxxabiv1::__terminate()
+[36m(pid=335770)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7e004687b297]
+[36m(pid=335770)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7e004742dda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335770)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7e0048d03ac3]
+[36m(pid=335770)[0m 
+[36m(pid=335770)[0m 
+[36m(pid=335770)[0m 
+[36m(pid=335776)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7e174e061ffa] __cxxabiv1::__terminate()
+[36m(pid=335776)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7e174e062297]
+[36m(pid=335776)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7e174ec14da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335776)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7e17504eaac3]
+[36m(pid=335776)[0m 
+[36m(pid=335776)[0m 
+[36m(pid=335776)[0m 
+[36m(pid=335786)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x77976f433ffa] __cxxabiv1::__terminate()
+[36m(pid=335786)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x77976f434297]
+[36m(pid=335786)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x77976ffe6da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335786)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7797718bcac3]
+[36m(pid=335786)[0m 
+[36m(pid=335786)[0m 
+[36m(pid=335786)[0m 
+[36m(pid=335781)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x767a7e38effa] __cxxabiv1::__terminate()
+[36m(pid=335781)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x767a7e38f297]
+[36m(pid=335781)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x767a7ef41da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335781)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x767a80817ac3]
+[36m(pid=335781)[0m 
+[36m(pid=335781)[0m 
+[36m(pid=335781)[0m 
+[36m(pid=335777)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x710207fb2ffa] __cxxabiv1::__terminate()
+[36m(pid=335777)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x710207fb3297]
+[36m(pid=335777)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x710208b65da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335777)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x71020a43bac3]
+[36m(pid=335777)[0m 
+[36m(pid=335777)[0m 
+[36m(pid=335777)[0m 
+[36m(pid=335785)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x709610990ffa] __cxxabiv1::__terminate()
+[36m(pid=335785)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x709610991297]
+[36m(pid=335785)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x709611543da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335785)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x709612d19ac3]
+[36m(pid=335785)[0m 
+[36m(pid=335785)[0m 
+[36m(pid=335785)[0m 
+[36m(pid=335784)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x77ffca44effa] __cxxabiv1::__terminate()
+[36m(pid=335784)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x77ffca44f297]
+[36m(pid=335784)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x77ffcb001da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335784)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x77ffcc8d7ac3]
+[36m(pid=335784)[0m 
+[36m(pid=335784)[0m 
+[36m(pid=335784)[0m 
+[36m(pid=335780)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x715123550ffa] __cxxabiv1::__terminate()
+[36m(pid=335780)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x715123551297]
+[36m(pid=335780)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x715124103da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335780)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7151258d9ac3]
+[36m(pid=335780)[0m 
+[36m(pid=335780)[0m 
+[36m(pid=335780)[0m 
+[36m(pid=335787)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7af03e6f0ffa] __cxxabiv1::__terminate()
+[36m(pid=335787)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7af03e6f1297]
+[36m(pid=335787)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7af03f2a3da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335787)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7af040a79ac3]
+[36m(pid=335787)[0m 
+[36m(pid=335787)[0m 
+[36m(pid=335787)[0m 
+[36m(pid=335680)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x73e50dbc9ffa] __cxxabiv1::__terminate()
+[36m(pid=335680)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x73e50dbca297]
+[36m(pid=335680)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x73e50e77cda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335680)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x73e510052ac3]
+[36m(pid=335680)[0m 
+[36m(pid=335680)[0m 
+[36m(pid=335680)[0m 
+[36m(pid=335695)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x70a80ac3cffa] __cxxabiv1::__terminate()
+[36m(pid=335695)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x70a80ac3d297]
+[36m(pid=335695)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x70a80b7efda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335695)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x70a80cfc5ac3]
+[36m(pid=335695)[0m 
+[36m(pid=335695)[0m 
+[36m(pid=335695)[0m 
+[36m(pid=335727)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x705ef3ff5ffa] __cxxabiv1::__terminate()
+[36m(pid=335727)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x705ef3ff6297]
+[36m(pid=335727)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x705ef4ba8da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335727)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x705ef647eac3]
+[36m(pid=335727)[0m 
+[36m(pid=335727)[0m 
+[36m(pid=335727)[0m 
+[36m(pid=335708)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7125284d7ffa] __cxxabiv1::__terminate()
+[36m(pid=335708)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7125284d8297]
+[36m(pid=335708)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x71252908ada4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335708)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x71252a960ac3]
+[36m(pid=335708)[0m 
+[36m(pid=335708)[0m 
+[36m(pid=335708)[0m 
+[36m(pid=335682)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x76918992effa] __cxxabiv1::__terminate()
+[36m(pid=335682)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x76918992f297]
+[36m(pid=335682)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x76918a4e1da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335682)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x76918bdb7ac3]
+[36m(pid=335682)[0m 
+[36m(pid=335682)[0m 
+[36m(pid=335682)[0m 
+[36m(pid=335683)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7d815ab92ffa] __cxxabiv1::__terminate()
+[36m(pid=335683)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7d815ab93297]
+[36m(pid=335683)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7d815b745da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335683)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7d815d01bac3]
+[36m(pid=335683)[0m 
+[36m(pid=335683)[0m 
+[36m(pid=335683)[0m 
+[36m(pid=335722)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x765220376ffa] __cxxabiv1::__terminate()
+[36m(pid=335722)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x765220377297]
+[36m(pid=335722)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x765220f29da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335722)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7652227ffac3]
+[36m(pid=335722)[0m 
+[36m(pid=335722)[0m 
+[36m(pid=335722)[0m 
+[36m(pid=335691)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x75e460b57ffa] __cxxabiv1::__terminate()
+[36m(pid=335691)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x75e460b58297]
+[36m(pid=335691)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x75e46170ada4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335691)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x75e462fe0ac3]
+[36m(pid=335691)[0m 
+[36m(pid=335691)[0m 
+[36m(pid=335691)[0m 
+[36m(pid=335726)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7523dac5affa] __cxxabiv1::__terminate()
+[36m(pid=335726)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7523dac5b297]
+[36m(pid=335726)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7523db80dda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335726)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7523dd0e3ac3]
+[36m(pid=335726)[0m 
+[36m(pid=335726)[0m 
+[36m(pid=335726)[0m 
+[36m(pid=335694)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7b0f9ff05ffa] __cxxabiv1::__terminate()
+[36m(pid=335694)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7b0f9ff06297]
+[36m(pid=335694)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7b0fa0ab8da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335694)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7b0fa238eac3]
+[36m(pid=335694)[0m 
+[36m(pid=335694)[0m 
+[36m(pid=335694)[0m 
+[36m(pid=335699)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x72feef8e7ffa] __cxxabiv1::__terminate()
+[36m(pid=335699)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x72feef8e8297]
+[36m(pid=335699)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x72fef049ada4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335699)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x72fef1d70ac3]
+[36m(pid=335699)[0m 
+[36m(pid=335699)[0m 
+[36m(pid=335699)[0m 
+[36m(pid=335538)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x786ff2de1ffa] __cxxabiv1::__terminate()
+[36m(pid=335538)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x786ff2de2297]
+[36m(pid=335538)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x786ff3994da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335538)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x786ff526aac3]
+[36m(pid=335538)[0m 
+[36m(pid=335538)[0m 
+[36m(pid=335538)[0m 
+[36m(pid=335696)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x74053b244ffa] __cxxabiv1::__terminate()
+[36m(pid=335696)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x74053b245297]
+[36m(pid=335696)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x74053bdf7da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335696)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x74053d5cdac3]
+[36m(pid=335696)[0m 
+[36m(pid=335696)[0m 
+[36m(pid=335696)[0m 
+[36m(pid=335701)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x714f42662ffa] __cxxabiv1::__terminate()
+[36m(pid=335701)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x714f42663297]
+[36m(pid=335701)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x714f43215da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335701)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x714f44aebac3]
+[36m(pid=335701)[0m 
+[36m(pid=335701)[0m 
+[36m(pid=335701)[0m 
+[36m(pid=335693)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x78bf359faffa] __cxxabiv1::__terminate()
+[36m(pid=335693)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x78bf359fb297]
+[36m(pid=335693)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x78bf365adda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335693)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x78bf37e83ac3]
+[36m(pid=335693)[0m 
+[36m(pid=335693)[0m 
+[36m(pid=335693)[0m 
+[36m(pid=335702)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7687d521affa] __cxxabiv1::__terminate()
+[36m(pid=335702)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7687d521b297]
+[36m(pid=335702)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7687d5dcdda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335702)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7687d76a3ac3]
+[36m(pid=335702)[0m 
+[36m(pid=335702)[0m 
+[36m(pid=335702)[0m 
+[36m(pid=335584)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x73e0bc9a0ffa] __cxxabiv1::__terminate()
+[36m(pid=335584)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x73e0bc9a1297]
+[36m(pid=335584)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x73e0bd553da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335584)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x73e0bed29ac3]
+[36m(pid=335584)[0m 
+[36m(pid=335584)[0m 
+[36m(pid=335584)[0m 
+[36m(pid=335710)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7e7a7318bffa] __cxxabiv1::__terminate()
+[36m(pid=335710)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7e7a7318c297]
+[36m(pid=335710)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7e7a73d3eda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335710)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7e7a75614ac3]
+[36m(pid=335710)[0m 
+[36m(pid=335710)[0m 
+[36m(pid=335710)[0m 
+[36m(pid=335684)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x759b31b74ffa] __cxxabiv1::__terminate()
+[36m(pid=335684)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x759b31b75297]
+[36m(pid=335684)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x759b32727da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335684)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x759b33efdac3]
+[36m(pid=335684)[0m 
+[36m(pid=335684)[0m 
+[36m(pid=335684)[0m 
+[36m(pid=335490)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7080f71baffa] __cxxabiv1::__terminate()
+[36m(pid=335490)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7080f71bb297]
+[36m(pid=335490)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7080f7d6dda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335490)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7080f9643ac3]
+[36m(pid=335490)[0m 
+[36m(pid=335490)[0m 
+[36m(pid=335490)[0m 
+[36m(pid=335704)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x79b20da93ffa] __cxxabiv1::__terminate()
+[36m(pid=335704)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x79b20da94297]
+[36m(pid=335704)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x79b20e646da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335704)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x79b20ff1cac3]
+[36m(pid=335704)[0m 
+[36m(pid=335704)[0m 
+[36m(pid=335704)[0m 
+[36m(pid=335689)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x788609c92ffa] __cxxabiv1::__terminate()
+[36m(pid=335689)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x788609c93297]
+[36m(pid=335689)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x78860a845da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335689)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x78860c11bac3]
+[36m(pid=335689)[0m 
+[36m(pid=335689)[0m 
+[36m(pid=335689)[0m 
+[36m(pid=335487)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7e42519edffa] __cxxabiv1::__terminate()
+[36m(pid=335487)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7e42519ee297]
+[36m(pid=335487)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7e42525a0da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335487)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7e4253e76ac3]
+[36m(pid=335487)[0m 
+[36m(pid=335487)[0m 
+[36m(pid=335487)[0m 
+[36m(pid=335716)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7d382367fffa] __cxxabiv1::__terminate()
+[36m(pid=335716)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7d3823680297]
+[36m(pid=335716)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7d3824232da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335716)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7d3825b08ac3]
+[36m(pid=335716)[0m 
+[36m(pid=335716)[0m 
+[36m(pid=335716)[0m 
+[36m(pid=335541)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x73a6a6364ffa] __cxxabiv1::__terminate()
+[36m(pid=335541)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x73a6a6365297]
+[36m(pid=335541)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x73a6a6f17da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335541)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x73a6a86edac3]
+[36m(pid=335541)[0m 
+[36m(pid=335541)[0m 
+[36m(pid=335541)[0m 
+[36m(pid=335675)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7324a2564ffa] __cxxabiv1::__terminate()
+[36m(pid=335675)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7324a2565297]
+[36m(pid=335675)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7324a3117da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335675)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7324a48edac3]
+[36m(pid=335675)[0m 
+[36m(pid=335675)[0m 
+[36m(pid=335675)[0m 
+[36m(pid=335744)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x78f91b027ffa] __cxxabiv1::__terminate()
+[36m(pid=335744)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x78f91b028297]
+[36m(pid=335744)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x78f91bbdada4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335744)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x78f91d4b0ac3]
+[36m(pid=335744)[0m 
+[36m(pid=335744)[0m 
+[36m(pid=335744)[0m 
+[36m(pid=335718)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x78efc7a9effa] __cxxabiv1::__terminate()
+[36m(pid=335718)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x78efc7a9f297]
+[36m(pid=335718)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x78efc8651da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335718)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x78efc9f27ac3]
+[36m(pid=335718)[0m 
+[36m(pid=335718)[0m 
+[36m(pid=335718)[0m 
+[36m(pid=335242)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7113aa577ffa] __cxxabiv1::__terminate()
+[36m(pid=335242)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7113aa578297]
+[36m(pid=335242)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7113ab12ada4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335242)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7113aca00ac3]
+[36m(pid=335242)[0m 
+[36m(pid=335242)[0m 
+[36m(pid=335242)[0m 
+[36m(pid=334547)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7a65d7e28ffa] __cxxabiv1::__terminate()
+[36m(pid=334547)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7a65d7e29297]
+[36m(pid=334547)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7a65d89dbda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=334547)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7a65da1b1ac3]
+[36m(pid=334547)[0m 
+[36m(pid=334547)[0m 
+[36m(pid=334547)[0m 
+[36m(pid=335678)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x78cdd434bffa] __cxxabiv1::__terminate()
+[36m(pid=335678)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x78cdd434c297]
+[36m(pid=335678)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x78cdd4efeda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335678)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x78cdd67d4ac3]
+[36m(pid=335678)[0m 
+[36m(pid=335678)[0m 
+[36m(pid=335678)[0m 
+[36m(pid=335488)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7894680c6ffa] __cxxabiv1::__terminate()
+[36m(pid=335488)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7894680c7297]
+[36m(pid=335488)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x789468c79da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335488)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x78946a54fac3]
+[36m(pid=335488)[0m 
+[36m(pid=335488)[0m 
+[36m(pid=335488)[0m 
+[36m(pid=335677)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x792b05d1affa] __cxxabiv1::__terminate()
+[36m(pid=335677)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x792b05d1b297]
+[36m(pid=335677)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x792b068cdda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335677)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x792b081a3ac3]
+[36m(pid=335677)[0m 
+[36m(pid=335677)[0m 
+[36m(pid=335677)[0m 
+[36m(pid=335419)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x70a972babffa] __cxxabiv1::__terminate()
+[36m(pid=335419)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x70a972bac297]
+[36m(pid=335419)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x70a97375eda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335419)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x70a975034ac3]
+[36m(pid=335419)[0m 
+[36m(pid=335419)[0m 
+[36m(pid=335419)[0m 
+[36m(pid=335692)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x75697c1daffa] __cxxabiv1::__terminate()
+[36m(pid=335692)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x75697c1db297]
+[36m(pid=335692)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x75697cd8dda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335692)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x75697e663ac3]
+[36m(pid=335692)[0m 
+[36m(pid=335692)[0m 
+[36m(pid=335692)[0m 
+[36m(pid=335719)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7cb07fbbfffa] __cxxabiv1::__terminate()
+[36m(pid=335719)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7cb07fbc0297]
+[36m(pid=335719)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7cb080772da4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335719)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7cb082048ac3]
+[36m(pid=335719)[0m 
+[36m(pid=335719)[0m 
+[36m(pid=335719)[0m 
+[36m(pid=335711)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7b3d0afa9ffa] __cxxabiv1::__terminate()
+[36m(pid=335711)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7b3d0afaa297]
+[36m(pid=335711)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7b3d0bb5cda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335711)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7b3d0d432ac3]
+[36m(pid=335711)[0m 
+[36m(pid=335711)[0m 
+[36m(pid=335711)[0m 
+[36m(pid=335709)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7ebc550f8ffa] __cxxabiv1::__terminate()
+[36m(pid=335709)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7ebc550f9297]
+[36m(pid=335709)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7ebc55cabda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335709)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7ebc57481ac3]
+[36m(pid=335709)[0m 
+[36m(pid=335709)[0m 
+[36m(pid=335709)[0m 
+[36m(pid=335688)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x7ab94617bffa] __cxxabiv1::__terminate()
+[36m(pid=335688)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x7ab94617c297]
+[36m(pid=335688)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x7ab946d2eda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335688)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7ab948604ac3]
+[36m(pid=335688)[0m 
+[36m(pid=335688)[0m 
+[36m(pid=335688)[0m 
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc0ffa) [0x71bdb7fa9ffa] __cxxabiv1::__terminate()
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(+0xc1297) [0x71bdb7faa297]
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x9e9da4) [0x71bdb8b5cda4] ray::core::CoreWorkerProcessImpl::CreateCoreWorker()::{lambda()#1}::operator()()
+[36m(pid=335705)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x71bdba432ac3]
+[36m(pid=335705)[0m 
+[36m(pid=335705)[0m 
+[36m(pid=335705)[0m 
+[36m(pid=335697)[0m 
+[36m(pid=335697)[0m 
+[36m(pid=335685)[0m 
+[36m(pid=335685)[0m 
+[36m(pid=335723)[0m 
+[36m(pid=335723)[0m 
+[36m(pid=335737)[0m 
+[36m(pid=335737)[0m 
+[36m(pid=335686)[0m 
+[36m(pid=335686)[0m 
+[36m(pid=335735)[0m 
+[36m(pid=335735)[0m 
+[36m(pid=335730)[0m 
+[36m(pid=335730)[0m 
+[36m(pid=335583)[0m 
+[36m(pid=335583)[0m 
+[36m(pid=335634)[0m 
+[36m(pid=335634)[0m 
+[36m(pid=335681)[0m 
+[36m(pid=335681)[0m 
+[36m(pid=335717)[0m 
+[36m(pid=335717)[0m 
+[36m(pid=335745)[0m 
+[36m(pid=335745)[0m 
+[36m(pid=335690)[0m 
+[36m(pid=335690)[0m 
+[36m(pid=335749)[0m 
+[36m(pid=335749)[0m 
+[36m(pid=335724)[0m 
+[36m(pid=335724)[0m 
+[36m(pid=335493)[0m 
+[36m(pid=335493)[0m 
+[36m(pid=335760)[0m 
+[36m(pid=335760)[0m 
+[36m(pid=334693)[0m 
+[36m(pid=334693)[0m 
+[36m(pid=335633)[0m 
+[36m(pid=335633)[0m 
+[36m(pid=335736)[0m 
+[36m(pid=335736)[0m 
+[36m(pid=335721)[0m 
+[36m(pid=335721)[0m 
+[36m(pid=335754)[0m 
+[36m(pid=335754)[0m 
+[36m(pid=335767)[0m 
+[36m(pid=335767)[0m 
+[36m(pid=335725)[0m 
+[36m(pid=335725)[0m 
+[36m(pid=335714)[0m 
+[36m(pid=335714)[0m 
+[36m(pid=335738)[0m 
+[36m(pid=335738)[0m 
+[36m(pid=335026)[0m 
+[36m(pid=335026)[0m 
+[36m(pid=335731)[0m 
+[36m(pid=335731)[0m 
+[36m(pid=335720)[0m 
+[36m(pid=335720)[0m 
+[36m(pid=335700)[0m 
+[36m(pid=335700)[0m 
+[36m(pid=335729)[0m 
+[36m(pid=335729)[0m 
+[36m(pid=335572)[0m 
+[36m(pid=335572)[0m 
+[36m(pid=335728)[0m 
+[36m(pid=335728)[0m 
+[36m(pid=335713)[0m 
+[36m(pid=335713)[0m 
+[36m(WebshopWorker pid=335679)[0m <jemalloc>: arena 0 background thread creation failed (11)
+[33m(raylet)[0m A worker died or was killed while executing a task by an unexpected system error. To troubleshoot the problem, check the logs for the dead worker. Lease ID: 00010000ad6aa21be734ee7b3dcf13999969be8d51a63f86c264b8a57bac28c9 Worker ID: a6a42a1d8f725ebdbc0d10a5285752dae984c3bc079627b84c6e8501 Node ID: d94f976cae73b2278c7320274d2fc35f2f94137caabcf2735404deea Worker IP address: 10.47.117.29 Worker port: 42205 Worker PID: 335780 Worker exit type: SYSTEM_ERROR Worker exit detail: Worker unexpectedly exits with a connection error code 2. End of file. There are some potential root causes. (1) The process is killed by SIGKILL by OOM killer due to high memory usage. (2) ray stop --force is called. (3) The worker is crashed unexpectedly due to SIGSEGV or other unexpected errors.
+[36m(WebshopWorker pid=304688)[0m Products loaded.[32m [repeated 74x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m Keys cleaned.[32m [repeated 74x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m Attributes loaded.[32m [repeated 73x across cluster][0m
+[36m(WebshopWorker pid=304688)[0m Loaded 6910 goals.[32m [repeated 71x across cluster][0m
+Error executing job with overrides: ['algorithm.adv_estimator=gigpo', 'data.train_files=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent/text/train.parquet', 'data.val_files=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent/text/test.parquet', 'data.train_batch_size=16', 'data.val_batch_size=128', 'data.max_prompt_length=4096', 'data.max_response_length=512', 'data.filter_overlong_prompts=True', 'data.truncation=error', 'data.return_raw_chat=True', 'actor_rollout_ref.model.path=Qwen/Qwen2.5-1.5B-Instruct', 'actor_rollout_ref.actor.optim.lr=1e-6', 'actor_rollout_ref.model.use_remove_padding=True', 'actor_rollout_ref.actor.ppo_mini_batch_size=64', 'actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8', 'actor_rollout_ref.actor.use_kl_loss=True', 'actor_rollout_ref.actor.kl_loss_coef=0.01', 'actor_rollout_ref.actor.kl_loss_type=low_var_kl', 'actor_rollout_ref.model.enable_gradient_checkpointing=True', 'actor_rollout_ref.actor.fsdp_config.param_offload=False', 'actor_rollout_ref.actor.fsdp_config.optimizer_offload=False', 'actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=16', 'actor_rollout_ref.rollout.tensor_model_parallel_size=2', 'actor_rollout_ref.rollout.name=vllm', 'actor_rollout_ref.rollout.gpu_memory_utilization=0.6', 'actor_rollout_ref.rollout.enable_chunked_prefill=False', 'actor_rollout_ref.rollout.enforce_eager=False', 'actor_rollout_ref.rollout.free_cache_engine=False', 'actor_rollout_ref.rollout.val_kwargs.temperature=0.4', 'actor_rollout_ref.rollout.val_kwargs.do_sample=True', 'actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=16', 'actor_rollout_ref.ref.fsdp_config.param_offload=True', 'actor_rollout_ref.actor.use_invalid_action_penalty=True', 'actor_rollout_ref.actor.invalid_action_penalty_coef=0.1', 'algorithm.use_kl_in_reward=False', 'algorithm.gamma=0.95', 'algorithm.gigpo.step_advantage_w=1.0', 'algorithm.gigpo.mode=mean_norm', 'env.env_name=Webshop', 'env.seed=0', 'env.max_steps=15', 'env.rollout.n=8', 'env.resources_per_worker.num_cpus=0.1', 'trainer.critic_warmup=0', 'trainer.logger=[console,wandb]', 'trainer.project_name=verl_agent_webshop', 'trainer.experiment_name=gigpo_qwen2.5_1.5b', 'trainer.n_gpus_per_node=2', 'trainer.nnodes=1', 'trainer.save_freq=-1', 'trainer.test_freq=5', 'trainer.total_epochs=150', 'trainer.val_before_train=True']
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/trainer/main_ppo.py", line 251, in <module>
+    main()
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/hydra/main.py", line 94, in decorated_main
+    _run_hydra(
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/hydra/_internal/utils.py", line 394, in _run_hydra
+    _run_app(
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/hydra/_internal/utils.py", line 457, in _run_app
+    run_and_report(
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/hydra/_internal/utils.py", line 223, in run_and_report
+    raise ex
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/hydra/_internal/utils.py", line 220, in run_and_report
+    return func()
+           ^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/hydra/_internal/utils.py", line 458, in <lambda>
+    lambda: hydra.run(
+            ^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/hydra/_internal/hydra.py", line 132, in run
+    _ = ret.return_value
+        ^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/hydra/core/utils.py", line 260, in return_value
+    raise self._return_value
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/hydra/core/utils.py", line 186, in run_job
+    ret.return_value = task_function(task_cfg)
+                       ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/trainer/main_ppo.py", line 31, in main
+    run_ppo(config)
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/trainer/main_ppo.py", line 51, in run_ppo
+    ray.get(runner.run.remote(config))
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_private/auto_init_hook.py", line 22, in auto_init_wrapper
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_private/client_mode_hook.py", line 104, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_private/worker.py", line 2962, in get
+    values, debugger_breakpoint = worker.get_objects(
+                                  ^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_private/worker.py", line 1026, in get_objects
+    raise value.as_instanceof_cause()
+ray.exceptions.RayTaskError(ActorDiedError): [36mray::TaskRunner.run()[39m (pid=287729, ip=10.47.117.29, actor_id=a28df14b2ce300f071617ab801000000, repr=<main_ppo.TaskRunner object at 0x7338de0a3830>)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/verl/trainer/main_ppo.py", line 71, in run
+    envs, val_envs = make_envs(config)
+                     ^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_manager.py", line 696, in make_envs
+    _val_envs = build_webshop_envs(seed=config.env.seed + 1000, env_num=config.data.val_batch_size, group_n=1, is_train=False, env_kwargs=env_kwargs, resources_per_worker=resources_per_worker)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/envs.py", line 250, in build_webshop_envs
+    return WebshopMultiProcessEnv(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/envs.py", line 128, in __init__
+    goals = ray.get(goals_future)
+            ^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^
+                                  ^^^^^^^^^^^^^^^^^^^
+ray.exceptions.ActorDiedError: The actor died unexpectedly before finishing this task.
+	class_name: WebshopWorker
+	actor_id: 9f3df1208181f745c8643c8901000000
+	pid: 335242
+	namespace: e2f36a0e-1f36-4433-9563-baf86f29793e
+	ip: 10.47.117.29
+The actor is dead because its worker process has died. Worker exit type: SYSTEM_ERROR Worker exit detail: Worker unexpectedly exits with a connection error code 2. End of file. There are some potential root causes. (1) The process is killed by SIGKILL by OOM killer due to high memory usage. (2) ray stop --force is called. (3) The worker is crashed unexpectedly due to SIGSEGV or other unexpected errors.
+The actor never ran - it was cancelled before it started running.
+[33m(raylet)[0m A worker died or was killed while executing a task by an unexpected system error. To troubleshoot the problem, check the logs for the dead worker. Lease ID: a30000004c41b5a556d79654792ffe5310d74962b9c43bd34193e57f18bf0368 Worker ID: bebc28ce808c9d67525892f2772c6df222b8d09bb6accad84b88e96d Node ID: d94f976cae73b2278c7320274d2fc35f2f94137caabcf2735404deea Worker IP address: 10.47.117.29 Worker port: 41163 Worker PID: 335716 Worker exit type: SYSTEM_ERROR Worker exit detail: Worker unexpectedly exits with a connection error code 2. End of file. There are some potential root causes. (1) The process is killed by SIGKILL by OOM killer due to high memory usage. (2) ray stop --force is called. (3) The worker is crashed unexpectedly due to SIGSEGV or other unexpected errors.[32m [repeated 109x across cluster][0m
+[36m(pid=335743)[0m [2026-05-28 00:01:47,737 E 335743 340496] logging.cc:118: Unhandled exception: N5boost10wrapexceptINS_6system12system_errorEEE. what(): thread: Resource temporarily unavailable [system:11][32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1[32m [repeated 127x across cluster][0m
+[36m(pid=335705)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.[32m [repeated 127x across cluster][0m
+[36m(pid=335705)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.[32m [repeated 127x across cluster][0m
+[36m(pid=335705)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.[32m [repeated 127x across cluster][0m
+[36m(pid=335705)[0m [2026-05-28 00:01:48,267 E 335705 338009] logging.cc:125: Stack trace: [32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m  /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x15c789a) [0x71bdb973a89a] ray::operator<<()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x15ca8d2) [0x71bdb973d8d2] ray::TerminateHandler()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/bin/../lib/libstdc++.so.6(_ZSt10unexpectedv+0) [0x71bdb7f9762e] std::unexpected()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0x78ac88) [0x71bdb88fdc88] boost::throw_exception<>()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xefac6b) [0x71bdb906dc6b] boost::asio::detail::do_throw_error()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xefb68b) [0x71bdb906e68b] boost::asio::detail::posix_thread::start_thread()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xefbb6c) [0x71bdb906eb6c] boost::asio::thread_pool::thread_pool()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xc5c364) [0x71bdb8dcf364] ray::rpc::(anonymous namespace)::_GetServerCallExecutor()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(_ZN3ray3rpc21GetServerCallExecutorEv+0x9) [0x71bdb8dcf3f9] ray::rpc::GetServerCallExecutor()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xe60857) [0x71bdb8fd3857] std::_Function_handler<>::_M_invoke()[32m [repeated 218x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(_ZN3ray4core10CoreWorker24HandleGetCoreWorkerStatsENS_3rpc25GetCoreWorkerStatsRequestEPNS2_23GetCoreWorkerStatsReplyESt8functionIFvNS_6StatusES6_IFvvEES9_EE+0x80d) [0x71bdb8b4ffed] ray::core::CoreWorker::HandleGetCoreWorkerStats()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(_ZN3ray4core29CoreWorkerServiceHandlerProxy24HandleGetCoreWorkerStatsENS_3rpc25GetCoreWorkerStatsRequestEPNS2_23GetCoreWorkerStatsReplyESt8functionIFvNS_6StatusES6_IFvvEES9_EE+0x5c) [0x71bdb8b74ddc] ray::core::CoreWorkerServiceHandlerProxy::HandleGetCoreWorkerStats()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(_ZN3ray3rpc14ServerCallImplINS0_24CoreWorkerServiceHandlerENS0_25GetCoreWorkerStatsRequestENS0_23GetCoreWorkerStatsReplyELNS0_8AuthTypeE0EE17HandleRequestImplEb+0x11c) [0x71bdb8bcc7cc] ray::rpc::ServerCallImpl<>::HandleRequestImpl()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xe686b8) [0x71bdb8fdb6b8] EventTracker::RecordExecution()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xaf029b) [0x71bdb8c6329b] boost::asio::detail::executor_op<>::do_complete()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xef82fb) [0x71bdb906b2fb] boost::asio::detail::scheduler::do_run_one()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xef9c79) [0x71bdb906cc79] boost::asio::detail::scheduler::run()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xefa382) [0x71bdb906d382] boost::asio::io_context::run()[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/miniconda3/envs/verl-agent/lib/python3.12/site-packages/ray/_raylet.so(+0xb11b70) [0x71bdb8c84b70] thread_proxy[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m /lib/x86_64-linux-gnu/libc.so.6(clone+0x44) [0x71bdba4c3a04] __clone[32m [repeated 109x across cluster][0m
+[36m(pid=335705)[0m *** SIGABRT received at time=1779951708 on cpu 207 ***[32m [repeated 109x across cluster][0m
+[36m(pid=335723)[0m PC: @     0x799e827e79fc  (unknown)  pthread_kill[32m [repeated 109x across cluster][0m
+[36m(pid=335721)[0m     @     0x7086d9b7e520  (unknown)  (unknown)[32m [repeated 109x across cluster][0m
+[36m(pid=335721)[0m [2026-05-28 00:01:48,291 E 335721 340072] logging.cc:474: *** SIGABRT received at time=1779951708 on cpu 163 ***[32m [repeated 109x across cluster][0m
+[36m(pid=335721)[0m [2026-05-28 00:01:48,291 E 335721 340072] logging.cc:474: PC: @     0x7086d9bd29fc  (unknown)  pthread_kill[32m [repeated 109x across cluster][0m
+[36m(pid=335713)[0m [2026-05-28 00:01:48,299 E 335713 340728] logging.cc:474:     @     0x713e56cd3520  (unknown)  (unknown)[32m [repeated 109x across cluster][0m
+[36m(pid=335713)[0m Fatal Python error: Aborted[32m [repeated 109x across cluster][0m
+[36m(pid=335713)[0m Extension modules: msgpack._cmsgpack, psutil._psutil_linux, psutil._psutil_posix, google._upb._message, charset_normalizer.md, charset_normalizer.cd, requests.packages.charset_normalizer.md, requests.packages.chardet.md, requests.packages.charset_normalizer.cd, requests.packages.chardet.cd, yaml._yaml, uvloop.loop, ray._raylet, numpy.core._multiarray_umath, numpy.core._multiarray_tests, numpy.linalg._umath_linalg, numpy.fft._pocketfft_internal, numpy.random._common, numpy.random.bit_generator, numpy.random._bounded_integers, numpy.random._mt19937, numpy.random.mtrand, numpy.random._philox, numpy.random._pcg64, numpy.random._sfc64, numpy.random._generator, torch._C, torch._C._dynamo.autograd_compiler, torch._C._dynamo.eval_frame, torch._C._dynamo.guards, torch._C._dynamo.utils, torch._C._fft, torch._C._linalg, torch._C._nested, torch._C._nn, torch._C._sparse, torch._C._special (total: 37)[32m [repeated 109x across cluster][0m
+[36m(WebshopWorker pid=335740)[0m <jemalloc>: arena 0 background thread creation failed (11)[32m [repeated 17x across cluster][0m

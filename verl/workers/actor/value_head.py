@@ -69,6 +69,9 @@ def _patch_model_class_forward(model_cls) -> None:
 
     def forward_with_step_values(self, *args, **kwargs):
         return_step_values = bool(kwargs.pop("return_step_values", False))
+        step_value_indices = kwargs.pop("step_value_indices", None)
+        step_value_batch_indices = kwargs.pop("step_value_batch_indices", None)
+        step_value_output_shape = kwargs.pop("step_value_output_shape", None)
         if return_step_values:
             if not hasattr(self, "value_head"):
                 raise RuntimeError("return_step_values=True requires an attached step value head.")
@@ -82,7 +85,43 @@ def _patch_model_class_forward(model_cls) -> None:
             hidden_states = output.hidden_states[-1]
             if bool(getattr(self, "_step_value_head_detach_backbone", False)):
                 hidden_states = hidden_states.detach()
-            step_values = self.value_head(hidden_states)
+            if step_value_indices is None:
+                step_values = self.value_head(hidden_states)
+            else:
+                step_value_indices = step_value_indices.to(device=hidden_states.device, dtype=torch.long)
+                if step_value_batch_indices is not None:
+                    step_value_batch_indices = step_value_batch_indices.to(device=hidden_states.device, dtype=torch.long)
+
+                if hidden_states.dim() == 3:
+                    if step_value_batch_indices is not None:
+                        selected_hidden_states = hidden_states[step_value_batch_indices, step_value_indices]
+                    elif hidden_states.size(0) == 1:
+                        selected_hidden_states = hidden_states[0, step_value_indices]
+                    else:
+                        step_value_batch_indices = torch.arange(hidden_states.size(0), device=hidden_states.device)
+                        selected_hidden_states = hidden_states[step_value_batch_indices, step_value_indices]
+                elif hidden_states.dim() == 2:
+                    selected_hidden_states = hidden_states[step_value_indices]
+                else:
+                    raise RuntimeError(f"Unsupported hidden_states shape for step value selection: {hidden_states.shape}")
+
+                selected_values = self.value_head(selected_hidden_states)
+                if step_value_output_shape is None:
+                    step_values = selected_values
+                else:
+                    step_values = selected_values.new_zeros(tuple(step_value_output_shape))
+                    if step_values.dim() == 2:
+                        if step_value_batch_indices is not None:
+                            step_values[step_value_batch_indices, step_value_indices] = selected_values
+                        elif step_values.size(0) == 1:
+                            step_values[0, step_value_indices] = selected_values
+                        else:
+                            step_value_batch_indices = torch.arange(step_values.size(0), device=hidden_states.device)
+                            step_values[step_value_batch_indices, step_value_indices] = selected_values
+                    elif step_values.dim() == 1:
+                        step_values[step_value_indices] = selected_values
+                    else:
+                        raise RuntimeError(f"Unsupported step value output shape: {step_values.shape}")
             output.step_values = step_values
             return output, step_values
         return output
@@ -97,8 +136,9 @@ def attach_step_value_head(model: nn.Module, model_config, value_head_config) ->
 
     Computing the head inside ``forward`` keeps the value-head parameters inside
     the FSDP forward/unshard window while preserving the base LM state_dict names.
-    The patched forward accepts ``return_step_values=True`` and stores token-wise
-    values on ``output.step_values``.
+    The patched forward accepts ``return_step_values=True``. If selected indices
+    are provided, the value head runs only on those hidden states and returns a
+    sparse tensor with the requested output shape.
     """
     if getattr(model, "_step_value_head_attached", False):
         return model

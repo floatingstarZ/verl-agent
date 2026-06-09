@@ -16,7 +16,7 @@ from verl.utils.device import get_torch_device
 from verl.utils.py_functional import append_to_dict
 from verl.utils.seqlen_balancing import get_reverse_idx, rearrange_micro_batches
 from verl.utils.torch_functional import logprobs_from_logits
-from verl.utils.ulysses import gather_outpus_and_unpad, ulysses_pad, ulysses_pad_and_slice_inputs
+from verl.utils.ulysses import gather_outpus_and_unpad, get_ulysses_sequence_parallel_rank, ulysses_pad, ulysses_pad_and_slice_inputs
 from verl.utils.device import is_cuda_available, is_npu_available
 from verl.workers.actor.dp_actor import DataParallelPPOActor
 
@@ -80,16 +80,47 @@ class StepWisePPOActor(DataParallelPPOActor):
         return bool(cfg.get("enable", False))
 
     def _select_state_values(self, values: torch.Tensor, response_length: int) -> torch.Tensor:
+        value_index = self._state_value_index(response_length)
+        return values[:, value_index]
+
+    def _state_value_index(self, response_length: int) -> int:
         position = self._value_head_config().get("value_position", "pre_action_last_context_token")
         if position == "pre_action_last_context_token":
-            value_index = -response_length - 1
+            return -response_length - 1
         elif position == "first_response_token":
-            value_index = -response_length
+            return -response_length
         elif position == "last_response_token":
-            value_index = -1
-        else:
-            raise ValueError(f"Unsupported step value position: {position}")
-        return values[:, value_index]
+            return -1
+        raise ValueError(f"Unsupported step value position: {position}")
+
+    def _state_value_positions(self, batch_size: int, seqlen: int, response_length: int, device) -> torch.Tensor:
+        value_index = self._state_value_index(response_length)
+        if value_index < 0:
+            value_index = seqlen + value_index
+        return torch.full((batch_size,), value_index, dtype=torch.long, device=device)
+
+    def _state_value_rmpad_indices(
+        self,
+        indices: torch.Tensor,
+        batch_size: int,
+        seqlen: int,
+        response_length: int,
+        device,
+    ) -> torch.Tensor:
+        value_positions = self._state_value_positions(batch_size, seqlen, response_length, device)
+        flat_value_positions = torch.arange(batch_size, device=device, dtype=torch.long) * seqlen + value_positions
+        reverse_indices = torch.empty(batch_size * seqlen, dtype=torch.long, device=device)
+        reverse_indices[indices.to(device=device, dtype=torch.long)] = torch.arange(indices.numel(), dtype=torch.long, device=device)
+        return reverse_indices[flat_value_positions]
+
+    def _local_ulysses_value_indices(self, rmpad_indices: torch.Tensor, local_seq_len: int) -> torch.Tensor:
+        if not self.use_ulysses_sp:
+            return rmpad_indices
+        rank = get_ulysses_sequence_parallel_rank()
+        local_start = rank * local_seq_len
+        local_end = local_start + local_seq_len
+        local_mask = (rmpad_indices >= local_start) & (rmpad_indices < local_end)
+        return rmpad_indices[local_mask] - local_start
 
     def _split_step_output(self, output):
         if isinstance(output, tuple) and len(output) == 2:
@@ -121,6 +152,7 @@ class StepWisePPOActor(DataParallelPPOActor):
             if self.use_remove_padding:
                 input_ids_rmpad, indices, *_ = unpad_input(input_ids.unsqueeze(-1), attention_mask)
                 input_ids_rmpad = input_ids_rmpad.transpose(0, 1)
+                step_value_indices = self._state_value_rmpad_indices(indices, batch_size, seqlen, response_length, input_ids.device)
 
                 if position_ids.dim() == 3:
                     position_ids_rmpad = index_first_axis(rearrange(position_ids, "c b s ... -> (b s) c ..."), indices).transpose(0, 1).unsqueeze(1)
@@ -150,6 +182,7 @@ class StepWisePPOActor(DataParallelPPOActor):
                     )
 
                 input_ids_rmpad_rolled = input_ids_rmpad_rolled.squeeze(0)
+                local_step_value_indices = self._local_ulysses_value_indices(step_value_indices, input_ids_rmpad.size(1))
 
                 extra_args = {}
                 if self.use_fused_kernels:
@@ -163,6 +196,8 @@ class StepWisePPOActor(DataParallelPPOActor):
                     **multi_modal_inputs,
                     use_cache=False,
                     return_step_values=True,
+                    step_value_indices=local_step_value_indices,
+                    step_value_output_shape=(1, input_ids_rmpad.size(1)),
                     **extra_args,
                 )
                 output, values_rmpad = self._split_step_output(output)
@@ -232,6 +267,7 @@ class StepWisePPOActor(DataParallelPPOActor):
             extra_args = {}
             if self.use_fused_kernels:
                 extra_args["temperature"] = temperature
+            step_value_indices = self._state_value_positions(batch_size, seqlen, response_length, input_ids.device)
             output = self.actor_module(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
@@ -239,6 +275,8 @@ class StepWisePPOActor(DataParallelPPOActor):
                 **multi_modal_inputs,
                 use_cache=False,
                 return_step_values=True,
+                step_value_indices=step_value_indices,
+                step_value_output_shape=(batch_size, seqlen),
                 **extra_args,
             )
             output, values = self._split_step_output(output)
@@ -276,6 +314,7 @@ class StepWisePPOActor(DataParallelPPOActor):
             if self.use_remove_padding:
                 input_ids_rmpad, indices, *_ = unpad_input(input_ids.unsqueeze(-1), attention_mask)
                 input_ids_rmpad = input_ids_rmpad.transpose(0, 1)
+                step_value_indices = self._state_value_rmpad_indices(indices, batch_size, seqlen, response_length, input_ids.device)
 
                 if position_ids.dim() == 3:
                     position_ids_rmpad = index_first_axis(rearrange(position_ids, "c b s ... -> (b s) c ..."), indices).transpose(0, 1).unsqueeze(1)
@@ -297,6 +336,7 @@ class StepWisePPOActor(DataParallelPPOActor):
                             sp_size=self.ulysses_sequence_parallel_size,
                         )
 
+                local_step_value_indices = self._local_ulysses_value_indices(step_value_indices, input_ids_rmpad.size(1))
                 output = self.actor_module(
                     input_ids=input_ids_rmpad,
                     attention_mask=None,
@@ -304,6 +344,8 @@ class StepWisePPOActor(DataParallelPPOActor):
                     **multi_modal_inputs,
                     use_cache=False,
                     return_step_values=True,
+                    step_value_indices=local_step_value_indices,
+                    step_value_output_shape=(1, input_ids_rmpad.size(1)),
                 )
                 output, values_rmpad = self._split_step_output(output)
                 if values_rmpad.dim() == 2 and values_rmpad.size(0) == 1:
@@ -325,6 +367,7 @@ class StepWisePPOActor(DataParallelPPOActor):
                 ).squeeze(-1)
                 return self._select_state_values(full_values, response_length)
 
+            step_value_indices = self._state_value_positions(batch_size, seqlen, response_length, input_ids.device)
             output = self.actor_module(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
@@ -332,6 +375,8 @@ class StepWisePPOActor(DataParallelPPOActor):
                 **multi_modal_inputs,
                 use_cache=False,
                 return_step_values=True,
+                step_value_indices=step_value_indices,
+                step_value_output_shape=(batch_size, seqlen),
             )
             output, values = self._split_step_output(output)
             return self._select_state_values(values, response_length)

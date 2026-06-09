@@ -9,88 +9,132 @@
 \setlist[itemize]{leftmargin=1.5em}
 \setlist[enumerate]{leftmargin=1.8em}
 \lstset{basicstyle=\ttfamily\small,breaklines=true,columns=fullflexible,keepspaces=true,frame=single,framerule=0.2pt,xleftmargin=0.5em,xrightmargin=0.5em}
-\title{014: StepPPO-v3 Method: Value Head on GiGPO}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\sg}{\operatorname{sg}}
+\newcommand{\clip}{\operatorname{clip}}
+\newcommand{\Var}{\operatorname{Var}}
+\title{014：StepPPO-v3 方法说明：GiGPO 上的 Shared Value Head}
 \author{}
 \date{2026-06-09}
 \begin{document}
 \maketitle
 \vspace{-1.2em}
+\sloppy
 
-\section*{一句话定义}
-当前分支里的 StepPPO-v3 就是一个 value-head-only 实验：在 GiGPO 训练上加一个 actor-side shared value head，训练它去拟合 step-level value/return，同时确认它不会影响 GiGPO 原本的 policy 训练。
+\begin{abstract}
+当前分支中的 StepPPO-v3 是一个刻意保持最小改动的 value-head-only 版本。它不改变 GiGPO 的 policy advantage、policy loss、rollout group 语义或训练 recipe；唯一新增项是在 actor backbone 上挂一个 shared value head，并用 step-level GAE return 训练这个 head。v3 的研究问题不是提出新的 policy-gradient estimator，而是检验 StepPPO-v2 中使用的 actor-side value head 是否能够稳定学习 step value，并且不会干扰 GiGPO 原有训练行为。
+\end{abstract}
 
-这不是新的 policy algorithm，不默认引入 pure step advantage、action-level PPO ratio、\path{step_ppo_v3} estimator、separate critic 或额外 reward shaping。v3 的问题只有两个：
+\section*{1. 问题定义}
+考虑一个 WebShop multi-turn trajectory：
+\[
+\tau = (s_0, a_0, r_0, s_1, a_1, r_1, \ldots, s_{T-1}, a_{T-1}, r_{T-1}).
+\]
+其中，\(s_t\) 表示第 \(t\) 次环境交互前的文本上下文，\(a_t\) 表示语言模型生成并由环境执行的完整 textual action，\(r_t\) 表示该 step 的标量 reward。实现中，每个 step sample 通过 \path{traj_uid} 与 \path{step_idx} 确定其所在 trajectory 及时间顺序。
+
+GiGPO baseline 使用其原有 group-relative advantage，记为 \(\widehat A_i^{\mathrm{GiGPO}}\)，优化 actor policy \(\pi_\theta\)。StepPPO-v3 不改变这个 policy advantage，而是在同一个 actor 上增加 value head \(v_\psi\)，为每个 environment step 预测一个 scalar state value：
+\[
+V_\psi(s_i) \in \mathbb{R}.
+\]
+
+\section*{2. v3 的方法边界}
+v3 的核心问题只有两个：
 \begin{enumerate}
-  \item value head 能不能稳定学出来；
-  \item 加了 value head 后，GiGPO 的训练行为会不会变差。
+  \item shared value head 能否稳定拟合 step-level value/return；
+  \item 加入 value head 后，GiGPO 的 policy 训练是否保持不退化。
 \end{enumerate}
 
-\section*{和 v2 的关系}
-StepPPO-v2 中最值得单独验证的部分是 shared actor value head。v3 保留这个核心点，但不把 policy advantage 同时换掉，也不把 value loss 默认回传 actor backbone。这样做是为了隔离 value head 本身：如果 value head 都学不稳，或者会拖垮 GiGPO，那么后续更复杂的 StepPPO 设计没有意义。
+因此，当前 v3 默认不包含以下内容：
+\begin{itemize}
+  \item 新的 \path{step_ppo_v3} advantage estimator；
+  \item pure step advantage 替代 GiGPO advantage；
+  \item action-level 或 sequence-level PPO ratio；
+  \item separate critic；
+  \item 额外复杂 reward shaping。
+\end{itemize}
 
-\section*{训练对象}
-给定一个 WebShop step sample，actor backbone 产生 hidden states，value head 在 action 前的 context boundary 上预测一个 scalar：
-\begin{lstlisting}
-b_i = full_sequence_length_i - response_length_i - 1
-V_i = value_head(hidden_state_i[b_i])
-\end{lstlisting}
+换言之，v3 是 GiGPO 上的 shared value head 实验，而不是一个新的 policy algorithm。
 
-主线默认：
+\section*{3. Shared Value Head 参数化}
+令 \(x_i\) 表示第 \(i\) 个 step sample 的 tokenized context-response sequence，actor backbone 最后一层 hidden states 为：
+\[
+H_i = f_\theta(x_i) \in \mathbb{R}^{L_i \times d}.
+\]
+当前实现默认在 action 前最后一个 context token 位置取 value：
+\[
+b_i = L_i - |a_i| - 1.
+\]
+主线 v3 使用 detached value backbone：
+\[
+z_i = \sg\left(H_i[b_i]\right), \qquad V_\psi(s_i)=v_\psi(z_i),
+\]
+其中 \(\sg(\cdot)\) 是 stop-gradient operator。该设定对应：
 \begin{lstlisting}
 actor_rollout_ref.actor.value_head.enable=True
+actor_rollout_ref.actor.value_head.value_position=pre_action_last_context_token
 actor_rollout_ref.actor.value_head.detach_value_backbone=True
 actor_rollout_ref.actor.value_head.value_loss_coef=0.03
 actor_rollout_ref.actor.value_head.cliprange_value=0.5
 \end{lstlisting}
 
-\path{detach_value_backbone=true} 的含义是：value loss 只训练 value head，不通过 value regression 更新 actor backbone。GiGPO policy gradient 仍然按原路径更新 actor。
+因此，value loss 只更新 \(\psi\)，不通过 value regression 更新 actor backbone \(\theta\)。GiGPO policy gradient 仍按原路径更新 \(\theta\)。
 
-\section*{Policy 保持 GiGPO 不变}
-v3 主线必须保持：
-\begin{lstlisting}
-algorithm.adv_estimator=gigpo
-algorithm.gigpo.step_advantage_w=1.0
-algorithm.gigpo.mode=mean_norm
-actor_rollout_ref.actor.policy_loss.loss_mode=vanilla
-\end{lstlisting}
+\section*{4. Step-Level Value Target}
+value head 的 target 来自 step-level GAE return，而不是来自 GiGPO 的 policy advantage。对 step \(i\)，先构造 value target 使用的 immediate reward：
+\[
+\tilde r_i
+= r_i - \alpha \mathbf{1}\{\mathrm{invalid}_i\}
++ \Delta r_i^{\mathrm{KL}},
+\]
+其中 \(\alpha\) 是 \path{invalid_action_penalty_coef}。当 \path{algorithm.use_kl_in_reward=False} 时，\(\Delta r_i^{\mathrm{KL}}=0\)，这也是当前 WebShop v3 脚本的默认行为。
 
-也就是说，policy advantage、policy loss、rollout group 语义和 GiGPO baseline 保持一致。value head 是 auxiliary head，不参与当前 policy advantage 计算。
-
-\section*{Value Target}
-value head 的 target 使用 step-level GAE return。当前可复用 GiGPO-v1 value-aux trainer 中的路径：从 raw per-step reward 构造 value 用的 immediate reward，再调用 StepPPO-style GAE：
-\begin{lstlisting}
-R_i = GAE_return(reward_i, V_i, traj_uid, step_idx)
-\end{lstlisting}
-
-主线配置：
+给定 old value prediction \(V_i^{\mathrm{old}}\)，在同一 \path{traj_uid} 内按 \path{step_idx} 反向计算：
+\[
+\delta_t = \tilde r_t + \gamma(1-d_t)V_{t+1}^{\mathrm{old}} - V_t^{\mathrm{old}},
+\]
+\[
+\widehat A_t^V = \delta_t + \gamma\lambda(1-d_t)\widehat A_{t+1}^V,
+\]
+并得到 scalar value target：
+\[
+\widehat R_t^V = \widehat A_t^V + V_t^{\mathrm{old}}.
+\]
+当前主线配置为：
 \begin{lstlisting}
 algorithm.gigpo_v1_value_aux.value_target=gae_returns
 algorithm.gigpo_v1_value_aux.step_gamma=0.95
 algorithm.gigpo_v1_value_aux.step_lam=0.90
 \end{lstlisting}
 
-invalid action penalty 只能扣一次。建议保留 \path{value_step_rewards} 字段来标记 value target 使用的 reward 口径，避免和 GiGPO 自身 step reward 语义混淆。
+实现中，\(\widehat R_t^V\) 写入 \path{data.batch["step_returns"]}；value target 使用的 shaped reward 写入 \path{data.batch["value_step_rewards"]}，用于诊断 reward 口径。
 
-\section*{Value Loss}
-value loss 是 step scalar loss：
-\begin{lstlisting}
-values_clipped = old_values + clamp(current_values - old_values,
-                                    -cliprange_value, cliprange_value)
-value_loss = 0.5 * mean(max(
-    (current_values - step_returns) ** 2,
-    (values_clipped - step_returns) ** 2,
-))
-\end{lstlisting}
+\section*{5. 优化目标}
+v3 的总 loss 是 GiGPO policy loss 加 auxiliary value loss：
+\[
+\mathcal{L}_{\mathrm{v3}}(\theta,\psi)
+= \mathcal{L}_{\mathrm{GiGPO}}(\theta; \widehat A^{\mathrm{GiGPO}})
++ c_v\mathcal{L}_V(\psi).
+\]
+这里 \(c_v=0.03\)。注意 \(\widehat A^{\mathrm{GiGPO}}\) 不由 value head 产生，policy 更新不读取 \(\widehat A^V\)。
 
-总 loss 仍然是 GiGPO policy loss 加一个 auxiliary value loss：
-\begin{lstlisting}
-loss = gigpo_policy_loss + value_loss_coef * value_loss
-\end{lstlisting}
+value loss 使用 clipped value objective。对 minibatch \(\mathcal{B}\)，定义：
+\[
+V_i^{\mathrm{clip}}
+= V_i^{\mathrm{old}} + \clip\left(V_\psi(s_i)-V_i^{\mathrm{old}}, -\epsilon_v, \epsilon_v\right).
+\]
+则：
+\[
+\mathcal{L}_V
+= \frac{1}{2|\mathcal{B}|}\sum_{i\in\mathcal{B}}
+\max\left[
+\left(V_\psi(s_i)-\widehat R_i^V\right)^2,
+\left(V_i^{\mathrm{clip}}-\widehat R_i^V\right)^2
+\right].
+\]
+在 \path{detach_value_backbone=True} 下，\(\nabla_\theta \mathcal{L}_V=0\)，从而避免 value regression 直接扰动 GiGPO actor backbone。
 
-由于主线 detach backbone，auxiliary value loss 不应改变 actor backbone 的梯度方向。
-
-\section*{必须记录的指标}
-只看 \path{actor/value_loss} 不够，v3 必须记录：
+\section*{6. 诊断指标与通过标准}
+只观察 \path{actor/value_loss} 不足以判断 value head 是否学到有效 signal。当前实现应记录：
 \begin{lstlisting}
 actor/value_loss
 actor/value_clipfrac
@@ -101,10 +145,13 @@ actor/value_pred_mean
 actor/value_pred_std
 actor/value_return_mean
 actor/value_return_std
-actor/value_loss_coef
 \end{lstlisting}
+其中 explained variance 定义为：
+\[
+\mathrm{EV}=1-\frac{\Var(\widehat R^V - V_\psi)}{\Var(\widehat R^V)+\varepsilon}.
+\]
 
-同时必须和 GiGPO baseline 对比 policy 行为：
+v3 的最低通过标准是：value RMSE/MAE 稳定，EV 出现正向 signal，并且以下 GiGPO 行为指标相对 no-value-head baseline 不明显退化：
 \begin{lstlisting}
 episode/valid_action_ratio
 response_length/mean
@@ -115,33 +162,39 @@ val/success_rate
 val/webshop_task_score (not success_rate)
 \end{lstlisting}
 
-\section*{成功标准}
-v3 成功不要求立刻超过 GiGPO。最低标准是：
-\begin{enumerate}
-  \item value RMSE/MAE 稳定，不随训练发散；
-  \item value explained variance 从接近 0 向正值移动，说明 value head 学到有用 signal；
-  \item 加 value head 后，GiGPO 的 valid action ratio、response length、clip ratio 和 validation score 不明显回退；
-  \item detach=true 主线不复现 detach=false value-aux 那种 validation collapse；
-  \item actor grad norm 不因为 value loss 明显异常。
-\end{enumerate}
-
-\section*{实验脚本}
-主线脚本：
+\section*{7. 主实验脚本}
+主线脚本为：
 \begin{lstlisting}
 exps/run_webshop_step_ppo_v3_value_head_4gpu_paper_align_simple.sh
 \end{lstlisting}
+其核心 overrides 为：
+\begin{lstlisting}
+algorithm.adv_estimator=gigpo
+algorithm.gigpo.step_advantage_w=1.0
+algorithm.gigpo.mode=mean_norm
+algorithm.gigpo_v1_value_aux.value_target=gae_returns
+algorithm.gigpo_v1_value_aux.step_gamma=0.95
+algorithm.gigpo_v1_value_aux.step_lam=0.90
+actor_rollout_ref.actor.value_head.enable=True
+actor_rollout_ref.actor.value_head.detach_value_backbone=True
+actor_rollout_ref.actor.value_head.value_loss_coef=0.03
+actor_rollout_ref.actor.value_head.cliprange_value=0.5
+\end{lstlisting}
+脚本名使用 StepPPO-v3 作为研究标签；方法含义是 GiGPO + detached shared value head。
 
-这个脚本名保留 StepPPO-v3，是研究命名；实现含义就是 GiGPO + detached value head。
+\section*{8. 与当前代码实现的一致性检查}
+当前代码与上述方法一致，逐项对应如下：
+\begin{enumerate}
+  \item \textbf{GiGPO policy 不变。} \path{GiGPOV1ValueAuxRayTrainer} 要求 \path{algorithm.adv_estimator=gigpo}，并先调用原始 \path{compute_advantage}，再附加 value target。这与 v3 不改变 policy advantage 一致。
+  \item \textbf{value target 来自 step GAE。} \path{_attach_gae_value_targets} 调用 \path{compute_step_gae_advantage_return}，并写入 \path{data.batch["step_returns"]}，对应 \(\widehat R^V\)。
+  \item \textbf{shaped immediate reward。} \path{_build_shaped_immediate_rewards} 读取 raw \path{rewards}，扣 invalid-action penalty，并在需要时加入 KL reward delta，对应 \(\tilde r_i\)。
+  \item \textbf{pre-action value position。} \path{StepWisePPOActor._select_state_values} 在 \path{pre_action_last_context_token} 下使用 \path{-response_length - 1}，对应 \(b_i=L_i-|a_i|-1\)。
+  \item \textbf{detach backbone。} \path{value_head.py} 在 \path{detach_value_backbone=True} 时对 hidden states 执行 detach，对应 \(z_i=\sg(H_i[b_i])\)。
+  \item \textbf{auxiliary value loss。} \path{StepWisePPOActor.update_policy} 仅在 \path{step_returns} 存在时加入 \path{value_loss_coef * value_loss}，对应总 loss 中的 \(c_v\mathcal{L}_V\)。
+  \item \textbf{无 action-level PPO。} 当前 actor 仍只 dispatch 到已有 \path{vanilla} 或 \path{gspo} policy loss；v3 脚本没有设置 action-level loss。这与 v3 方法边界一致。
+  \item \textbf{rollout sync 安全。} \path{step_ppo_filters.py} 会从 rollout state dict 中过滤 \path{value_head.*}，避免 vLLM/sglang 加载 auxiliary value head 参数。
+\end{enumerate}
 
-\section*{不属于当前 v3 的内容}
-以下内容不要写成 v3 默认设计：
-\begin{itemize}
-  \item 新增 \path{algorithm.adv_estimator=step_ppo_v3}；
-  \item pure step advantage 替代 GiGPO advantage；
-  \item action-level PPO ratio 或 sequence geometric ratio；
-  \item separate critic model；
-  \item value loss 默认回传 actor backbone；
-  \item 一边改 policy，一边评估 value head 是否可行。
-\end{itemize}
+唯一需要说明的是命名：实现复用了 GiGPO-v1 value-aux trainer 和 StepPPO 的 value-head worker class。该复用不构成方法不一致，因为当前 v3 本身就是 value-head-only 的 GiGPO 变体，而不是新的 estimator 实现。
 
 \end{document}

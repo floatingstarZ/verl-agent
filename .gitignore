@@ -148,7 +148,6 @@ data/
 
 # packaged copy omissions / bulky local artifacts
 EXPS/repos/
-exps/
 *.pdf
 !EXPS/*.pdf
 !EXPS/Chat/*.pdf

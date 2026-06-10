@@ -280,6 +280,10 @@ trainer:
   logger: [ 'console', 'wandb' ]
   log_val_generations: 0
   rollout_data_dir: null # directory for logging the rollout data, no dump if null
+  value_diagnostics_dir: null # directory for per-step value-head diagnostics JSONL, no dump if null
+  value_diagnostics_interval: 1 # dump every N training steps when value_diagnostics_dir is set
+  value_diagnostics_max_rows: 512 # max per-step rows to dump; <=0 means all rows
+  value_diagnostics_include_text: False # include decoded prompt/response text in value diagnostics
   validation_data_dir: null # directory for logging the validation data, no dump if null
   nnodes: 1
   n_gpus_per_node: 8

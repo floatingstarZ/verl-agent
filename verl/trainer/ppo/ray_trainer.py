@@ -709,6 +709,186 @@ class RayPPOTrainer:
 
         print(f"Dumped generations to {filename}")
 
+    @staticmethod
+    def _json_safe_scalar(value):
+        if isinstance(value, torch.Tensor):
+            value = value.detach().cpu()
+            if value.numel() == 1:
+                value = value.item()
+            else:
+                value = value.tolist()
+        if isinstance(value, np.ndarray):
+            if value.shape == ():
+                value = value.item()
+            elif value.size == 1:
+                value = value.reshape(-1)[0].item()
+            else:
+                value = value.tolist()
+        if isinstance(value, np.generic):
+            value = value.item()
+        if isinstance(value, bytes):
+            value = value.decode("utf-8", errors="replace")
+        if isinstance(value, float) and not np.isfinite(value):
+            return None
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        if isinstance(value, (list, tuple)):
+            return [RayPPOTrainer._json_safe_scalar(item) for item in value]
+        return str(value)
+
+    @staticmethod
+    def _as_float_list(tensor, n_rows, default=None):
+        if tensor is None:
+            return [default] * n_rows
+        values = tensor.detach().float().cpu()
+        if values.dim() > 1:
+            values = values.reshape(values.size(0), -1)
+            if values.size(1) != 1:
+                raise ValueError(f"Expected scalar-per-row tensor, got shape {tuple(tensor.shape)}")
+            values = values.squeeze(-1)
+        return [RayPPOTrainer._json_safe_scalar(v) for v in values.reshape(-1).tolist()]
+
+    @staticmethod
+    def _safe_non_tensor_at(non_tensor_batch, key, idx):
+        if key not in non_tensor_batch:
+            return None
+        values = non_tensor_batch[key]
+        try:
+            value = values[idx]
+        except Exception:
+            return None
+        return RayPPOTrainer._json_safe_scalar(value)
+
+    def _dump_value_diagnostics(self, batch: DataProto, dump_path: str, epoch: int | None = None):
+        """Dump sample-level value-head targets/predictions for offline analysis."""
+        required_keys = ["state_values", "step_returns"]
+        if any(key not in batch.batch for key in required_keys):
+            return
+
+        os.makedirs(dump_path, exist_ok=True)
+        n_rows = int(batch.batch["state_values"].shape[0])
+        max_rows = int(self.config.trainer.get("value_diagnostics_max_rows", 0) or 0)
+        rows_to_dump = min(n_rows, max_rows) if max_rows > 0 else n_rows
+        include_text = bool(self.config.trainer.get("value_diagnostics_include_text", False))
+
+        state_values_tensor = batch.batch["state_values"].detach().float().cpu().reshape(-1)
+        step_returns_tensor = batch.batch["step_returns"].detach().float().cpu().reshape(-1)
+        value_errors_tensor = state_values_tensor - step_returns_tensor
+
+        state_values = self._as_float_list(batch.batch.get("state_values"), n_rows)
+        step_returns = self._as_float_list(batch.batch.get("step_returns"), n_rows)
+        value_errors = [self._json_safe_scalar(v) for v in value_errors_tensor.tolist()]
+        value_step_rewards = self._as_float_list(batch.batch.get("value_step_rewards"), n_rows)
+        gigpo_step_rewards = self._as_float_list(batch.batch.get("step_rewards"), n_rows)
+
+        responses = batch.batch["responses"]
+        response_len = responses.shape[-1]
+        attention_mask = batch.batch["attention_mask"]
+        prompt_mask = attention_mask[:, :-response_len].bool()
+        response_mask = attention_mask[:, -response_len:].bool()
+        prompt_lengths = [self._json_safe_scalar(v) for v in prompt_mask.sum(dim=-1).detach().cpu().tolist()]
+        response_lengths = [self._json_safe_scalar(v) for v in response_mask.sum(dim=-1).detach().cpu().tolist()]
+
+        def masked_mean_rows(key):
+            if key not in batch.batch:
+                return [None] * n_rows
+            values = batch.batch[key].detach().float().cpu()
+            if values.dim() == 1:
+                return [self._json_safe_scalar(v) for v in values.tolist()]
+            mask = response_mask.detach().float().cpu()
+            means = (values * mask).sum(dim=-1) / mask.sum(dim=-1).clamp_min(1.0)
+            return [self._json_safe_scalar(v) for v in means.tolist()]
+
+        policy_advantage_mean = masked_mean_rows("advantages")
+        policy_return_mean = masked_mean_rows("returns")
+
+        def sum_rows(key):
+            if key not in batch.batch:
+                return [None] * n_rows
+            values = batch.batch[key].detach().float().cpu()
+            if values.dim() == 1:
+                return [self._json_safe_scalar(v) for v in values.tolist()]
+            values = values.sum(dim=-1)
+            return [self._json_safe_scalar(v) for v in values.tolist()]
+
+        token_score_sum = sum_rows("token_level_scores")
+        token_reward_sum = sum_rows("token_level_rewards")
+
+        prompt_texts = [None] * rows_to_dump
+        response_texts = [None] * rows_to_dump
+        if include_text:
+            try:
+                prompt_texts = self.tokenizer.batch_decode(batch.batch["prompts"][:rows_to_dump], skip_special_tokens=True)
+                response_texts = self.tokenizer.batch_decode(batch.batch["responses"][:rows_to_dump], skip_special_tokens=True)
+            except Exception as exc:
+                print(f"[WARN] Failed to decode value diagnostics text: {exc}")
+
+        filename = os.path.join(dump_path, f"step_{self.global_steps:06d}.jsonl")
+        with open(filename, "w") as f:
+            for idx in range(rows_to_dump):
+                entry = {
+                    "global_step": self.global_steps,
+                    "epoch": int(epoch) if epoch is not None else None,
+                    "row_idx": idx,
+                    "traj_uid": self._safe_non_tensor_at(batch.non_tensor_batch, "traj_uid", idx),
+                    "step_idx": self._safe_non_tensor_at(batch.non_tensor_batch, "step_idx", idx),
+                    "step_sample_uid": self._safe_non_tensor_at(batch.non_tensor_batch, "step_sample_uid", idx),
+                    "is_action_valid": self._safe_non_tensor_at(batch.non_tensor_batch, "is_action_valid", idx),
+                    "raw_reward": self._safe_non_tensor_at(batch.non_tensor_batch, "rewards", idx),
+                    "episode_reward": self._safe_non_tensor_at(batch.non_tensor_batch, "episode_rewards", idx),
+                    "episode_length": self._safe_non_tensor_at(batch.non_tensor_batch, "episode_lengths", idx),
+                    "value_pred_before_update": state_values[idx],
+                    "value_target_gae_return": step_returns[idx],
+                    "value_error_before_update": value_errors[idx],
+                    "value_step_reward": value_step_rewards[idx],
+                    "gigpo_step_reward": gigpo_step_rewards[idx],
+                    "policy_advantage_mean": policy_advantage_mean[idx],
+                    "policy_return_mean": policy_return_mean[idx],
+                    "token_score_sum": token_score_sum[idx],
+                    "token_reward_sum": token_reward_sum[idx],
+                    "prompt_length": prompt_lengths[idx],
+                    "response_length": response_lengths[idx],
+                }
+                if include_text:
+                    entry["prompt_text"] = prompt_texts[idx]
+                    entry["response_text"] = response_texts[idx]
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+        error_rmse = torch.sqrt(value_errors_tensor.pow(2).mean().clamp_min(0.0)).item()
+        pred_std = state_values_tensor.std(unbiased=False).item() if state_values_tensor.numel() > 0 else 0.0
+        target_std = step_returns_tensor.std(unbiased=False).item() if step_returns_tensor.numel() > 0 else 0.0
+        if state_values_tensor.numel() > 1 and pred_std > 1e-8 and target_std > 1e-8:
+            pred_target_corr = torch.corrcoef(torch.stack([state_values_tensor, step_returns_tensor]))[0, 1].item()
+        else:
+            pred_target_corr = None
+        summary = {
+            "global_step": self.global_steps,
+            "epoch": int(epoch) if epoch is not None else None,
+            "num_rows": n_rows,
+            "dumped_rows": rows_to_dump,
+            "value_position": self.config.actor_rollout_ref.actor.value_head.get("value_position", None),
+            "detach_value_backbone": bool(self.config.actor_rollout_ref.actor.value_head.get("detach_value_backbone", False)),
+            "value_pred_mean": self._json_safe_scalar(state_values_tensor.mean().item()),
+            "value_pred_std": self._json_safe_scalar(pred_std),
+            "value_target_mean": self._json_safe_scalar(step_returns_tensor.mean().item()),
+            "value_target_std": self._json_safe_scalar(target_std),
+            "value_error_mean": self._json_safe_scalar(value_errors_tensor.mean().item()),
+            "value_error_rmse": self._json_safe_scalar(error_rmse),
+            "value_error_mae": self._json_safe_scalar(value_errors_tensor.abs().mean().item()),
+            "value_pred_target_corr": self._json_safe_scalar(pred_target_corr),
+        }
+        if "is_action_valid" in batch.non_tensor_batch:
+            try:
+                summary["valid_action_ratio"] = self._json_safe_scalar(np.asarray(batch.non_tensor_batch["is_action_valid"], dtype=np.float32).reshape(-1).mean())
+            except Exception:
+                pass
+
+        summary_filename = os.path.join(dump_path, "summary.jsonl")
+        with open(summary_filename, "a") as f:
+            f.write(json.dumps(summary, ensure_ascii=False) + "\n")
+
+        print(f"Dumped value diagnostics to {filename}")
+
     def _maybe_log_val_generations(self, inputs, outputs, scores):
         """Log a table of validation samples to the configured logger (wandb or swanlab)"""
 
@@ -1319,6 +1499,16 @@ class RayPPOTrainer:
                             gigpo_similarity_thresh=self.config.algorithm.gigpo.similarity_thresh,
                             use_process_only=self.config.algorithm.istar.use_process_only,
                         )
+
+                    value_diagnostics_dir = self.config.trainer.get("value_diagnostics_dir", None)
+                    value_diagnostics_interval = int(self.config.trainer.get("value_diagnostics_interval", 0) or 0)
+                    if (
+                        value_diagnostics_dir
+                        and value_diagnostics_interval > 0
+                        and (is_last_step or self.global_steps % value_diagnostics_interval == 0)
+                    ):
+                        with _timer("dump_value_diagnostics", timing_raw):
+                            self._dump_value_diagnostics(batch=batch, dump_path=value_diagnostics_dir, epoch=epoch)
 
                     # update critic
                     if self.use_critic:

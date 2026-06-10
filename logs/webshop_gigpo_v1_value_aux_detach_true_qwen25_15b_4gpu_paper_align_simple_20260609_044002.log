@@ -1,0 +1,1056 @@
++ ENGINE=vllm
++ shift
++ PYTHON_BIN=/opt/conda/bin/python
++ user_name=ziyuhuan
++ cache_root=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache
++ data_root=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent
++ export XDG_CACHE_HOME=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache
++ XDG_CACHE_HOME=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache
++ export HF_HOME=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/huggingface
++ HF_HOME=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/huggingface
++ export HUGGINGFACE_HUB_CACHE=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/huggingface/hub
++ HUGGINGFACE_HUB_CACHE=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/huggingface/hub
++ export TRANSFORMERS_CACHE=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/huggingface/hub
++ TRANSFORMERS_CACHE=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/huggingface/hub
++ export TRITON_CACHE_DIR=/tmp/ziyuhuan/.triton-cache
++ TRITON_CACHE_DIR=/tmp/ziyuhuan/.triton-cache
++ export TORCH_HOME=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/torch
++ TORCH_HOME=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/torch
++ export VLLM_CONFIG_ROOT=/tmp/ziyuhuan/.vllm
++ VLLM_CONFIG_ROOT=/tmp/ziyuhuan/.vllm
++ export FLASHINFER_WORKSPACE_BASE=/tmp/ziyuhuan
++ FLASHINFER_WORKSPACE_BASE=/tmp/ziyuhuan
++ mkdir -p /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/huggingface /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/huggingface/hub /tmp/ziyuhuan/.triton-cache /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/.cache/torch /tmp/ziyuhuan/.vllm
++ mkdir -p /tmp/ziyuhuan
++ mkdir -p /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent
+++ ulimit -Hu
++ hard_nproc_limit=unlimited
++ '[' unlimited = unlimited ']'
++ ulimit -Su unlimited
++ export 'JAVA_TOOL_OPTIONS= -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1'
++ JAVA_TOOL_OPTIONS=' -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1'
++ export VLLM_ATTENTION_BACKEND=XFORMERS
++ VLLM_ATTENTION_BACKEND=XFORMERS
++ num_cpus_per_env_worker=0.1
++ train_data_size=16
++ val_data_size=128
++ group_size=8
++ step_advantage_w=1.0
++ mode=mean_norm
+++ pwd
++ PYTHONPATH=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent:/tmp/flash_attn_sm80_sm90_site:
++ /opt/conda/bin/python examples/data_preprocess/prepare.py --mode text --local_dir /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent --train_data_size 16 --val_data_size 256
+/opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+processing data for mode: text
+Creating parquet from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 996.27ba/s]
+Creating parquet from Arrow format:   0%|          | 0/1 [00:00<?, ?ba/s]Creating parquet from Arrow format: 100%|██████████| 1/1 [00:00<00:00, 1504.41ba/s]
++ /opt/conda/bin/python -m verl.trainer.main_gigpo_v1_value_aux data.train_files=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent/text/train.parquet data.val_files=/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent/text/test.parquet data.train_batch_size=16 data.val_batch_size=128 data.max_prompt_length=4096 data.max_response_length=512 data.filter_overlong_prompts=True data.truncation=error data.return_raw_chat=True actor_rollout_ref.model.path=Qwen/Qwen2.5-1.5B-Instruct actor_rollout_ref.actor.optim.lr=1e-6 actor_rollout_ref.model.use_remove_padding=True actor_rollout_ref.actor.ppo_mini_batch_size=64 actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8 actor_rollout_ref.actor.use_kl_loss=True actor_rollout_ref.actor.kl_loss_coef=0.01 actor_rollout_ref.actor.kl_loss_type=low_var_kl actor_rollout_ref.actor.value_head.enable=True actor_rollout_ref.actor.value_head.value_loss_coef=0.03 actor_rollout_ref.actor.value_head.cliprange_value=0.5 actor_rollout_ref.actor.value_head.detach_value_backbone=False actor_rollout_ref.model.enable_gradient_checkpointing=True actor_rollout_ref.actor.fsdp_config.param_offload=False actor_rollout_ref.actor.fsdp_config.optimizer_offload=False actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=16 actor_rollout_ref.rollout.tensor_model_parallel_size=2 actor_rollout_ref.rollout.name=vllm actor_rollout_ref.rollout.gpu_memory_utilization=0.6 actor_rollout_ref.rollout.enable_chunked_prefill=False actor_rollout_ref.rollout.enforce_eager=False actor_rollout_ref.rollout.free_cache_engine=False actor_rollout_ref.rollout.val_kwargs.temperature=0.4 actor_rollout_ref.rollout.val_kwargs.do_sample=True actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=16 actor_rollout_ref.ref.fsdp_config.param_offload=True actor_rollout_ref.actor.use_invalid_action_penalty=True actor_rollout_ref.actor.invalid_action_penalty_coef=0.1 algorithm.use_kl_in_reward=False algorithm.gamma=0.95 algorithm.gigpo.step_advantage_w=1.0 algorithm.gigpo.mode=mean_norm env.env_name=Webshop env.seed=0 env.max_steps=15 env.rollout.n=8 env.resources_per_worker.num_cpus=0.1 trainer.critic_warmup=0 'trainer.logger=[console,wandb]' trainer.project_name=verl_agent_webshop trainer.experiment_name=gigpo_v1_value_aux_qwen2.5_1.5b trainer.n_gpus_per_node=2 trainer.nnodes=1 trainer.save_freq=-1 trainer.test_freq=5 trainer.total_epochs=150 trainer.val_before_train=True actor_rollout_ref.rollout.enforce_eager=True data.train_batch_size=16 data.val_batch_size=128 actor_rollout_ref.actor.ppo_mini_batch_size=64 actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu=8 actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=16 actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=16 env.rollout.n=8 trainer.n_gpus_per_node=4 trainer.nnodes=1 actor_rollout_ref.rollout.tensor_model_parallel_size=2 actor_rollout_ref.actor.value_head.detach_value_backbone=False actor_rollout_ref.actor.value_head.value_loss_coef=0.03 trainer.experiment_name=gigpo_v1_value_aux_detach_false_qwen2.5_1.5b_4gpu_paper_align_full_e250 trainer.val_before_train=True trainer.total_epochs=250 trainer.test_freq=5 trainer.save_freq=50 trainer.max_actor_ckpt_to_keep=1 trainer.max_critic_ckpt_to_keep=1 ray_init.num_cpus=64 env.resources_per_worker.num_cpus=0.1 actor_rollout_ref.actor.value_head.detach_value_backbone=True trainer.experiment_name=gigpo_v1_value_aux_detach_true_qwen2.5_1.5b_4gpu_paper_align_full_e250 trainer.experiment_name=gigpo_v1_value_aux_detach_true_qwen2.5_1.5b_4gpu_paper_align_full_e250_seed2026 env.seed=2026
+/opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+ray init kwargs: {'num_cpus': 64, 'runtime_env': {'env_vars': {'NCCL_DEBUG': 'WARN', 'VLLM_LOGGING_LEVEL': 'WARN', 'VLLM_ALLOW_RUNTIME_LORA_UPDATING': 'true', 'VLLM_ALLREDUCE_USE_SYMM_MEM': '0', 'CUDA_DEVICE_MAX_CONNECTIONS': '1', 'NCCL_CUMEM_ENABLE': '0'}, 'working_dir': None}}
+2026-06-09 04:40:21,747	INFO worker.py:1998 -- Started a local Ray instance. View the dashboard at [1m[32mhttp://127.0.0.1:8265 [39m[22m
+/opt/conda/lib/python3.11/site-packages/ray/_private/worker.py:2046: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+[36m(pid=1918358)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(pid=1918358)[0m   warnings.warn(
+[36m(TaskRunner pid=1918358)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(TaskRunner pid=1918358)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(TaskRunner pid=1918358)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(TaskRunner pid=1918358)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(TaskRunner pid=1918358)[0m {'actor_rollout_ref': {'actor': {'checkpoint': {'contents': ['model',
+[36m(TaskRunner pid=1918358)[0m                                                              'optimizer',
+[36m(TaskRunner pid=1918358)[0m                                                              'extra']},
+[36m(TaskRunner pid=1918358)[0m                                  'clip_ratio': 0.2,
+[36m(TaskRunner pid=1918358)[0m                                  'clip_ratio_c': 3.0,
+[36m(TaskRunner pid=1918358)[0m                                  'clip_ratio_high': 0.2,
+[36m(TaskRunner pid=1918358)[0m                                  'clip_ratio_low': 0.2,
+[36m(TaskRunner pid=1918358)[0m                                  'entropy_coeff': 0.001,
+[36m(TaskRunner pid=1918358)[0m                                  'fsdp_config': {'fsdp_size': -1,
+[36m(TaskRunner pid=1918358)[0m                                                  'offload_policy': False,
+[36m(TaskRunner pid=1918358)[0m                                                  'optimizer_offload': False,
+[36m(TaskRunner pid=1918358)[0m                                                  'param_offload': False,
+[36m(TaskRunner pid=1918358)[0m                                                  'reshard_after_forward': True,
+[36m(TaskRunner pid=1918358)[0m                                                  'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=1918358)[0m                                  'grad_clip': 1.0,
+[36m(TaskRunner pid=1918358)[0m                                  'invalid_action_penalty_coef': 0.1,
+[36m(TaskRunner pid=1918358)[0m                                  'kl_loss_coef': 0.01,
+[36m(TaskRunner pid=1918358)[0m                                  'kl_loss_type': 'low_var_kl',
+[36m(TaskRunner pid=1918358)[0m                                  'loss_agg_mode': 'token-mean',
+[36m(TaskRunner pid=1918358)[0m                                  'optim': {'lr': 1e-06,
+[36m(TaskRunner pid=1918358)[0m                                            'lr_warmup_steps': -1,
+[36m(TaskRunner pid=1918358)[0m                                            'lr_warmup_steps_ratio': 0.0,
+[36m(TaskRunner pid=1918358)[0m                                            'min_lr_ratio': 0.0,
+[36m(TaskRunner pid=1918358)[0m                                            'num_cycles': 0.5,
+[36m(TaskRunner pid=1918358)[0m                                            'total_training_steps': -1,
+[36m(TaskRunner pid=1918358)[0m                                            'warmup_style': 'constant',
+[36m(TaskRunner pid=1918358)[0m                                            'weight_decay': 0.01},
+[36m(TaskRunner pid=1918358)[0m                                  'policy_loss': {'loss_mode': 'vanilla'},
+[36m(TaskRunner pid=1918358)[0m                                  'ppo_epochs': 1,
+[36m(TaskRunner pid=1918358)[0m                                  'ppo_max_token_len_per_gpu': 16384,
+[36m(TaskRunner pid=1918358)[0m                                  'ppo_micro_batch_size': None,
+[36m(TaskRunner pid=1918358)[0m                                  'ppo_micro_batch_size_per_gpu': 8,
+[36m(TaskRunner pid=1918358)[0m                                  'ppo_mini_batch_size': 64,
+[36m(TaskRunner pid=1918358)[0m                                  'shuffle': False,
+[36m(TaskRunner pid=1918358)[0m                                  'strategy': 'fsdp',
+[36m(TaskRunner pid=1918358)[0m                                  'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=1918358)[0m                                  'use_dynamic_bsz': False,
+[36m(TaskRunner pid=1918358)[0m                                  'use_invalid_action_penalty': True,
+[36m(TaskRunner pid=1918358)[0m                                  'use_kl_loss': True,
+[36m(TaskRunner pid=1918358)[0m                                  'use_torch_compile': True,
+[36m(TaskRunner pid=1918358)[0m                                  'value_head': {'cliprange_value': 0.5,
+[36m(TaskRunner pid=1918358)[0m                                                 'detach_value_backbone': True,
+[36m(TaskRunner pid=1918358)[0m                                                 'dropout': 0.0,
+[36m(TaskRunner pid=1918358)[0m                                                 'enable': True,
+[36m(TaskRunner pid=1918358)[0m                                                 'head_type': 'mlp',
+[36m(TaskRunner pid=1918358)[0m                                                 'intermediate_size': None,
+[36m(TaskRunner pid=1918358)[0m                                                 'value_loss_coef': 0.03,
+[36m(TaskRunner pid=1918358)[0m                                                 'value_position': 'pre_action_last_context_token'}},
+[36m(TaskRunner pid=1918358)[0m                        'hybrid_engine': True,
+[36m(TaskRunner pid=1918358)[0m                        'model': {'enable_activation_offload': False,
+[36m(TaskRunner pid=1918358)[0m                                  'enable_gradient_checkpointing': True,
+[36m(TaskRunner pid=1918358)[0m                                  'external_lib': None,
+[36m(TaskRunner pid=1918358)[0m                                  'lora_alpha': 16,
+[36m(TaskRunner pid=1918358)[0m                                  'lora_rank': 0,
+[36m(TaskRunner pid=1918358)[0m                                  'override_config': {},
+[36m(TaskRunner pid=1918358)[0m                                  'path': 'Qwen/Qwen2.5-1.5B-Instruct',
+[36m(TaskRunner pid=1918358)[0m                                  'target_modules': 'all-linear',
+[36m(TaskRunner pid=1918358)[0m                                  'trust_remote_code': False,
+[36m(TaskRunner pid=1918358)[0m                                  'use_fused_kernels': False,
+[36m(TaskRunner pid=1918358)[0m                                  'use_liger': False,
+[36m(TaskRunner pid=1918358)[0m                                  'use_remove_padding': True,
+[36m(TaskRunner pid=1918358)[0m                                  'use_shm': False},
+[36m(TaskRunner pid=1918358)[0m                        'ref': {'fsdp_config': {'param_offload': True,
+[36m(TaskRunner pid=1918358)[0m                                                'reshard_after_forward': True,
+[36m(TaskRunner pid=1918358)[0m                                                'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=1918358)[0m                                'log_prob_max_token_len_per_gpu': 16384,
+[36m(TaskRunner pid=1918358)[0m                                'log_prob_micro_batch_size': None,
+[36m(TaskRunner pid=1918358)[0m                                'log_prob_micro_batch_size_per_gpu': 16,
+[36m(TaskRunner pid=1918358)[0m                                'log_prob_use_dynamic_bsz': False,
+[36m(TaskRunner pid=1918358)[0m                                'strategy': 'fsdp',
+[36m(TaskRunner pid=1918358)[0m                                'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=1918358)[0m                                'use_torch_compile': True},
+[36m(TaskRunner pid=1918358)[0m                        'rollout': {'chat_scheduler': None,
+[36m(TaskRunner pid=1918358)[0m                                    'disable_log_stats': True,
+[36m(TaskRunner pid=1918358)[0m                                    'do_sample': True,
+[36m(TaskRunner pid=1918358)[0m                                    'dtype': 'bfloat16',
+[36m(TaskRunner pid=1918358)[0m                                    'enable_chunked_prefill': False,
+[36m(TaskRunner pid=1918358)[0m                                    'enforce_eager': True,
+[36m(TaskRunner pid=1918358)[0m                                    'engine_kwargs': {'sglang': {'attention_backend': None},
+[36m(TaskRunner pid=1918358)[0m                                                      'vllm': {'swap_space': None}},
+[36m(TaskRunner pid=1918358)[0m                                    'free_cache_engine': False,
+[36m(TaskRunner pid=1918358)[0m                                    'gpu_memory_utilization': 0.6,
+[36m(TaskRunner pid=1918358)[0m                                    'ignore_eos': False,
+[36m(TaskRunner pid=1918358)[0m                                    'layered_summon': False,
+[36m(TaskRunner pid=1918358)[0m                                    'load_format': 'dummy_dtensor',
+[36m(TaskRunner pid=1918358)[0m                                    'log_prob_max_token_len_per_gpu': 16384,
+[36m(TaskRunner pid=1918358)[0m                                    'log_prob_micro_batch_size': None,
+[36m(TaskRunner pid=1918358)[0m                                    'log_prob_micro_batch_size_per_gpu': 16,
+[36m(TaskRunner pid=1918358)[0m                                    'log_prob_use_dynamic_bsz': False,
+[36m(TaskRunner pid=1918358)[0m                                    'max_model_len': None,
+[36m(TaskRunner pid=1918358)[0m                                    'max_num_batched_tokens': 8192,
+[36m(TaskRunner pid=1918358)[0m                                    'max_num_seqs': 1024,
+[36m(TaskRunner pid=1918358)[0m                                    'mode': 'sync',
+[36m(TaskRunner pid=1918358)[0m                                    'multi_turn': {'enable': False,
+[36m(TaskRunner pid=1918358)[0m                                                   'format': 'chatml',
+[36m(TaskRunner pid=1918358)[0m                                                   'max_turns': None,
+[36m(TaskRunner pid=1918358)[0m                                                   'tool_config_path': None},
+[36m(TaskRunner pid=1918358)[0m                                    'n': 1,
+[36m(TaskRunner pid=1918358)[0m                                    'name': 'vllm',
+[36m(TaskRunner pid=1918358)[0m                                    'prompt_length': 4096,
+[36m(TaskRunner pid=1918358)[0m                                    'response_length': 512,
+[36m(TaskRunner pid=1918358)[0m                                    'temperature': 1.0,
+[36m(TaskRunner pid=1918358)[0m                                    'tensor_model_parallel_size': 2,
+[36m(TaskRunner pid=1918358)[0m                                    'top_k': -1,
+[36m(TaskRunner pid=1918358)[0m                                    'top_p': 1,
+[36m(TaskRunner pid=1918358)[0m                                    'use_fire_sampling': False,
+[36m(TaskRunner pid=1918358)[0m                                    'val_kwargs': {'do_sample': True,
+[36m(TaskRunner pid=1918358)[0m                                                   'n': 1,
+[36m(TaskRunner pid=1918358)[0m                                                   'temperature': 0.4,
+[36m(TaskRunner pid=1918358)[0m                                                   'top_k': -1,
+[36m(TaskRunner pid=1918358)[0m                                                   'top_p': 1.0}}},
+[36m(TaskRunner pid=1918358)[0m  'algorithm': {'adv_estimator': 'gigpo',
+[36m(TaskRunner pid=1918358)[0m                'filter_groups': {'enable': False, 'max_num_gen_batches': 10},
+[36m(TaskRunner pid=1918358)[0m                'gamma': 0.95,
+[36m(TaskRunner pid=1918358)[0m                'gigpo': {'enable_similarity': False,
+[36m(TaskRunner pid=1918358)[0m                          'mode': 'mean_norm',
+[36m(TaskRunner pid=1918358)[0m                          'similarity_thresh': 0.95,
+[36m(TaskRunner pid=1918358)[0m                          'step_advantage_w': 1.0},
+[36m(TaskRunner pid=1918358)[0m                'gigpo_v1_value_aux': {'step_gamma': 0.95,
+[36m(TaskRunner pid=1918358)[0m                                       'step_lam': 1.0,
+[36m(TaskRunner pid=1918358)[0m                                       'value_target': 'gae_returns'},
+[36m(TaskRunner pid=1918358)[0m                'istar': {'use_process_only': False},
+[36m(TaskRunner pid=1918358)[0m                'kl_ctrl': {'horizon': 10000,
+[36m(TaskRunner pid=1918358)[0m                            'kl_coef': 0.001,
+[36m(TaskRunner pid=1918358)[0m                            'target_kl': 0.1,
+[36m(TaskRunner pid=1918358)[0m                            'type': 'fixed'},
+[36m(TaskRunner pid=1918358)[0m                'kl_penalty': 'kl',
+[36m(TaskRunner pid=1918358)[0m                'lam': 1.0,
+[36m(TaskRunner pid=1918358)[0m                'norm_adv_by_std_in_grpo': True,
+[36m(TaskRunner pid=1918358)[0m                'pf_ppo': {'reweight_method': 'pow', 'weight_pow': 2.0},
+[36m(TaskRunner pid=1918358)[0m                'use_kl_in_reward': False,
+[36m(TaskRunner pid=1918358)[0m                'use_pf_ppo': False},
+[36m(TaskRunner pid=1918358)[0m  'critic': {'checkpoint': {'contents': ['model', 'optimizer', 'extra']},
+[36m(TaskRunner pid=1918358)[0m             'cliprange_value': 0.5,
+[36m(TaskRunner pid=1918358)[0m             'forward_max_token_len_per_gpu': 32768,
+[36m(TaskRunner pid=1918358)[0m             'forward_micro_batch_size': None,
+[36m(TaskRunner pid=1918358)[0m             'forward_micro_batch_size_per_gpu': None,
+[36m(TaskRunner pid=1918358)[0m             'grad_clip': 1.0,
+[36m(TaskRunner pid=1918358)[0m             'loss_agg_mode': 'token-mean',
+[36m(TaskRunner pid=1918358)[0m             'model': {'enable_activation_offload': False,
+[36m(TaskRunner pid=1918358)[0m                       'enable_gradient_checkpointing': True,
+[36m(TaskRunner pid=1918358)[0m                       'external_lib': None,
+[36m(TaskRunner pid=1918358)[0m                       'fsdp_config': {'fsdp_size': -1,
+[36m(TaskRunner pid=1918358)[0m                                       'offload_policy': False,
+[36m(TaskRunner pid=1918358)[0m                                       'optimizer_offload': False,
+[36m(TaskRunner pid=1918358)[0m                                       'param_offload': False,
+[36m(TaskRunner pid=1918358)[0m                                       'reshard_after_forward': True,
+[36m(TaskRunner pid=1918358)[0m                                       'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=1918358)[0m                       'lora_alpha': 16,
+[36m(TaskRunner pid=1918358)[0m                       'lora_rank': 0,
+[36m(TaskRunner pid=1918358)[0m                       'override_config': {},
+[36m(TaskRunner pid=1918358)[0m                       'path': '~/models/deepseek-llm-7b-chat',
+[36m(TaskRunner pid=1918358)[0m                       'target_modules': 'all-linear',
+[36m(TaskRunner pid=1918358)[0m                       'tokenizer_path': 'Qwen/Qwen2.5-1.5B-Instruct',
+[36m(TaskRunner pid=1918358)[0m                       'trust_remote_code': False,
+[36m(TaskRunner pid=1918358)[0m                       'use_remove_padding': False,
+[36m(TaskRunner pid=1918358)[0m                       'use_shm': False},
+[36m(TaskRunner pid=1918358)[0m             'optim': {'lr': 1e-05,
+[36m(TaskRunner pid=1918358)[0m                       'lr_warmup_steps_ratio': 0.0,
+[36m(TaskRunner pid=1918358)[0m                       'min_lr_ratio': None,
+[36m(TaskRunner pid=1918358)[0m                       'total_training_steps': -1,
+[36m(TaskRunner pid=1918358)[0m                       'warmup_style': 'constant',
+[36m(TaskRunner pid=1918358)[0m                       'weight_decay': 0.01},
+[36m(TaskRunner pid=1918358)[0m             'ppo_epochs': 1,
+[36m(TaskRunner pid=1918358)[0m             'ppo_max_token_len_per_gpu': 32768,
+[36m(TaskRunner pid=1918358)[0m             'ppo_micro_batch_size': None,
+[36m(TaskRunner pid=1918358)[0m             'ppo_micro_batch_size_per_gpu': None,
+[36m(TaskRunner pid=1918358)[0m             'ppo_mini_batch_size': 64,
+[36m(TaskRunner pid=1918358)[0m             'rollout_n': 1,
+[36m(TaskRunner pid=1918358)[0m             'shuffle': False,
+[36m(TaskRunner pid=1918358)[0m             'strategy': 'fsdp',
+[36m(TaskRunner pid=1918358)[0m             'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=1918358)[0m             'use_dynamic_bsz': False},
+[36m(TaskRunner pid=1918358)[0m  'custom_reward_function': {'name': 'compute_score', 'path': None},
+[36m(TaskRunner pid=1918358)[0m  'data': {'apply_chat_template_kwargs': {},
+[36m(TaskRunner pid=1918358)[0m           'custom_cls': {'name': None, 'path': None},
+[36m(TaskRunner pid=1918358)[0m           'filter_overlong_prompts': True,
+[36m(TaskRunner pid=1918358)[0m           'filter_overlong_prompts_workers': 1,
+[36m(TaskRunner pid=1918358)[0m           'image_key': 'images',
+[36m(TaskRunner pid=1918358)[0m           'max_prompt_length': 4096,
+[36m(TaskRunner pid=1918358)[0m           'max_response_length': 512,
+[36m(TaskRunner pid=1918358)[0m           'prompt_key': 'prompt',
+[36m(TaskRunner pid=1918358)[0m           'return_full_prompt': False,
+[36m(TaskRunner pid=1918358)[0m           'return_raw_chat': True,
+[36m(TaskRunner pid=1918358)[0m           'return_raw_input_ids': False,
+[36m(TaskRunner pid=1918358)[0m           'reward_fn_key': 'data_source',
+[36m(TaskRunner pid=1918358)[0m           'shuffle': True,
+[36m(TaskRunner pid=1918358)[0m           'tokenizer': None,
+[36m(TaskRunner pid=1918358)[0m           'train_batch_size': 16,
+[36m(TaskRunner pid=1918358)[0m           'train_files': '/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent/text/train.parquet',
+[36m(TaskRunner pid=1918358)[0m           'truncation': 'error',
+[36m(TaskRunner pid=1918358)[0m           'trust_remote_code': False,
+[36m(TaskRunner pid=1918358)[0m           'use_shm': False,
+[36m(TaskRunner pid=1918358)[0m           'val_batch_size': 128,
+[36m(TaskRunner pid=1918358)[0m           'val_files': '/prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/data/verl-agent/text/test.parquet',
+[36m(TaskRunner pid=1918358)[0m           'video_key': 'videos'},
+[36m(TaskRunner pid=1918358)[0m  'env': {'alfworld': {'eval_dataset': 'eval_in_distribution'},
+[36m(TaskRunner pid=1918358)[0m          'env_name': 'Webshop',
+[36m(TaskRunner pid=1918358)[0m          'history_length': 2,
+[36m(TaskRunner pid=1918358)[0m          'max_steps': 15,
+[36m(TaskRunner pid=1918358)[0m          'resources_per_worker': {'num_cpus': 0.1, 'num_gpus': 0},
+[36m(TaskRunner pid=1918358)[0m          'rollout': {'n': 8},
+[36m(TaskRunner pid=1918358)[0m          'search': {'log_requests': False,
+[36m(TaskRunner pid=1918358)[0m                     'search_url': 'http://127.0.0.1:8000/retrieve',
+[36m(TaskRunner pid=1918358)[0m                     'timeout': 60,
+[36m(TaskRunner pid=1918358)[0m                     'topk': 3},
+[36m(TaskRunner pid=1918358)[0m          'seed': 2026,
+[36m(TaskRunner pid=1918358)[0m          'sokoban': {'dim_room': [6, 6],
+[36m(TaskRunner pid=1918358)[0m                      'mode': 'tiny_rgb_array',
+[36m(TaskRunner pid=1918358)[0m                      'num_boxes': 1,
+[36m(TaskRunner pid=1918358)[0m                      'search_depth': 30},
+[36m(TaskRunner pid=1918358)[0m          'webshop': {'human_goals': False, 'use_small': True}},
+[36m(TaskRunner pid=1918358)[0m  'ray_init': {'num_cpus': 64},
+[36m(TaskRunner pid=1918358)[0m  'reward_model': {'enable': False,
+[36m(TaskRunner pid=1918358)[0m                   'forward_max_token_len_per_gpu': 32768,
+[36m(TaskRunner pid=1918358)[0m                   'launch_reward_fn_async': False,
+[36m(TaskRunner pid=1918358)[0m                   'max_length': None,
+[36m(TaskRunner pid=1918358)[0m                   'micro_batch_size': None,
+[36m(TaskRunner pid=1918358)[0m                   'micro_batch_size_per_gpu': None,
+[36m(TaskRunner pid=1918358)[0m                   'model': {'external_lib': None,
+[36m(TaskRunner pid=1918358)[0m                             'fsdp_config': {'fsdp_size': -1,
+[36m(TaskRunner pid=1918358)[0m                                             'param_offload': False,
+[36m(TaskRunner pid=1918358)[0m                                             'reshard_after_forward': True,
+[36m(TaskRunner pid=1918358)[0m                                             'wrap_policy': {'min_num_params': 0}},
+[36m(TaskRunner pid=1918358)[0m                             'input_tokenizer': 'Qwen/Qwen2.5-1.5B-Instruct',
+[36m(TaskRunner pid=1918358)[0m                             'path': '~/models/FsfairX-LLaMA3-RM-v0.1',
+[36m(TaskRunner pid=1918358)[0m                             'trust_remote_code': False,
+[36m(TaskRunner pid=1918358)[0m                             'use_fused_kernels': False,
+[36m(TaskRunner pid=1918358)[0m                             'use_remove_padding': False,
+[36m(TaskRunner pid=1918358)[0m                             'use_shm': False},
+[36m(TaskRunner pid=1918358)[0m                   'reward_manager': 'episode',
+[36m(TaskRunner pid=1918358)[0m                   'sandbox_fusion': {'max_concurrent': 64, 'url': None},
+[36m(TaskRunner pid=1918358)[0m                   'strategy': 'fsdp',
+[36m(TaskRunner pid=1918358)[0m                   'ulysses_sequence_parallel_size': 1,
+[36m(TaskRunner pid=1918358)[0m                   'use_dynamic_bsz': False},
+[36m(TaskRunner pid=1918358)[0m  'trainer': {'balance_batch': True,
+[36m(TaskRunner pid=1918358)[0m              'critic_warmup': 0,
+[36m(TaskRunner pid=1918358)[0m              'default_hdfs_dir': None,
+[36m(TaskRunner pid=1918358)[0m              'default_local_dir': 'checkpoints/verl_agent_webshop/gigpo_v1_value_aux_detach_true_qwen2.5_1.5b_4gpu_paper_align_full_e250_seed2026',
+[36m(TaskRunner pid=1918358)[0m              'del_local_ckpt_after_load': False,
+[36m(TaskRunner pid=1918358)[0m              'device': 'cuda',
+[36m(TaskRunner pid=1918358)[0m              'experiment_name': 'gigpo_v1_value_aux_detach_true_qwen2.5_1.5b_4gpu_paper_align_full_e250_seed2026',
+[36m(TaskRunner pid=1918358)[0m              'log_val_generations': 0,
+[36m(TaskRunner pid=1918358)[0m              'logger': ['console', 'wandb'],
+[36m(TaskRunner pid=1918358)[0m              'max_actor_ckpt_to_keep': 1,
+[36m(TaskRunner pid=1918358)[0m              'max_critic_ckpt_to_keep': 1,
+[36m(TaskRunner pid=1918358)[0m              'n_gpus_per_node': 4,
+[36m(TaskRunner pid=1918358)[0m              'nnodes': 1,
+[36m(TaskRunner pid=1918358)[0m              'project_name': 'verl_agent_webshop',
+[36m(TaskRunner pid=1918358)[0m              'ray_wait_register_center_timeout': 300,
+[36m(TaskRunner pid=1918358)[0m              'resume_from_path': None,
+[36m(TaskRunner pid=1918358)[0m              'resume_mode': 'auto',
+[36m(TaskRunner pid=1918358)[0m              'rollout_data_dir': None,
+[36m(TaskRunner pid=1918358)[0m              'save_freq': 50,
+[36m(TaskRunner pid=1918358)[0m              'test_freq': 5,
+[36m(TaskRunner pid=1918358)[0m              'total_epochs': 250,
+[36m(TaskRunner pid=1918358)[0m              'total_training_steps': None,
+[36m(TaskRunner pid=1918358)[0m              'val_before_train': True,
+[36m(TaskRunner pid=1918358)[0m              'val_only': False,
+[36m(TaskRunner pid=1918358)[0m              'validation_data_dir': None}}
+[36m(pid=1918656)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(pid=1918656)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(pid=1918656)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(pid=1918656)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(pid=1918660)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(pid=1918660)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(pid=1918660)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(pid=1918660)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(pid=1920753)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1[32m [repeated 74x across cluster] (Ray deduplicates logs by default. Set RAY_DEDUP_LOGS=0 to disable log deduplication, or see https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#log-deduplication for more options.)[0m
+[36m(pid=1920753)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.[32m [repeated 74x across cluster][0m
+[36m(pid=1920753)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.[32m [repeated 74x across cluster][0m
+[36m(pid=1920753)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.[32m [repeated 74x across cluster][0m
+[36m(WebshopWorker pid=1918660)[0m Picked up JAVA_TOOL_OPTIONS:  -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1
+[36m(pid=1922571)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1[32m [repeated 52x across cluster][0m
+[36m(pid=1922571)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.[32m [repeated 52x across cluster][0m
+[36m(pid=1922571)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.[32m [repeated 52x across cluster][0m
+[36m(pid=1922571)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.[32m [repeated 52x across cluster][0m
+[36m(WebshopWorker pid=1920570)[0m Picked up JAVA_TOOL_OPTIONS:  -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1[32m [repeated 102x across cluster][0m
+[36m(WebshopWorker pid=1918660)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(WebshopWorker pid=1918660)[0m   warnings.warn(
+[36m(WebshopWorker pid=1922571)[0m Picked up JAVA_TOOL_OPTIONS:  -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1[32m [repeated 25x across cluster][0m
+[36m(WebshopWorker pid=1918742)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.[32m [repeated 56x across cluster][0m
+[36m(WebshopWorker pid=1918742)[0m   warnings.warn([32m [repeated 56x across cluster][0m
+[36m(WebshopWorker pid=1918660)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning
+[36m(WebshopWorker pid=1918660)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
+[36m(WebshopWorker pid=1922571)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.[32m [repeated 71x across cluster][0m
+[36m(WebshopWorker pid=1922571)[0m   warnings.warn([32m [repeated 71x across cluster][0m
+[36m(WebshopWorker pid=1918660)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 106546.36it/s]
+[36m(WebshopWorker pid=1918660)[0m Products loaded.
+[36m(WebshopWorker pid=1918660)[0m Keys cleaned.
+[36m(WebshopWorker pid=1918660)[0m Attributes loaded.
+[36m(WebshopWorker pid=1918673)[0m Loaded 6910 goals.
+[36m(WebshopWorker pid=1918660)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.
+[36m(WebshopWorker pid=1918660)[0m   texts = self._parse_html(html).findAll(text=True)
+[36m(WebshopWorker pid=1918660)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/
+[36m(WebshopWorker pid=1918660)[0m You can set `disable_env_checker=True` to disable this check.[0m
+[36m(WebshopWorker pid=1918660)[0m   logger.warn(
+[33m(raylet)[0m WARNING: 350 PYTHON worker processes have been started on node: eef76043760ef83c85f84ab05696f61efdaab1516a15c1b6c6c37825 with address: 172.19.46.202. This could be a result of using a large number of actors, or due to tasks blocked in ray.get() calls (see https://github.com/ray-project/ray/issues/3644 for some discussion of workarounds).
+[36m(TaskRunner pid=1918358)[0m range(500, 6910)
+[36m(WebshopWorker pid=1919143)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=1919143)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=1919057)[0m Products loaded.[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=1919057)[0m Keys cleaned.[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=1919057)[0m Attributes loaded.[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=1919057)[0m Loaded 6910 goals.[32m [repeated 65x across cluster][0m
+[33m(raylet)[0m WARNING: 384 PYTHON worker processes have been started on node: eef76043760ef83c85f84ab05696f61efdaab1516a15c1b6c6c37825 with address: 172.19.46.202. This could be a result of using a large number of actors, or due to tasks blocked in ray.get() calls (see https://github.com/ray-project/ray/issues/3644 for some discussion of workarounds).
+[33m(raylet)[0m WARNING: 451 PYTHON worker processes have been started on node: eef76043760ef83c85f84ab05696f61efdaab1516a15c1b6c6c37825 with address: 172.19.46.202. This could be a result of using a large number of actors, or due to tasks blocked in ray.get() calls (see https://github.com/ray-project/ray/issues/3644 for some discussion of workarounds).
+[36m(WebshopWorker pid=1919143)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 106673.72it/s][32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=1919143)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=1919143)[0m   texts = self._parse_html(html).findAll(text=True)[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=1919143)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=1919143)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=1919143)[0m   logger.warn([32m [repeated 65x across cluster][0m
+[36m(WebshopWorker pid=1919303)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=1919303)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=1919246)[0m Products loaded.[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=1919246)[0m Keys cleaned.[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=1919246)[0m Attributes loaded.[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=1919246)[0m Loaded 6910 goals.[32m [repeated 2x across cluster][0m
+[36m(WebshopWorker pid=1919296)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 78021.95it/s][32m [repeated 4x across cluster][0m
+[36m(WebshopWorker pid=1919246)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=1919246)[0m   texts = self._parse_html(html).findAll(text=True)[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=1919246)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=1919246)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=1919246)[0m   logger.warn([32m [repeated 3x across cluster][0m
+[36m(WebshopWorker pid=1921038)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 13x across cluster][0m
+[36m(WebshopWorker pid=1921038)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 13x across cluster][0m
+[36m(WebshopWorker pid=1919860)[0m 100%|██████████| 1000/1000 [00:00<00:00, 109121.52it/s]
+[36m(WebshopWorker pid=1921324)[0m Products loaded.[32m [repeated 19x across cluster][0m
+[36m(WebshopWorker pid=1921324)[0m Keys cleaned.[32m [repeated 19x across cluster][0m
+[36m(WebshopWorker pid=1921324)[0m Attributes loaded.[32m [repeated 19x across cluster][0m
+[36m(WebshopWorker pid=1921324)[0m Loaded 6910 goals.[32m [repeated 19x across cluster][0m
+[36m(pid=1930061)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1
+[36m(pid=1930061)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+[36m(pid=1930061)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+[36m(pid=1930061)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+[36m(WebshopWorker pid=1921324)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 85542.18it/s][32m [repeated 17x across cluster][0m
+[36m(WebshopWorker pid=1921324)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 18x across cluster][0m
+[36m(WebshopWorker pid=1921324)[0m   texts = self._parse_html(html).findAll(text=True)[32m [repeated 18x across cluster][0m
+[36m(WebshopWorker pid=1921324)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 18x across cluster][0m
+[36m(WebshopWorker pid=1921324)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 18x across cluster][0m
+[36m(WebshopWorker pid=1921324)[0m   logger.warn([32m [repeated 18x across cluster][0m
+[36m(WebshopWorker pid=1922569)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 27x across cluster][0m
+[36m(WebshopWorker pid=1922569)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 27x across cluster][0m
+[36m(WebshopWorker pid=1922404)[0m 100%|██████████| 1000/1000 [00:00<00:00, 108461.22it/s]
+[36m(pid=1931753)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1[32m [repeated 80x across cluster][0m
+[36m(pid=1931753)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.[32m [repeated 80x across cluster][0m
+[36m(pid=1931753)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.[32m [repeated 80x across cluster][0m
+[36m(pid=1931753)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.[32m [repeated 80x across cluster][0m
+[36m(WebshopWorker pid=1930060)[0m Picked up JAVA_TOOL_OPTIONS:  -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1
+[36m(WebshopWorker pid=1922571)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 107262.97it/s][32m [repeated 41x across cluster][0m
+[36m(WebshopWorker pid=1922571)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 41x across cluster][0m
+[36m(WebshopWorker pid=1922571)[0m   texts = self._parse_html(html).findAll(text=True)[32m [repeated 41x across cluster][0m
+[36m(WebshopWorker pid=1922571)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 41x across cluster][0m
+[36m(WebshopWorker pid=1922571)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 41x across cluster][0m
+[36m(WebshopWorker pid=1922571)[0m   logger.warn([32m [repeated 41x across cluster][0m
+[36m(WebshopWorker pid=1922275)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 20x across cluster][0m
+[36m(WebshopWorker pid=1922275)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 20x across cluster][0m
+[36m(pid=1933799)[0m Warning: Gym version v0.24.0 has a number of critical issues with `gym.make` such that the `reset` and `step` functions are called before returning the environment. It is recommend to downgrading to v0.23.1 or upgrading to v0.25.1[32m [repeated 47x across cluster][0m
+[36m(pid=1933799)[0m Additionally, Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.[32m [repeated 47x across cluster][0m
+[36m(pid=1933799)[0m Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.[32m [repeated 47x across cluster][0m
+[36m(pid=1933799)[0m See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.[32m [repeated 47x across cluster][0m
+[36m(WebshopWorker pid=1933736)[0m Picked up JAVA_TOOL_OPTIONS:  -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1[32m [repeated 105x across cluster][0m
+[36m(WebshopWorker pid=1930066)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(WebshopWorker pid=1930066)[0m   warnings.warn(
+[36m(WebshopWorker pid=1934080)[0m Picked up JAVA_TOOL_OPTIONS:  -XX:ActiveProcessorCount=4 -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1[32m [repeated 22x across cluster][0m
+[36m(WebshopWorker pid=1930774)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.[32m [repeated 64x across cluster][0m
+[36m(WebshopWorker pid=1930774)[0m   warnings.warn([32m [repeated 64x across cluster][0m
+[36m(WebshopWorker pid=1930072)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning
+[36m(WebshopWorker pid=1930072)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')
+[36m(WebshopWorker pid=1934128)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.[32m [repeated 63x across cluster][0m
+[36m(WebshopWorker pid=1934128)[0m   warnings.warn([32m [repeated 63x across cluster][0m
+[36m(WebshopWorker pid=1930060)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 116372.68it/s]
+[36m(WebshopWorker pid=1930071)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.
+[36m(WebshopWorker pid=1930071)[0m   texts = self._parse_html(html).findAll(text=True)
+[36m(WebshopWorker pid=1930071)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/
+[36m(WebshopWorker pid=1930071)[0m You can set `disable_env_checker=True` to disable this check.[0m
+[36m(WebshopWorker pid=1930071)[0m   logger.warn(
+[36m(WebshopWorker pid=1930060)[0m Products loaded.[32m [repeated 42x across cluster][0m
+[36m(WebshopWorker pid=1930060)[0m Keys cleaned.[32m [repeated 42x across cluster][0m
+[36m(WebshopWorker pid=1930060)[0m Attributes loaded.[32m [repeated 42x across cluster][0m
+[36m(WebshopWorker pid=1930060)[0m Loaded 6910 goals.[32m [repeated 42x across cluster][0m
+[36m(TaskRunner pid=1918358)[0m range(0, 500)
+[36m(WebshopWorker pid=1930096)[0m 100%|██████████| 1000/1000 [00:00<00:00, 115593.33it/s]
+[36m(WebshopWorker pid=1930075)[0m 100%|██████████| 1000/1000 [00:00<00:00, 117820.84it/s]
+[36m(WebshopWorker pid=1930139)[0m 100%|██████████| 1000/1000 [00:00<00:00, 118389.52it/s]
+[36m(WebshopWorker pid=1930121)[0m 100%|██████████| 1000/1000 [00:00<00:00, 114529.63it/s]
+[36m(WebshopWorker pid=1931200)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 69x across cluster][0m
+[36m(WebshopWorker pid=1931200)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 69x across cluster][0m
+[36m(WebshopWorker pid=1931200)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 120467.13it/s][32m [repeated 69x across cluster][0m
+[36m(WebshopWorker pid=1931299)[0m Products loaded.[32m [repeated 70x across cluster][0m
+[36m(WebshopWorker pid=1931299)[0m Keys cleaned.[32m [repeated 70x across cluster][0m
+[36m(WebshopWorker pid=1931299)[0m Attributes loaded.[32m [repeated 70x across cluster][0m
+[36m(WebshopWorker pid=1930774)[0m Loaded 6910 goals.[32m [repeated 68x across cluster][0m
+[36m(WebshopWorker pid=1931200)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 69x across cluster][0m
+[36m(WebshopWorker pid=1931200)[0m   texts = self._parse_html(html).findAll(text=True)[32m [repeated 69x across cluster][0m
+[36m(WebshopWorker pid=1931200)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 69x across cluster][0m
+[36m(WebshopWorker pid=1931200)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 69x across cluster][0m
+[36m(WebshopWorker pid=1931200)[0m   logger.warn([32m [repeated 69x across cluster][0m
+[36m(WebshopWorker pid=1931267)[0m 100%|██████████| 1000/1000 [00:00<00:00, 130359.10it/s]
+[36m(WebshopWorker pid=1933484)[0m 100%|██████████| 1000/1000 [00:00<00:00, 121991.27it/s]
+[36m(WebshopWorker pid=1931723)[0m 100%|██████████| 1000/1000 [00:00<00:00, 90482.23it/s]
+[36m(WebshopWorker pid=1933112)[0m 100%|██████████| 1000/1000 [00:00<00:00, 126521.19it/s]
+[36m(WebshopWorker pid=1933698)[0m 100%|██████████| 1000/1000 [00:00<00:00, 125924.82it/s]
+[36m(WebshopWorker pid=1933535)[0m 100%|██████████| 1000/1000 [00:00<00:00, 130229.58it/s]
+[36m(WebshopWorker pid=1933993)[0m 100%|██████████| 1000/1000 [00:00<00:00, 129210.56it/s]
+[36m(WebshopWorker pid=1933853)[0m 100%|██████████| 1000/1000 [00:00<00:00, 124841.62it/s]
+[36m(WebshopWorker pid=1934151)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 44x across cluster][0m
+[36m(WebshopWorker pid=1934151)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 44x across cluster][0m
+[36m(WebshopWorker pid=1933799)[0m 100%|██████████| 1000/1000 [00:00<00:00, 124224.14it/s]
+[36m(WebshopWorker pid=1933273)[0m 100%|██████████| 1000/1000 [00:00<00:00, 129453.83it/s]
+[36m(WebshopWorker pid=1933836)[0m   0%|          | 0/1000 [00:00<?, ?it/s]100%|██████████| 1000/1000 [00:00<00:00, 129131.00it/s][32m [repeated 37x across cluster][0m
+[36m(WebshopWorker pid=1934151)[0m 100%|██████████| 1000/1000 [00:00<00:00, 115874.35it/s]
+[36m(WebshopWorker pid=1933972)[0m 100%|██████████| 1000/1000 [00:00<00:00, 115066.91it/s]
+[36m(WebshopWorker pid=1934022)[0m 100%|██████████| 1000/1000 [00:00<00:00, 119180.06it/s]
+[36m(WebshopWorker pid=1933742)[0m 100%|██████████| 1000/1000 [00:00<00:00, 109053.43it/s]
+[36m(WebshopWorker pid=1933669)[0m 100%|██████████| 1000/1000 [00:00<00:00, 112081.24it/s]
+[36m(WebshopWorker pid=1934121)[0m 100%|██████████| 1000/1000 [00:00<00:00, 119919.49it/s]
+[36m(WebshopWorker pid=1934121)[0m Products loaded.[32m [repeated 57x across cluster][0m
+[36m(WebshopWorker pid=1934121)[0m Keys cleaned.[32m [repeated 57x across cluster][0m
+[36m(WebshopWorker pid=1934121)[0m Attributes loaded.[32m [repeated 57x across cluster][0m
+[36m(WebshopWorker pid=1934157)[0m Loaded 6910 goals.[32m [repeated 45x across cluster][0m
+[36m(WebshopWorker pid=1934151)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 44x across cluster][0m
+[36m(WebshopWorker pid=1934151)[0m   texts = self._parse_html(html).findAll(text=True)[32m [repeated 44x across cluster][0m
+[36m(WebshopWorker pid=1934151)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 44x across cluster][0m
+[36m(WebshopWorker pid=1934151)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 44x across cluster][0m
+[36m(WebshopWorker pid=1934151)[0m   logger.warn([32m [repeated 44x across cluster][0m
+[36m(TaskRunner pid=1918358)[0m Using dataset class: RLHFDataset
+[36m(WebshopWorker pid=1934121)[0m Loaded 6910 goals.[32m [repeated 14x across cluster][0m
+[36m(TaskRunner pid=1918358)[0m dataset len: 16
+[36m(TaskRunner pid=1918358)[0m Generating train split: 0 examples [00:00, ? examples/s]Generating train split: 16 examples [00:00, 3176.15 examples/s]
+[36m(WebshopWorker pid=1933669)[0m /opt/conda/lib/python3.11/site-packages/thefuzz/fuzz.py:11: UserWarning: Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning[32m [repeated 14x across cluster][0m
+[36m(WebshopWorker pid=1933669)[0m   warnings.warn('Using slow pure-python SequenceMatcher. Install python-Levenshtein to remove this warning')[32m [repeated 14x across cluster][0m
+[36m(WebshopWorker pid=1934121)[0m   0%|          | 0/1000 [00:00<?, ?it/s][32m [repeated 21x across cluster][0m
+[36m(WebshopWorker pid=1933669)[0m /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/agent_system/environments/env_package/webshop/webshop/web_agent_site/envs/web_agent_text_env.py:225: DeprecationWarning: The 'text' argument to find()-type methods is deprecated. Use 'string' instead.[32m [repeated 14x across cluster][0m
+[36m(WebshopWorker pid=1933669)[0m   texts = self._parse_html(html).findAll(text=True)[32m [repeated 14x across cluster][0m
+[36m(WebshopWorker pid=1933669)[0m /opt/conda/lib/python3.11/site-packages/gym/envs/registration.py:619: UserWarning: [33mWARN: Env check failed with the following message: You must specify an observation space (cf gym.spaces) cf https://github.com/openai/gym/blob/master/gym/spaces/[32m [repeated 14x across cluster][0m
+[36m(WebshopWorker pid=1933669)[0m You can set `disable_env_checker=True` to disable this check.[0m[32m [repeated 14x across cluster][0m
+[36m(WebshopWorker pid=1933669)[0m   logger.warn([32m [repeated 14x across cluster][0m
+[36m(TaskRunner pid=1918358)[0m filter dataset len: 16
+[36m(TaskRunner pid=1918358)[0m Using dataset class: RLHFDataset
+[36m(TaskRunner pid=1918358)[0m Filtering prompts longer than 4096 tokens:   0%|          | 0/16 [00:00<?, ? examples/s]Filtering prompts longer than 4096 tokens: 100%|██████████| 16/16 [00:00<00:00, 693.88 examples/s]
+[36m(TaskRunner pid=1918358)[0m dataset len: 256
+[36m(TaskRunner pid=1918358)[0m Generating train split: 0 examples [00:00, ? examples/s]Generating train split: 256 examples [00:00, 69108.70 examples/s]
+[36m(TaskRunner pid=1918358)[0m filter dataset len: 256
+[36m(TaskRunner pid=1918358)[0m WARNING: val_batch_size is deprecated. Validation datasets are sent to inference engines as a whole batch, which will schedule the memory themselves.
+[36m(TaskRunner pid=1918358)[0m [validate_config] All configuration checks passed successfully!
+[36m(TaskRunner pid=1918358)[0m Filtering prompts longer than 4096 tokens:   0%|          | 0/256 [00:00<?, ? examples/s]Filtering prompts longer than 4096 tokens: 100%|██████████| 256/256 [00:00<00:00, 6436.61 examples/s]
+[33m(raylet)[0m WARNING: 580 PYTHON worker processes have been started on node: eef76043760ef83c85f84ab05696f61efdaab1516a15c1b6c6c37825 with address: 172.19.46.202. This could be a result of using a large number of actors, or due to tasks blocked in ray.get() calls (see https://github.com/ray-project/ray/issues/3644 for some discussion of workarounds).
+[36m(TaskRunner pid=1918358)[0m Size of train dataloader: 1, Size of val dataloader: 2
+[36m(TaskRunner pid=1918358)[0m Total training steps: 250
+[36m(TaskRunner pid=1918358)[0m colocated worker base class <class 'verl.single_controller.base.worker.Worker'>
+[36m(TaskRunner pid=1918358)[0m DeprecationWarning: `ray.state.available_resources_per_node` is a private attribute and access will be removed in a future Ray version.
+[36m(TaskRunner pid=1918358)[0m WARNING:2026-06-09 04:42:46,004:Waiting for register center actor vao1rz_register_center to be ready. Elapsed time: 0 seconds out of 300 seconds.
+[36m(pid=1943471)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(pid=1943471)[0m   warnings.warn(
+[36m(WorkerDict pid=1943471)[0m [W609 04:42:54.407232970 socket.cpp:209] [c10d] The hostname of the client socket cannot be retrieved. err=-3
+[36m(pid=1943769)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(pid=1943769)[0m   warnings.warn(
+[36m(pid=1943770)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(pid=1943770)[0m   warnings.warn(
+[36m(WorkerDict pid=1943471)[0m [Gloo] Rank 0 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3
+[36m(WorkerDict pid=1943768)[0m [W609 04:43:00.902844183 socket.cpp:209] [c10d] The hostname of the client socket cannot be retrieved. err=-3
+[36m(WorkerDict pid=1943769)[0m [W609 04:43:00.904034240 socket.cpp:209] [c10d] The hostname of the client socket cannot be retrieved. err=-3
+[36m(WorkerDict pid=1943471)[0m Model config after override: Qwen2Config {
+[36m(WorkerDict pid=1943471)[0m   "architectures": [
+[36m(WorkerDict pid=1943471)[0m     "Qwen2ForCausalLM"
+[36m(WorkerDict pid=1943471)[0m   ],
+[36m(WorkerDict pid=1943471)[0m   "attention_dropout": 0.0,
+[36m(WorkerDict pid=1943471)[0m   "dtype": "bfloat16",
+[36m(WorkerDict pid=1943471)[0m   "eos_token_id": 151645,
+[36m(WorkerDict pid=1943471)[0m   "hidden_act": "silu",
+[36m(WorkerDict pid=1943471)[0m   "hidden_size": 1536,
+[36m(WorkerDict pid=1943471)[0m   "initializer_range": 0.02,
+[36m(WorkerDict pid=1943471)[0m   "intermediate_size": 8960,
+[36m(WorkerDict pid=1943471)[0m   "layer_types": [
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention"
+[36m(WorkerDict pid=1943471)[0m   ],
+[36m(WorkerDict pid=1943471)[0m   "max_position_embeddings": 32768,
+[36m(WorkerDict pid=1943471)[0m   "max_window_layers": 21,
+[36m(WorkerDict pid=1943471)[0m   "model_type": "qwen2",
+[36m(WorkerDict pid=1943471)[0m   "num_attention_heads": 12,
+[36m(WorkerDict pid=1943471)[0m   "num_hidden_layers": 28,
+[36m(WorkerDict pid=1943471)[0m   "num_key_value_heads": 2,
+[36m(WorkerDict pid=1943471)[0m   "pad_token_id": 151643,
+[36m(WorkerDict pid=1943471)[0m   "rms_norm_eps": 1e-06,
+[36m(WorkerDict pid=1943471)[0m   "rope_scaling": null,
+[36m(WorkerDict pid=1943471)[0m   "rope_theta": 1000000.0,
+[36m(WorkerDict pid=1943471)[0m   "sliding_window": null,
+[36m(WorkerDict pid=1943471)[0m   "tie_word_embeddings": true,
+[36m(WorkerDict pid=1943471)[0m   "transformers_version": "4.57.1",
+[36m(WorkerDict pid=1943471)[0m   "use_cache": true,
+[36m(WorkerDict pid=1943471)[0m   "use_sliding_window": false,
+[36m(WorkerDict pid=1943471)[0m   "vocab_size": 151936
+[36m(WorkerDict pid=1943471)[0m }
+[36m(WorkerDict pid=1943471)[0m 
+[36m(WorkerDict pid=1943768)[0m `torch_dtype` is deprecated! Use `dtype` instead!
+[36m(pid=1943768)[0m /opt/conda/lib/python3.11/site-packages/transformers/utils/hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+[36m(pid=1943768)[0m   warnings.warn(
+[36m(WorkerDict pid=1943471)[0m Monkey patch state_dict in AutoModelForCausalLMWithValueHead. 
+[36m(WorkerDict pid=1943471)[0m Monkey patch _flash_attention_forward in transformers.integrations.flash_attention
+[36m(WorkerDict pid=1943471)[0m Skipping monkey patch for Qwen2ForCausalLM as use_fused_kernels is False or fused_kernels_backend is None
+[36m(WorkerDict pid=1943471)[0m Qwen2ForCausalLM contains 1.54B parameters
+[36m(WorkerDict pid=1943471)[0m wrap_policy: functools.partial(<function _or_policy at 0x7f05f716fce0>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7f05f716fba0>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])
+[36m(WorkerDict pid=1943471)[0m NCCL version 2.27.5+cuda12.9
+[36m(WorkerDict pid=1943471)[0m Actor use_remove_padding=True
+[36m(WorkerDict pid=1943471)[0m Actor use_fused_kernels=False
+[36m(WorkerDict pid=1943769)[0m Flash Attention 2 only supports torch.float16 and torch.bfloat16 dtypes, but the current dype in Qwen2ForCausalLM is torch.float32. You should run training or inference using Automatic Mixed-Precision via the `with torch.autocast(device_type='torch_device'):` decorator, or load the model with the `dtype` argument. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="flash_attention_2", dtype=torch.float16)`
+[36m(WorkerDict pid=1943769)[0m Flash Attention 2 only supports torch.float16 and torch.bfloat16 dtypes, but the current dype in Qwen2Model is torch.float32. You should run training or inference using Automatic Mixed-Precision via the `with torch.autocast(device_type='torch_device'):` decorator, or load the model with the `dtype` argument. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="flash_attention_2", dtype=torch.float16)`
+[36m(WorkerDict pid=1943770)[0m [W609 04:43:00.904281353 socket.cpp:209] [c10d] The hostname of the client socket cannot be retrieved. err=-3
+[36m(WorkerDict pid=1943471)[0m `torch_dtype` is deprecated! Use `dtype` instead![32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943471)[0m Model config after override: Qwen2Config {
+[36m(WorkerDict pid=1943471)[0m   "architectures": [
+[36m(WorkerDict pid=1943471)[0m     "Qwen2ForCausalLM"
+[36m(WorkerDict pid=1943471)[0m   ],
+[36m(WorkerDict pid=1943471)[0m   "attention_dropout": 0.0,
+[36m(WorkerDict pid=1943471)[0m   "dtype": "bfloat16",
+[36m(WorkerDict pid=1943471)[0m   "eos_token_id": 151645,
+[36m(WorkerDict pid=1943471)[0m   "hidden_act": "silu",
+[36m(WorkerDict pid=1943471)[0m   "hidden_size": 1536,
+[36m(WorkerDict pid=1943471)[0m   "initializer_range": 0.02,
+[36m(WorkerDict pid=1943471)[0m   "intermediate_size": 8960,
+[36m(WorkerDict pid=1943471)[0m   "layer_types": [
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention",
+[36m(WorkerDict pid=1943471)[0m     "full_attention"
+[36m(WorkerDict pid=1943471)[0m   ],
+[36m(WorkerDict pid=1943471)[0m   "max_position_embeddings": 32768,
+[36m(WorkerDict pid=1943471)[0m   "max_window_layers": 21,
+[36m(WorkerDict pid=1943471)[0m   "model_type": "qwen2",
+[36m(WorkerDict pid=1943471)[0m   "num_attention_heads": 12,
+[36m(WorkerDict pid=1943471)[0m   "num_hidden_layers": 28,
+[36m(WorkerDict pid=1943471)[0m   "num_key_value_heads": 2,
+[36m(WorkerDict pid=1943471)[0m   "pad_token_id": 151643,
+[36m(WorkerDict pid=1943471)[0m   "rms_norm_eps": 1e-06,
+[36m(WorkerDict pid=1943471)[0m   "rope_scaling": null,
+[36m(WorkerDict pid=1943471)[0m   "rope_theta": 1000000.0,
+[36m(WorkerDict pid=1943471)[0m   "sliding_window": null,
+[36m(WorkerDict pid=1943471)[0m   "tie_word_embeddings": true,
+[36m(WorkerDict pid=1943471)[0m   "transformers_version": "4.57.1",
+[36m(WorkerDict pid=1943471)[0m   "use_cache": true,
+[36m(WorkerDict pid=1943471)[0m   "use_sliding_window": false,
+[36m(WorkerDict pid=1943471)[0m   "vocab_size": 151936
+[36m(WorkerDict pid=1943471)[0m }
+[36m(WorkerDict pid=1943471)[0m 
+[36m(WorkerDict pid=1943770)[0m [Gloo] Rank 3 is connected to 3 peer ranks. Expected number of connected peer ranks is : 3[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m Monkey patch state_dict in AutoModelForCausalLMWithValueHead. [32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m Monkey patch _flash_attention_forward in transformers.integrations.flash_attention[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m Skipping monkey patch for Qwen2ForCausalLM as use_fused_kernels is False or fused_kernels_backend is None[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m wrap_policy: functools.partial(<function _or_policy at 0x7ee3db56bce0>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7ee3db56bba0>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m Actor use_remove_padding=True[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m Actor use_fused_kernels=False[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943471)[0m Qwen2ForCausalLM contains 1.55B parameters
+[36m(WorkerDict pid=1943471)[0m Total steps: 250, num_warmup_steps: 0
+[36m(WorkerDict pid=1943770)[0m /opt/conda/lib/python3.11/site-packages/tvm_ffi/_optional_torch_c_dlpack.py:174: UserWarning: Failed to JIT torch c dlpack extension, EnvTensorAllocator will not be enabled.
+[36m(WorkerDict pid=1943770)[0m We recommend installing via `pip install torch-c-dlpack-ext`
+[36m(WorkerDict pid=1943770)[0m   warnings.warn(
+[36m(WorkerDict pid=1943471)[0m Flash Attention 2 only supports torch.float16 and torch.bfloat16 dtypes, but the current dype in Qwen2Model is torch.float32. You should run training or inference using Automatic Mixed-Precision via the `with torch.autocast(device_type='torch_device'):` decorator, or load the model with the `dtype` argument. Example: `model = AutoModel.from_pretrained("openai/whisper-tiny", attn_implementation="flash_attention_2", dtype=torch.float16)`[32m [repeated 6x across cluster][0m
+[36m(WorkerDict pid=1943768)[0m [Gloo] Rank 0 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[36m(WorkerDict pid=1943768)[0m Monkey patch state_dict in AutoModelForCausalLMWithValueHead. [32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=1943768)[0m Monkey patch _flash_attention_forward in transformers.integrations.flash_attention[32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=1943768)[0m Skipping monkey patch for Qwen2ForCausalLM as use_fused_kernels is False or fused_kernels_backend is None[32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m wrap_policy: functools.partial(<function _or_policy at 0x7ee3db56bce0>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7ee3db56bba0>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])[32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m Actor use_remove_padding=True[32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m Actor use_fused_kernels=False[32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m [Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1
+[36m(WorkerDict pid=1943471)[0m WARNING 06-09 04:43:19 [arg_utils.py:1909] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+[36m(WorkerDict pid=1943471)[0m WARNING 06-09 04:43:19 [vllm.py:662] Enforce eager set, overriding optimization level to -O0
+[36m(WorkerDict pid=1943770)[0m Total steps: 250, num_warmup_steps: 0[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943769)[0m NCCL version 2.27.5+cuda12.9
+[36m(WorkerDict pid=1943471)[0m 2026-06-09 04:43:25,448 - INFO - autotuner.py:256 - flashinfer.jit: [Autotuner]: Autotuning process starts ...
+[36m(WorkerDict pid=1943471)[0m /opt/conda/lib/python3.11/site-packages/tvm_ffi/_optional_torch_c_dlpack.py:174: UserWarning: Failed to JIT torch c dlpack extension, EnvTensorAllocator will not be enabled.[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943471)[0m We recommend installing via `pip install torch-c-dlpack-ext`[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943471)[0m   warnings.warn([32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943471)[0m 2026-06-09 04:43:25,470 - INFO - autotuner.py:262 - flashinfer.jit: [Autotuner]: Autotuning process ends
+[36m(WorkerDict pid=1943471)[0m kwargs: {'n': 1, 'logprobs': 0, 'max_tokens': 512, 'detokenize': False, 'temperature': 1.0, 'top_k': -1, 'top_p': 1, 'ignore_eos': False}
+[36m(WorkerDict pid=1943471)[0m Actor use_remove_padding=True
+[36m(WorkerDict pid=1943471)[0m Actor use_fused_kernels=False
+[36m(WorkerDict pid=1943770)[0m [Gloo] Rank 1 is connected to 1 peer ranks. Expected number of connected peer ranks is : 1[32m [repeated 6x across cluster][0m
+[36m(WorkerDict pid=1943768)[0m WARNING 06-09 04:43:19 [arg_utils.py:1909] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943768)[0m WARNING 06-09 04:43:19 [vllm.py:662] Enforce eager set, overriding optimization level to -O0[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943471)[0m /opt/conda/lib/python3.11/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:675: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+[36m(WorkerDict pid=1943768)[0m Actor use_remove_padding=True
+[36m(WorkerDict pid=1943768)[0m Actor use_fused_kernels=False
+[36m(TaskRunner pid=1918358)[0m Using LocalLogger is deprecated. The constructor API will change 
+[36m(TaskRunner pid=1918358)[0m Checkpoint tracker file does not exist: %s /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/checkpoints/verl_agent_webshop/gigpo_v1_value_aux_detach_true_qwen2.5_1.5b_4gpu_paper_align_full_e250_seed2026/latest_checkpointed_iteration.txt
+[36m(TaskRunner pid=1918358)[0m Training from scratch
+[36m(TaskRunner pid=1918358)[0m test_gen_batch meta info: {'eos_token_id': 151645, 'pad_token_id': 151643, 'recompute_log_prob': False, 'do_sample': True, 'validate': True}
+[36m(TaskRunner pid=1918358)[0m validation generation end
+[36m(WorkerDict pid=1943770)[0m kwargs: {'n': 1, 'logprobs': 0, 'max_tokens': 512, 'detokenize': False, 'temperature': 1.0, 'top_k': -1, 'top_p': 1, 'ignore_eos': False}[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m Actor use_remove_padding=True[32m [repeated 2x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m Actor use_fused_kernels=False[32m [repeated 2x across cluster][0m
+[36m(TaskRunner pid=1918358)[0m [text][prompt] <|im_start|>system
+[36m(TaskRunner pid=1918358)[0m You are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>user
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m You are an expert autonomous agent operating in the WebShop e‑commerce environment.
+[36m(TaskRunner pid=1918358)[0m Your task is to: Find me machine wash men's dress shirts with cotton spandex, classic fit, short sleeve with color: pale coral, and size: 6x, and price lower than 60.00 dollars.
+[36m(TaskRunner pid=1918358)[0m Prior to this step, you have already taken 1 step(s). Below are the most recent 1 observations and the corresponding actions you took: [Observation 1: ''Search'', Action 1: 'search[machine wash men's dress shirts with cotton spandex, classic fit, short sleeve, pale coral, size 6x, price less than 60.00]']
+[36m(TaskRunner pid=1918358)[0m You are now at step 2 and your current observation is: 'Back to Search' [SEP] 'Page 1 (Total results: 50)' [SEP] 'Next >' [SEP] 'B07HRFSNL4' [SEP] 'Nautica Men's Solid Crew Neck Short-Sleeve Pocket T-Shirt' [SEP] '$16.05 to $40.98' [SEP] 'B09QQP3356' [SEP] 'HAUKLIE Men's Sports Waffle Ribbed Polo Shirts Summer Short Sleeve Cotton Muscle Quarter-Zip Henley T-Shirt Tunics Tops' [SEP] '$10.99' [SEP] 'B099231V35' [SEP] 'Mens Casual Cargo Pants Hi Vis Viz Reflective Overalls High Visibility Safe Work Pants Outdoor Hiking Trousers Big and Tall' [SEP] '$16.79' [SEP] 'B07N7TDKXQ' [SEP] 'SOCKS'NBULK Mens Cotton Crew Neck Short Sleeve T-Shirts Mix Colors Bulk' [SEP] '$38.79 to $172.8' [SEP] 'B09S3BN15C' [SEP] 'Mens Linen Shirt,Men's Striped Shirts Casual Short Sleeve Button Down Shirts Regular Fit Hawaiian Shirts Beach Tees Tops' [SEP] '$3.78 to $11.38' [SEP] 'B09Q8RD8YN' [SEP] 'Bungo Stray Anime Dogs Anime Character, Long Sleeve, Sweatshirt, Hoodie, T shirt' [SEP] '$19.99' [SEP] 'B09QGK5XHZ' [SEP] 'WENKOMG1 Men's Long Sleeve Undershirt with Mask Turtleneck Hooded T-Shirt Solid Color Workout Tops Zipper Side Slit Shirts Slim Fit Sweatshirt Spring/Summer Tee Shirts(Gray,)' [SEP] '$8.39' [SEP] 'B09ND9DP7J' [SEP] 'InterestPrint Gold Horse Pattern Men's 2-Piece Sleepwear Set, Long Sleeve Shirt with Pants Loungewear' [SEP] '$43.59' [SEP] 'B09PBPZ24Z' [SEP] 'myhehthw Women's High Waisted Jeans for Women Distressed Ripped Jeans Slim Fit Butt Lifting Skinny Stretch Jeans Trousers' [SEP] '$22.99 to $25.99' [SEP] 'B09M63B87V' [SEP] 'YALFJV Women Long Sleeve Crew Neck Side Button T Shirts Tunic Dress Loose Asymmetric Hem Tunic Pullover to Wear with Leggings' [SEP] '$10.71 to $18.34'.
+[36m(TaskRunner pid=1918358)[0m Your admissible actions of the current situation are: 
+[36m(TaskRunner pid=1918358)[0m [
+[36m(TaskRunner pid=1918358)[0m 'click[back to search]',
+[36m(TaskRunner pid=1918358)[0m 'click[next >]',
+[36m(TaskRunner pid=1918358)[0m 'click[b07hrfsnl4]',
+[36m(TaskRunner pid=1918358)[0m 'click[b09qqp3356]',
+[36m(TaskRunner pid=1918358)[0m 'click[b099231v35]',
+[36m(TaskRunner pid=1918358)[0m 'click[b07n7tdkxq]',
+[36m(TaskRunner pid=1918358)[0m 'click[b09s3bn15c]',
+[36m(TaskRunner pid=1918358)[0m 'click[b09q8rd8yn]',
+[36m(TaskRunner pid=1918358)[0m 'click[b09qgk5xhz]',
+[36m(TaskRunner pid=1918358)[0m 'click[b09nd9dp7j]',
+[36m(TaskRunner pid=1918358)[0m 'click[b09pbpz24z]',
+[36m(TaskRunner pid=1918358)[0m 'click[b09m63b87v]',
+[36m(TaskRunner pid=1918358)[0m ].
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m Now it's your turn to take one action for the current step.
+[36m(TaskRunner pid=1918358)[0m You should first reason step-by-step about the current situation, then think carefully which admissible action best advances the shopping goal. This reasoning process MUST be enclosed within <think> </think> tags. 
+[36m(TaskRunner pid=1918358)[0m Once you've finished your reasoning, you should choose an admissible action for current step and present it within <action> </action> tags.
+[36m(TaskRunner pid=1918358)[0m <|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>assistant
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m [text][response] <think>
+[36m(TaskRunner pid=1918358)[0m 为了找到符合要求的机器洗男士棉spandex衬衫，我们需要在搜索结果中筛选出符合以下条件的衬衫：颜色为浅珊瑚色，尺寸为6x，价格低于60美元。搜索结果中已经包含了部分符合条件的商品，但需要进一步筛选。我们可以通过点击“Next >”按钮来查看更多商品，同时注意商品的价格和颜色是否符合要求。
+[36m(TaskRunner pid=1918358)[0m </think>
+[36m(TaskRunner pid=1918358)[0m <action>click[next >]</action><|im_end|>
+[36m(TaskRunner pid=1918358)[0m [text][score] 0.0
+[36m(TaskRunner pid=1918358)[0m test_gen_batch meta info: {'eos_token_id': 151645, 'pad_token_id': 151643, 'recompute_log_prob': False, 'do_sample': True, 'validate': True}
+[36m(TaskRunner pid=1918358)[0m validation generation end
+[36m(TaskRunner pid=1918358)[0m [text][prompt] <|im_start|>system
+[36m(TaskRunner pid=1918358)[0m You are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>user
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m You are an expert autonomous agent operating in the WebShop e‑commerce environment.
+[36m(TaskRunner pid=1918358)[0m Your task is to: Find me slim fit, loose fit men's henleys with short sleeve, long sleeve, regular fit with color: white, and size: 3x-large, and price lower than 40.00 dollars.
+[36m(TaskRunner pid=1918358)[0m Prior to this step, you have already taken 3 step(s). Below are the most recent 2 observations and the corresponding actions you took: [Observation 2: ''Back to Search' [SEP] 'Page 1 (Total results: 50)' [SEP] 'Next >' [SEP] 'B09QQP3356' [SEP] 'HAUKLIE Men's Sports Waffle Ribbed Polo Shirts Summer Short Sleeve Cotton Muscle Quarter-Zip Henley T-Shirt Tunics Tops' [SEP] '$10.99' [SEP] 'B085WQKRRJ' [SEP] 'CLANMILUMS Men's Classic Comfort Soft Regular Fit Short Sleeve Henley T-Shirt Tee' [SEP] '$17.99 to $19.99' [SEP] 'B09S3BN15C' [SEP] 'Mens Linen Shirt,Men's Striped Shirts Casual Short Sleeve Button Down Shirts Regular Fit Hawaiian Shirts Beach Tees Tops' [SEP] '$3.78 to $11.38' [SEP] 'B09NNMV9LN' [SEP] 'JSPOYOU Mens Short Sleeve Crewneck 3D Graphic Tunic Shirts Big & Tall Tie Dye Summer Top Basic Designed Classic Cotton Shirt' [SEP] '$3.99 to $10.99' [SEP] 'B09Q67H373' [SEP] 'JSPOYOU 2022 Newly T-Shirt for Mens Funny 3D Graphics Pattern Crewneck Short Sleeve Tees Big and Tall Summer Casual Comfy Top' [SEP] '$1.99 to $8.99' [SEP] 'B09QGK5XHZ' [SEP] 'WENKOMG1 Men's Long Sleeve Undershirt with Mask Turtleneck Hooded T-Shirt Solid Color Workout Tops Zipper Side Slit Shirts Slim Fit Sweatshirt Spring/Summer Tee Shirts(Gray,)' [SEP] '$8.39' [SEP] 'B09Q5ZHRVM' [SEP] 'Yinimo Mens Gym Shorts Fashionable Loose Beach Drawstring Turkey Print Beach Cool Shorts' [SEP] '$19.19' [SEP] 'B09R9YCM6R' [SEP] 'XXBR Summer T-shirts for Mens, Soldier Short Sleeve 3D Street Vintage Printed Shirt Slim Fit Muscle Casual Tee Tops' [SEP] '$8.98 to $11.99' [SEP] 'B09HGFV91W' [SEP] 'ZHDD Tops for Mens, Men's Knight Punk Vintage Style Long Sleeve Asymmetric Hem Cowl Neck Teen Boys Gothic Pullover' [SEP] '$4.98 to $7.99' [SEP] 'B09ND8P2QR' [SEP] 'InterestPrint Deer and Stars Men's Loungewear Pajama Sets - Long Sleeve Tee and Jogger Pant' [SEP] '$43.59'', Action 2: 'click[b09qqp3356]']
+[36m(TaskRunner pid=1918358)[0m [Observation 3: ''Back to Search' [SEP] '< Prev' [SEP] 'color' [SEP] 'black' [SEP] 'gray' [SEP] 'light blue' [SEP] 'size' [SEP] 'small' [SEP] 'medium' [SEP] 'large' [SEP] 'x-large' [SEP] 'xx-large' [SEP] '3x-large' [SEP] 'HAUKLIE Men's Sports Waffle Ribbed Polo Shirts Summer Short Sleeve Cotton Muscle Quarter-Zip Henley T-Shirt Tunics Tops' [SEP] 'Price: $10.99' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'', Action 3: 'click[3x-large]']
+[36m(TaskRunner pid=1918358)[0m You are now at step 4 and your current observation is: 'Back to Search' [SEP] '< Prev' [SEP] 'color' [SEP] 'black' [SEP] 'gray' [SEP] 'light blue' [SEP] 'size' [SEP] 'small' [SEP] 'medium' [SEP] 'large' [SEP] 'x-large' [SEP] 'xx-large' [SEP] '3x-large' [SEP] 'HAUKLIE Men's Sports Waffle Ribbed Polo Shirts Summer Short Sleeve Cotton Muscle Quarter-Zip Henley T-Shirt Tunics Tops' [SEP] 'Price: $10.99' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'.
+[36m(TaskRunner pid=1918358)[0m Your admissible actions of the current situation are: 
+[36m(TaskRunner pid=1918358)[0m [
+[36m(TaskRunner pid=1918358)[0m 'click[back to search]',
+[36m(TaskRunner pid=1918358)[0m 'click[< prev]',
+[36m(TaskRunner pid=1918358)[0m 'click[description]',
+[36m(TaskRunner pid=1918358)[0m 'click[features]',
+[36m(TaskRunner pid=1918358)[0m 'click[reviews]',
+[36m(TaskRunner pid=1918358)[0m 'click[buy now]',
+[36m(TaskRunner pid=1918358)[0m 'click[black]',
+[36m(TaskRunner pid=1918358)[0m 'click[gray]',
+[36m(TaskRunner pid=1918358)[0m 'click[light blue]',
+[36m(TaskRunner pid=1918358)[0m 'click[small]',
+[36m(TaskRunner pid=1918358)[0m 'click[medium]',
+[36m(TaskRunner pid=1918358)[0m 'click[large]',
+[36m(TaskRunner pid=1918358)[0m 'click[x-large]',
+[36m(TaskRunner pid=1918358)[0m 'click[xx-large]',
+[36m(TaskRunner pid=1918358)[0m 'click[3x-large]',
+[36m(TaskRunner pid=1918358)[0m ].
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m Now it's your turn to take one action for the current step.
+[36m(TaskRunner pid=1918358)[0m You should first reason step-by-step about the current situation, then think carefully which admissible action best advances the shopping goal. This reasoning process MUST be enclosed within <think> </think> tags. 
+[36m(TaskRunner pid=1918358)[0m Once you've finished your reasoning, you should choose an admissible action for current step and present it within <action> </action> tags.
+[36m(TaskRunner pid=1918358)[0m <|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>assistant
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m [text][response] <think>
+[36m(TaskRunner pid=1918358)[0m 为了找到符合要求的Slim Fit, Loose Fit Men's Henleys with Short Sleeve, Long Sleeve, Regular Fit, Color: White, Size: 3x-large, and Price lower than 40.00 dollars, 我需要在搜索结果中筛选出这些条件的物品。目前，我已经找到了一些符合这些条件的物品，包括HAUKLIE Men's Sports Waffle Ribbed Polo Shirts Summer Short Sleeve Cotton Muscle Quarter-Zip Henley T-Shirt Tunics Tops。接下来，我需要点击"Buy Now"按钮来购买这些物品。
+[36m(TaskRunner pid=1918358)[0m </think>
+[36m(TaskRunner pid=1918358)[0m <action>click[buy now]</action><|im_end|>
+[36m(TaskRunner pid=1918358)[0m [text][score] 0.0
+[36m(TaskRunner pid=1918358)[0m ("Initial validation metrics: {'val/text/test_score': 0.23705552089831566, "
+[36m(TaskRunner pid=1918358)[0m  "'val/text/tool_call_count/mean': 0.0, 'val/success_rate': 0.03515625, "
+[36m(TaskRunner pid=1918358)[0m  "'val/webshop_task_score (not success_rate)': 0.22154306739267676}")
+[36m(TaskRunner pid=1918358)[0m step:0 - val/text/test_score:0.237 - val/text/tool_call_count/mean:0.000 - val/success_rate:0.035 - val/webshop_task_score (not success_rate):0.222
+[36m(TaskRunner pid=1918358)[0m Training Progress:   0%|          | 0/250 [00:00<?, ?it/s]
+[36m(WorkerDict pid=1943770)[0m 2026-06-09 04:43:25,447 - INFO - autotuner.py:256 - flashinfer.jit: [Autotuner]: Autotuning process starts ...[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m   warnings.warn([32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m 2026-06-09 04:43:25,468 - INFO - autotuner.py:262 - flashinfer.jit: [Autotuner]: Autotuning process ends[32m [repeated 3x across cluster][0m
+[36m(WorkerDict pid=1943770)[0m /opt/conda/lib/python3.11/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:675: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .[32m [repeated 3x across cluster][0m
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 4.078431372549019
+[36m(TaskRunner pid=1918358)[0m step:1 - global_seqlen/min:473646.000 - global_seqlen/max:624476.000 - global_seqlen/minmax_diff:150830.000 - global_seqlen/balanced_min:531293.000 - global_seqlen/balanced_max:531294.000 - global_seqlen/mean:531293.500 - actor/entropy_loss:1.113 - training/rollout_probs_diff_max:0.236 - training/rollout_probs_diff_mean:0.006 - training/rollout_probs_diff_std:0.010 - episode/valid_action_ratio:0.257 - actor/kl_loss:0.004 - actor/kl_coef:0.010 - actor/value_loss:2.187 - actor/value_clipfrac:0.236 - actor/value_rmse:1.229 - actor/value_mae:0.894 - actor/value_explained_variance:-0.441 - actor/value_pred_mean:-0.865 - actor/value_pred_std:0.106 - actor/value_return_mean:-0.038 - actor/value_return_std:0.807 - actor/value_loss_coef:0.030 - actor/pg_loss:-0.052 - actor/pg_clipfrac:0.008 - actor/ppo_kl:0.001 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:8.265 - perf/mfu/actor:0.206 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:88.457 - perf/cpu_memory_used_gb:315.898 - actor/lr:0.000 - training/global_step:1.000 - training/epoch:0.000 - critic/score/mean:0.442 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.442 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:-0.028 - critic/advantages/max:18.003 - critic/advantages/min:-5.355 - critic/returns/mean:-0.028 - critic/returns/max:18.003 - critic/returns/min:-5.355 - response_length/mean:111.909 - response_length/max:512.000 - response_length/min:6.000 - response_length/clip_ratio:0.004 - prompt_length/mean:1165.239 - prompt_length/max:2639.000 - prompt_length/min:205.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:0.703 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:12.656 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.070 - episode/webshop_task_score (not success_rate):0.194 - timing_s/gen:137.847 - timing_s/reward:0.643 - timing_s/old_log_prob:7.834 - timing_s/ref:8.624 - timing_s/adv:0.278 - timing_s/update_actor:30.220 - timing_s/step:185.915 - timing_per_token_ms/ref:0.004 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.740 - timing_per_token_ms/update_actor:0.014 - perf/total_num_tokens:2125174.000 - perf/time_per_step:185.915 - perf/throughput:2857.718
+[36m(TaskRunner pid=1918358)[0m Training Progress:   0%|          | 1/250 [03:06<12:53:19, 186.34s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 4.344647519582246
+[36m(TaskRunner pid=1918358)[0m step:2 - global_seqlen/min:466062.000 - global_seqlen/max:558424.000 - global_seqlen/minmax_diff:92362.000 - global_seqlen/balanced_min:521874.000 - global_seqlen/balanced_max:521875.000 - global_seqlen/mean:521874.500 - actor/entropy_loss:1.169 - training/rollout_probs_diff_max:0.394 - training/rollout_probs_diff_mean:0.006 - training/rollout_probs_diff_std:0.010 - episode/valid_action_ratio:0.264 - actor/kl_loss:0.014 - actor/kl_coef:0.010 - actor/value_loss:0.426 - actor/value_clipfrac:0.000 - actor/value_rmse:0.425 - actor/value_mae:0.327 - actor/value_explained_variance:-0.338 - actor/value_pred_mean:-0.464 - actor/value_pred_std:0.087 - actor/value_return_mean:-0.385 - actor/value_return_std:0.330 - actor/value_loss_coef:0.030 - actor/pg_loss:0.012 - actor/pg_clipfrac:0.008 - actor/ppo_kl:0.002 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:3.096 - perf/mfu/actor:0.223 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:88.457 - perf/cpu_memory_used_gb:318.995 - actor/lr:0.000 - training/global_step:2.000 - training/epoch:1.000 - critic/score/mean:0.065 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.065 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:0.012 - critic/advantages/max:14.935 - critic/advantages/min:-5.635 - critic/returns/mean:0.012 - critic/returns/max:14.935 - critic/returns/min:-5.635 - response_length/mean:111.242 - response_length/max:512.000 - response_length/min:9.000 - response_length/clip_ratio:0.002 - prompt_length/mean:1143.264 - prompt_length/max:2646.000 - prompt_length/min:206.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:0.156 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:12.711 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.016 - episode/webshop_task_score (not success_rate):0.140 - timing_s/gen:133.687 - timing_s/reward:0.621 - timing_s/old_log_prob:6.734 - timing_s/ref:6.228 - timing_s/adv:0.288 - timing_s/update_actor:27.311 - timing_s/step:175.354 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.722 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:2087498.000 - perf/time_per_step:175.354 - perf/throughput:2976.127
+[36m(TaskRunner pid=1918358)[0m Training Progress:   1%|          | 2/250 [06:02<12:25:07, 180.27s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 4.324324324324325
+[36m(TaskRunner pid=1918358)[0m step:3 - global_seqlen/min:442609.000 - global_seqlen/max:490350.000 - global_seqlen/minmax_diff:47741.000 - global_seqlen/balanced_min:464822.000 - global_seqlen/balanced_max:464823.000 - global_seqlen/mean:464822.250 - actor/entropy_loss:1.181 - training/rollout_probs_diff_max:0.239 - training/rollout_probs_diff_mean:0.006 - training/rollout_probs_diff_std:0.009 - episode/valid_action_ratio:0.337 - actor/kl_loss:0.007 - actor/kl_coef:0.010 - actor/value_loss:0.278 - actor/value_clipfrac:0.000 - actor/value_rmse:0.392 - actor/value_mae:0.307 - actor/value_explained_variance:-0.249 - actor/value_pred_mean:-0.431 - actor/value_pred_std:0.086 - actor/value_return_mean:-0.350 - actor/value_return_std:0.311 - actor/value_loss_coef:0.030 - actor/pg_loss:0.025 - actor/pg_clipfrac:0.009 - actor/ppo_kl:0.002 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:3.221 - perf/mfu/actor:0.220 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:88.457 - perf/cpu_memory_used_gb:322.419 - actor/lr:0.000 - training/global_step:3.000 - training/epoch:2.000 - critic/score/mean:0.084 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.084 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:0.024 - critic/advantages/max:17.571 - critic/advantages/min:-2.920 - critic/returns/mean:0.024 - critic/returns/max:17.571 - critic/returns/min:-2.920 - response_length/mean:118.637 - response_length/max:512.000 - response_length/min:8.000 - response_length/clip_ratio:0.004 - prompt_length/mean:1043.418 - prompt_length/max:2595.000 - prompt_length/min:207.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:0.156 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:12.336 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.016 - episode/webshop_task_score (not success_rate):0.138 - timing_s/gen:138.381 - timing_s/reward:0.573 - timing_s/old_log_prob:5.934 - timing_s/ref:5.580 - timing_s/adv:0.254 - timing_s/update_actor:24.471 - timing_s/step:175.672 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.729 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:1859289.000 - perf/time_per_step:175.672 - perf/throughput:2645.964
+[36m(TaskRunner pid=1918358)[0m Training Progress:   1%|          | 3/250 [08:58<12:14:56, 178.53s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 4.093023255813954
+[36m(TaskRunner pid=1918358)[0m step:4 - global_seqlen/min:382901.000 - global_seqlen/max:424166.000 - global_seqlen/minmax_diff:41265.000 - global_seqlen/balanced_min:409901.000 - global_seqlen/balanced_max:409902.000 - global_seqlen/mean:409901.500 - actor/entropy_loss:1.215 - training/rollout_probs_diff_max:0.245 - training/rollout_probs_diff_mean:0.005 - training/rollout_probs_diff_std:0.009 - episode/valid_action_ratio:0.425 - actor/kl_loss:0.030 - actor/kl_coef:0.010 - actor/value_loss:1.299 - actor/value_clipfrac:0.000 - actor/value_rmse:0.664 - actor/value_mae:0.516 - actor/value_explained_variance:-0.148 - actor/value_pred_mean:-0.328 - actor/value_pred_std:0.093 - actor/value_return_mean:-0.023 - actor/value_return_std:0.425 - actor/value_loss_coef:0.030 - actor/pg_loss:-0.006 - actor/pg_clipfrac:0.008 - actor/ppo_kl:0.001 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:4.814 - perf/mfu/actor:0.225 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:88.457 - perf/cpu_memory_used_gb:322.617 - actor/lr:0.000 - training/global_step:4.000 - training/epoch:3.000 - critic/score/mean:0.319 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.319 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:0.042 - critic/advantages/max:17.585 - critic/advantages/min:-6.876 - critic/returns/mean:0.042 - critic/returns/max:17.585 - critic/returns/min:-6.876 - response_length/mean:127.808 - response_length/max:512.000 - response_length/min:9.000 - response_length/clip_ratio:0.004 - prompt_length/mean:1036.685 - prompt_length/max:2659.000 - prompt_length/min:196.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:0.469 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:10.953 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.047 - episode/webshop_task_score (not success_rate):0.176 - timing_s/gen:148.746 - timing_s/reward:0.555 - timing_s/old_log_prob:5.154 - timing_s/ref:4.715 - timing_s/adv:0.223 - timing_s/update_actor:21.123 - timing_s/step:180.862 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.827 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:1639606.000 - perf/time_per_step:180.862 - perf/throughput:2266.380
+[36m(TaskRunner pid=1918358)[0m Training Progress:   2%|▏         | 4/250 [12:00<12:16:58, 179.75s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 4.674157303370786
+[36m(TaskRunner pid=1918358)[0m test_gen_batch meta info: {'eos_token_id': 151645, 'pad_token_id': 151643, 'recompute_log_prob': False, 'do_sample': True, 'validate': True}
+[36m(TaskRunner pid=1918358)[0m validation generation end
+[36m(TaskRunner pid=1918358)[0m [text][prompt] <|im_start|>system
+[36m(TaskRunner pid=1918358)[0m You are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>user
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m You are an expert autonomous agent operating in the WebShop e‑commerce environment.
+[36m(TaskRunner pid=1918358)[0m Your task is to: Find me non slip men's outdoor shoes with rubber sole, comfortable fit, unique design with size: 9, and price lower than 140.00 dollars.
+[36m(TaskRunner pid=1918358)[0m Prior to this step, you have already taken 11 step(s). Below are the most recent 2 observations and the corresponding actions you took: [Observation 10: ''Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] '6' [SEP] '7' [SEP] '7.5' [SEP] '8' [SEP] '8.5' [SEP] '9' [SEP] '9.5' [SEP] '10' [SEP] '10.5' [SEP] '11' [SEP] '11.5' [SEP] '12.5' [SEP] '13.5' [SEP] 'MAPOLO Hand Drawn Christmas Elements Collection Men's Boys Casual Walking Shoes Sneaker Lightweight Stylish Athletic Tennis Sports Running Shoes for Outdoor Hiking Travel Driving' [SEP] 'Price: $100.0' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'', Action 10: 'click[9.5]']
+[36m(TaskRunner pid=1918358)[0m [Observation 11: ''Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] '6' [SEP] '7' [SEP] '7.5' [SEP] '8' [SEP] '8.5' [SEP] '9' [SEP] '9.5' [SEP] '10' [SEP] '10.5' [SEP] '11' [SEP] '11.5' [SEP] '12.5' [SEP] '13.5' [SEP] 'MAPOLO Hand Drawn Christmas Elements Collection Men's Boys Casual Walking Shoes Sneaker Lightweight Stylish Athletic Tennis Sports Running Shoes for Outdoor Hiking Travel Driving' [SEP] 'Price: $100.0' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'', Action 11: 'click[9]']
+[36m(TaskRunner pid=1918358)[0m You are now at step 12 and your current observation is: 'Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] '6' [SEP] '7' [SEP] '7.5' [SEP] '8' [SEP] '8.5' [SEP] '9' [SEP] '9.5' [SEP] '10' [SEP] '10.5' [SEP] '11' [SEP] '11.5' [SEP] '12.5' [SEP] '13.5' [SEP] 'MAPOLO Hand Drawn Christmas Elements Collection Men's Boys Casual Walking Shoes Sneaker Lightweight Stylish Athletic Tennis Sports Running Shoes for Outdoor Hiking Travel Driving' [SEP] 'Price: $100.0' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'.
+[36m(TaskRunner pid=1918358)[0m Your admissible actions of the current situation are: 
+[36m(TaskRunner pid=1918358)[0m [
+[36m(TaskRunner pid=1918358)[0m 'click[back to search]',
+[36m(TaskRunner pid=1918358)[0m 'click[< prev]',
+[36m(TaskRunner pid=1918358)[0m 'click[description]',
+[36m(TaskRunner pid=1918358)[0m 'click[features]',
+[36m(TaskRunner pid=1918358)[0m 'click[reviews]',
+[36m(TaskRunner pid=1918358)[0m 'click[buy now]',
+[36m(TaskRunner pid=1918358)[0m 'click[6]',
+[36m(TaskRunner pid=1918358)[0m 'click[7]',
+[36m(TaskRunner pid=1918358)[0m 'click[7.5]',
+[36m(TaskRunner pid=1918358)[0m 'click[8]',
+[36m(TaskRunner pid=1918358)[0m 'click[8.5]',
+[36m(TaskRunner pid=1918358)[0m 'click[9]',
+[36m(TaskRunner pid=1918358)[0m 'click[9.5]',
+[36m(TaskRunner pid=1918358)[0m 'click[10]',
+[36m(TaskRunner pid=1918358)[0m 'click[10.5]',
+[36m(TaskRunner pid=1918358)[0m 'click[11]',
+[36m(TaskRunner pid=1918358)[0m 'click[11.5]',
+[36m(TaskRunner pid=1918358)[0m 'click[12.5]',
+[36m(TaskRunner pid=1918358)[0m 'click[13.5]',
+[36m(TaskRunner pid=1918358)[0m ].
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m Now it's your turn to take one action for the current step.
+[36m(TaskRunner pid=1918358)[0m You should first reason step-by-step about the current situation, then think carefully which admissible action best advances the shopping goal. This reasoning process MUST be enclosed within <think> </think> tags. 
+[36m(TaskRunner pid=1918358)[0m Once you've finished your reasoning, you should choose an admissible action for current step and present it within <action> </action> tags.
+[36m(TaskRunner pid=1918358)[0m <|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>assistant
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m [text][response] <think> 
+[36m(TaskRunner pid=1918358)[0m The user is looking for non-slip men's outdoor shoes with a rubber sole, comfortable fit, unique design, size 9, and priced under $140.00. The most recent search term is "size 9", and the user has already clicked on "9.5" and "9". The user has not specified a price range yet, and the search results are not sorted by price. Therefore, I need to refine the search to include shoes priced under $140.00. 
+[36m(TaskRunner pid=1918358)[0m </think>
+[36m(TaskRunner pid=1918358)[0m <action>click[price]</action><|im_end|>
+[36m(TaskRunner pid=1918358)[0m [text][score] 0.0
+[36m(TaskRunner pid=1918358)[0m test_gen_batch meta info: {'eos_token_id': 151645, 'pad_token_id': 151643, 'recompute_log_prob': False, 'do_sample': True, 'validate': True}
+[36m(TaskRunner pid=1918358)[0m validation generation end
+[36m(TaskRunner pid=1918358)[0m [text][prompt] <|im_start|>system
+[36m(TaskRunner pid=1918358)[0m You are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>user
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m You are an expert autonomous agent operating in the WebShop e‑commerce environment.
+[36m(TaskRunner pid=1918358)[0m Your task is to: Find me home office furniture sets for dining room, living room with color: brown | beige, and item shape: rectangular, and size: 7 ft 8 in, and price lower than 60.00 dollars.
+[36m(TaskRunner pid=1918358)[0m Prior to this step, you have already taken 10 step(s). Below are the most recent 2 observations and the corresponding actions you took: [Observation 9: ''Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] '1 ft 9 in x 7 ft 2 in' [SEP] '3 ft 7 in x 5 ft 2 in' [SEP] '5 ft 2 in x 7 ft 4 in' [SEP] '5 ft 3 in x 7 ft 5 in' [SEP] '7 ft 8 in' [SEP] '7 ft 8 in x 10 ft 7 in' [SEP] '7 ft 9 in x 10 ft 8 in' [SEP] '9 ft 2 in x 12 ft 5 in' [SEP] '21 in x 35 in' [SEP] 'item shape' [SEP] 'runner' [SEP] 'rectangular' [SEP] 'round' [SEP] 'color' [SEP] 'black-gray' [SEP] 'blue | gray' [SEP] 'brown | black' [SEP] 'blue' [SEP] 'navy | red' [SEP] 'taupe | orange' [SEP] 'black | gray' [SEP] 'brown | beige' [SEP] 'navy-multi' [SEP] 'taupe' [SEP] 'Home Dynamix Lyndhurst Rotana Modern Area Rug, Contemporary Blue/Gray/Ivory 5'2"x7'4"' [SEP] 'Price: $44.99 to $33.98' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'', Action 9: 'click[7 ft 8 in x 10 ft 7 in]']
+[36m(TaskRunner pid=1918358)[0m [Observation 10: ''Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] '1 ft 9 in x 7 ft 2 in' [SEP] '3 ft 7 in x 5 ft 2 in' [SEP] '5 ft 2 in x 7 ft 4 in' [SEP] '5 ft 3 in x 7 ft 5 in' [SEP] '7 ft 8 in' [SEP] '7 ft 8 in x 10 ft 7 in' [SEP] '7 ft 9 in x 10 ft 8 in' [SEP] '9 ft 2 in x 12 ft 5 in' [SEP] '21 in x 35 in' [SEP] 'item shape' [SEP] 'runner' [SEP] 'rectangular' [SEP] 'round' [SEP] 'color' [SEP] 'black-gray' [SEP] 'blue | gray' [SEP] 'brown | black' [SEP] 'blue' [SEP] 'navy | red' [SEP] 'taupe | orange' [SEP] 'black | gray' [SEP] 'brown | beige' [SEP] 'navy-multi' [SEP] 'taupe' [SEP] 'Home Dynamix Lyndhurst Rotana Modern Area Rug, Contemporary Blue/Gray/Ivory 5'2"x7'4"' [SEP] 'Price: $44.99 to $33.98' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'', Action 10: 'click[7 ft 8 in x 10 ft 7 in]']
+[36m(TaskRunner pid=1918358)[0m You are now at step 11 and your current observation is: 'Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] '1 ft 9 in x 7 ft 2 in' [SEP] '3 ft 7 in x 5 ft 2 in' [SEP] '5 ft 2 in x 7 ft 4 in' [SEP] '5 ft 3 in x 7 ft 5 in' [SEP] '7 ft 8 in' [SEP] '7 ft 8 in x 10 ft 7 in' [SEP] '7 ft 9 in x 10 ft 8 in' [SEP] '9 ft 2 in x 12 ft 5 in' [SEP] '21 in x 35 in' [SEP] 'item shape' [SEP] 'runner' [SEP] 'rectangular' [SEP] 'round' [SEP] 'color' [SEP] 'black-gray' [SEP] 'blue | gray' [SEP] 'brown | black' [SEP] 'blue' [SEP] 'navy | red' [SEP] 'taupe | orange' [SEP] 'black | gray' [SEP] 'brown | beige' [SEP] 'navy-multi' [SEP] 'taupe' [SEP] 'Home Dynamix Lyndhurst Rotana Modern Area Rug, Contemporary Blue/Gray/Ivory 5'2"x7'4"' [SEP] 'Price: $44.99 to $33.98' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'.
+[36m(TaskRunner pid=1918358)[0m Your admissible actions of the current situation are: 
+[36m(TaskRunner pid=1918358)[0m [
+[36m(TaskRunner pid=1918358)[0m 'click[back to search]',
+[36m(TaskRunner pid=1918358)[0m 'click[< prev]',
+[36m(TaskRunner pid=1918358)[0m 'click[description]',
+[36m(TaskRunner pid=1918358)[0m 'click[features]',
+[36m(TaskRunner pid=1918358)[0m 'click[reviews]',
+[36m(TaskRunner pid=1918358)[0m 'click[buy now]',
+[36m(TaskRunner pid=1918358)[0m 'click[1 ft 9 in x 7 ft 2 in]',
+[36m(TaskRunner pid=1918358)[0m 'click[3 ft 7 in x 5 ft 2 in]',
+[36m(TaskRunner pid=1918358)[0m 'click[5 ft 2 in x 7 ft 4 in]',
+[36m(TaskRunner pid=1918358)[0m 'click[5 ft 3 in x 7 ft 5 in]',
+[36m(TaskRunner pid=1918358)[0m 'click[7 ft 8 in]',
+[36m(TaskRunner pid=1918358)[0m 'click[7 ft 8 in x 10 ft 7 in]',
+[36m(TaskRunner pid=1918358)[0m 'click[7 ft 9 in x 10 ft 8 in]',
+[36m(TaskRunner pid=1918358)[0m 'click[9 ft 2 in x 12 ft 5 in]',
+[36m(TaskRunner pid=1918358)[0m 'click[21 in x 35 in]',
+[36m(TaskRunner pid=1918358)[0m 'click[runner]',
+[36m(TaskRunner pid=1918358)[0m 'click[rectangular]',
+[36m(TaskRunner pid=1918358)[0m 'click[round]',
+[36m(TaskRunner pid=1918358)[0m 'click[black-gray]',
+[36m(TaskRunner pid=1918358)[0m 'click[blue | gray]',
+[36m(TaskRunner pid=1918358)[0m 'click[brown | black]',
+[36m(TaskRunner pid=1918358)[0m 'click[blue]',
+[36m(TaskRunner pid=1918358)[0m 'click[navy | red]',
+[36m(TaskRunner pid=1918358)[0m 'click[taupe | orange]',
+[36m(TaskRunner pid=1918358)[0m 'click[black | gray]',
+[36m(TaskRunner pid=1918358)[0m 'click[brown | beige]',
+[36m(TaskRunner pid=1918358)[0m 'click[navy-multi]',
+[36m(TaskRunner pid=1918358)[0m 'click[taupe]',
+[36m(TaskRunner pid=1918358)[0m ].
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m Now it's your turn to take one action for the current step.
+[36m(TaskRunner pid=1918358)[0m You should first reason step-by-step about the current situation, then think carefully which admissible action best advances the shopping goal. This reasoning process MUST be enclosed within <think> </think> tags. 
+[36m(TaskRunner pid=1918358)[0m Once you've finished your reasoning, you should choose an admissible action for current step and present it within <action> </action> tags.
+[36m(TaskRunner pid=1918358)[0m <|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>assistant
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m [text][response] <think> 
+[36m(TaskRunner pid=1918358)[0m To find the home office furniture sets for dining room, living room with color: brown | beige, and item shape: rectangular, and size: 7 ft 8 in, and price lower than 60.00 dollars, I need to filter the search results based on these criteria. The most recent observation shows that there are several options available, but none of them match the exact size and color criteria. I will now review the available options and choose the one that best fits the requirements.</think>
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m <action>click[7 ft 8 in x 10 ft 7 in]</action><|im_end|>
+[36m(TaskRunner pid=1918358)[0m [text][score] 0.0
+[36m(TaskRunner pid=1918358)[0m step:5 - global_seqlen/min:542315.000 - global_seqlen/max:588384.000 - global_seqlen/minmax_diff:46069.000 - global_seqlen/balanced_min:561887.000 - global_seqlen/balanced_max:561888.000 - global_seqlen/mean:561887.750 - actor/entropy_loss:1.172 - training/rollout_probs_diff_max:0.312 - training/rollout_probs_diff_mean:0.005 - training/rollout_probs_diff_std:0.009 - episode/valid_action_ratio:0.595 - actor/kl_loss:0.012 - actor/kl_coef:0.010 - actor/value_loss:0.360 - actor/value_clipfrac:0.000 - actor/value_rmse:0.367 - actor/value_mae:0.242 - actor/value_explained_variance:-0.309 - actor/value_pred_mean:-0.218 - actor/value_pred_std:0.091 - actor/value_return_mean:-0.180 - actor/value_return_std:0.302 - actor/value_loss_coef:0.030 - actor/pg_loss:0.071 - actor/pg_clipfrac:0.008 - actor/ppo_kl:0.001 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:3.180 - perf/mfu/actor:0.226 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:88.457 - perf/cpu_memory_used_gb:321.513 - actor/lr:0.000 - val/text/test_score:0.342 - val/text/tool_call_count/mean:0.000 - val/success_rate:0.047 - val/webshop_task_score (not success_rate):0.299 - training/global_step:5.000 - training/epoch:4.000 - critic/score/mean:0.140 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.140 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:-0.026 - critic/advantages/max:18.604 - critic/advantages/min:-5.678 - critic/returns/mean:-0.026 - critic/returns/max:18.604 - critic/returns/min:-5.678 - response_length/mean:142.102 - response_length/max:512.000 - response_length/min:15.000 - response_length/clip_ratio:0.007 - prompt_length/mean:1208.590 - prompt_length/max:2521.000 - prompt_length/min:204.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:0.234 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:12.508 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.023 - episode/webshop_task_score (not success_rate):0.191 - timing_s/gen:146.382 - timing_s/reward:0.662 - timing_s/old_log_prob:7.172 - timing_s/ref:6.784 - timing_s/adv:0.266 - timing_s/update_actor:29.120 - timing_s/testing:312.134 - timing_s/step:503.025 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.619 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:2247551.000 - perf/time_per_step:503.025 - perf/throughput:1117.017
+[36m(TaskRunner pid=1918358)[0m Training Progress:   2%|▏         | 5/250 [20:24<20:11:02, 296.58s/it]
+[36m(TaskRunner pid=1918358)[0m Warning len(obs)=14449 is too long
+[36m(TaskRunner pid=1918358)[0m Warning len(obs)=14451 is too long
+[36m(TaskRunner pid=1918358)[0m Warning len(obs)=14454 is too long
+[36m(TaskRunner pid=1918358)[0m Warning len(obs)=14454 is too long
+[36m(TaskRunner pid=1918358)[0m Warning len(obs)=14479 is too long
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 4.989830508474577
+[36m(TaskRunner pid=1918358)[0m step:6 - global_seqlen/min:439451.000 - global_seqlen/max:494024.000 - global_seqlen/minmax_diff:54573.000 - global_seqlen/balanced_min:467327.000 - global_seqlen/balanced_max:467328.000 - global_seqlen/mean:467327.500 - actor/entropy_loss:1.156 - training/rollout_probs_diff_max:0.347 - training/rollout_probs_diff_mean:0.006 - training/rollout_probs_diff_std:0.009 - episode/valid_action_ratio:0.654 - actor/kl_loss:0.011 - actor/kl_coef:0.010 - actor/value_loss:1.786 - actor/value_clipfrac:0.000 - actor/value_rmse:1.033 - actor/value_mae:0.645 - actor/value_explained_variance:-0.430 - actor/value_pred_mean:-0.068 - actor/value_pred_std:0.100 - actor/value_return_mean:0.279 - actor/value_return_std:0.849 - actor/value_loss_coef:0.030 - actor/pg_loss:0.023 - actor/pg_clipfrac:0.010 - actor/ppo_kl:0.002 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:7.670 - perf/mfu/actor:0.225 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:88.457 - perf/cpu_memory_used_gb:327.775 - actor/lr:0.000 - training/global_step:6.000 - training/epoch:5.000 - critic/score/mean:0.686 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.686 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:-0.030 - critic/advantages/max:18.283 - critic/advantages/min:-9.664 - critic/returns/mean:-0.030 - critic/returns/max:18.283 - critic/returns/min:-9.664 - response_length/mean:130.505 - response_length/max:512.000 - response_length/min:3.000 - response_length/clip_ratio:0.007 - prompt_length/mean:1139.407 - prompt_length/max:2943.000 - prompt_length/min:197.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:0.859 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:11.141 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.086 - episode/webshop_task_score (not success_rate):0.243 - timing_s/gen:143.229 - timing_s/reward:0.567 - timing_s/old_log_prob:5.947 - timing_s/ref:5.511 - timing_s/adv:0.230 - timing_s/update_actor:24.184 - timing_s/step:180.037 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.746 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:1869310.000 - perf/time_per_step:180.037 - perf/throughput:2595.724
+[36m(TaskRunner pid=1918358)[0m Training Progress:   2%|▏         | 6/250 [23:24<17:26:00, 257.21s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 4.758364312267658
+[36m(TaskRunner pid=1918358)[0m step:7 - global_seqlen/min:356303.000 - global_seqlen/max:426674.000 - global_seqlen/minmax_diff:70371.000 - global_seqlen/balanced_min:396955.000 - global_seqlen/balanced_max:396956.000 - global_seqlen/mean:396955.250 - actor/entropy_loss:1.062 - training/rollout_probs_diff_max:0.200 - training/rollout_probs_diff_mean:0.005 - training/rollout_probs_diff_std:0.010 - episode/valid_action_ratio:0.730 - actor/kl_loss:0.018 - actor/kl_coef:0.010 - actor/value_loss:2.777 - actor/value_clipfrac:0.000 - actor/value_rmse:1.282 - actor/value_mae:0.882 - actor/value_explained_variance:-0.851 - actor/value_pred_mean:0.030 - actor/value_pred_std:0.100 - actor/value_return_mean:0.539 - actor/value_return_std:0.910 - actor/value_loss_coef:0.030 - actor/pg_loss:-0.118 - actor/pg_clipfrac:0.012 - actor/ppo_kl:0.001 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:7.466 - perf/mfu/actor:0.219 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:91.795 - perf/cpu_memory_used_gb:327.081 - actor/lr:0.000 - training/global_step:7.000 - training/epoch:6.000 - critic/score/mean:0.840 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.840 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:-0.010 - critic/advantages/max:18.282 - critic/advantages/min:-12.455 - critic/returns/mean:-0.010 - critic/returns/max:18.282 - critic/returns/min:-12.455 - response_length/mean:130.833 - response_length/max:512.000 - response_length/min:30.000 - response_length/clip_ratio:0.004 - prompt_length/mean:1109.652 - prompt_length/max:2718.000 - prompt_length/min:195.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:1.016 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:9.680 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.102 - episode/webshop_task_score (not success_rate):0.305 - timing_s/gen:138.493 - timing_s/reward:0.513 - timing_s/old_log_prob:5.260 - timing_s/ref:4.869 - timing_s/adv:0.222 - timing_s/update_actor:21.109 - timing_s/step:170.795 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.827 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:1587821.000 - perf/time_per_step:170.795 - perf/throughput:2324.168
+[36m(TaskRunner pid=1918358)[0m Training Progress:   3%|▎         | 7/250 [26:16<15:28:19, 229.21s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 5.229571984435798
+[36m(TaskRunner pid=1918358)[0m step:8 - global_seqlen/min:375537.000 - global_seqlen/max:493027.000 - global_seqlen/minmax_diff:117490.000 - global_seqlen/balanced_min:432213.000 - global_seqlen/balanced_max:432214.000 - global_seqlen/mean:432213.500 - actor/entropy_loss:1.082 - training/rollout_probs_diff_max:0.241 - training/rollout_probs_diff_mean:0.005 - training/rollout_probs_diff_std:0.009 - episode/valid_action_ratio:0.574 - actor/kl_loss:0.018 - actor/kl_coef:0.010 - actor/value_loss:1.520 - actor/value_clipfrac:0.006 - actor/value_rmse:0.913 - actor/value_mae:0.621 - actor/value_explained_variance:-0.186 - actor/value_pred_mean:-0.051 - actor/value_pred_std:0.103 - actor/value_return_mean:0.064 - actor/value_return_std:0.650 - actor/value_loss_coef:0.030 - actor/pg_loss:0.172 - actor/pg_clipfrac:0.010 - actor/ppo_kl:0.002 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:5.251 - perf/mfu/actor:0.231 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:91.795 - perf/cpu_memory_used_gb:328.071 - actor/lr:0.000 - training/global_step:8.000 - training/epoch:7.000 - critic/score/mean:0.434 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.434 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:0.010 - critic/advantages/max:18.484 - critic/advantages/min:-14.559 - critic/returns/mean:0.010 - critic/returns/max:18.484 - critic/returns/min:-14.559 - response_length/mean:130.366 - response_length/max:512.000 - response_length/min:24.000 - response_length/clip_ratio:0.007 - prompt_length/mean:1155.984 - prompt_length/max:2589.000 - prompt_length/min:192.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:0.703 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:10.406 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.070 - episode/webshop_task_score (not success_rate):0.305 - timing_s/gen:146.635 - timing_s/reward:0.513 - timing_s/old_log_prob:5.372 - timing_s/ref:5.052 - timing_s/adv:0.218 - timing_s/update_actor:21.885 - timing_s/step:180.038 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.837 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:1728854.000 - perf/time_per_step:180.038 - perf/throughput:2400.679
+[36m(TaskRunner pid=1918358)[0m Training Progress:   3%|▎         | 8/250 [29:17<14:22:19, 213.80s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 4.663967611336032
+[36m(TaskRunner pid=1918358)[0m step:9 - global_seqlen/min:338648.000 - global_seqlen/max:396343.000 - global_seqlen/minmax_diff:57695.000 - global_seqlen/balanced_min:358198.000 - global_seqlen/balanced_max:358198.000 - global_seqlen/mean:358198.000 - actor/entropy_loss:1.106 - training/rollout_probs_diff_max:0.292 - training/rollout_probs_diff_mean:0.005 - training/rollout_probs_diff_std:0.010 - episode/valid_action_ratio:0.567 - actor/kl_loss:0.016 - actor/kl_coef:0.010 - actor/value_loss:3.692 - actor/value_clipfrac:0.000 - actor/value_rmse:1.403 - actor/value_mae:1.031 - actor/value_explained_variance:-0.089 - actor/value_pred_mean:-0.289 - actor/value_pred_std:0.078 - actor/value_return_mean:0.587 - actor/value_return_std:0.938 - actor/value_loss_coef:0.030 - actor/pg_loss:-0.048 - actor/pg_clipfrac:0.009 - actor/ppo_kl:0.001 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:7.022 - perf/mfu/actor:0.228 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:91.795 - perf/cpu_memory_used_gb:328.573 - actor/lr:0.000 - training/global_step:9.000 - training/epoch:8.000 - critic/score/mean:0.825 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.825 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:0.061 - critic/advantages/max:17.550 - critic/advantages/min:-13.813 - critic/returns/mean:0.061 - critic/returns/max:17.550 - critic/returns/min:-13.813 - response_length/mean:131.409 - response_length/max:512.000 - response_length/min:9.000 - response_length/clip_ratio:0.005 - prompt_length/mean:1112.334 - prompt_length/max:2547.000 - prompt_length/min:195.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:1.172 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:8.836 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.117 - episode/webshop_task_score (not success_rate):0.387 - timing_s/gen:146.591 - timing_s/reward:0.446 - timing_s/old_log_prob:4.499 - timing_s/ref:4.182 - timing_s/adv:0.180 - timing_s/update_actor:18.289 - timing_s/step:174.463 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.968 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:1432792.000 - perf/time_per_step:174.463 - perf/throughput:2053.145
+[36m(TaskRunner pid=1918358)[0m Training Progress:   4%|▎         | 9/250 [32:12<13:30:13, 201.72s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 4.475524475524476
+[36m(TaskRunner pid=1918358)[0m test_gen_batch meta info: {'eos_token_id': 151645, 'pad_token_id': 151643, 'recompute_log_prob': False, 'do_sample': True, 'validate': True}
+[36m(TaskRunner pid=1918358)[0m validation generation end
+[36m(TaskRunner pid=1918358)[0m [text][prompt] <|im_start|>system
+[36m(TaskRunner pid=1918358)[0m You are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>user
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m You are an expert autonomous agent operating in the WebShop e‑commerce environment.
+[36m(TaskRunner pid=1918358)[0m Your task is to: Find me machine wash men's dress shirts with polyester heathers, heathers cotton, cotton heather, needle sleeve, classic fit with color: black, and fit type: women, and size: x-large, and price lower than 30.00 dollars.
+[36m(TaskRunner pid=1918358)[0m Prior to this step, you have already taken 12 step(s). Below are the most recent 2 observations and the corresponding actions you took: [Observation 11: ''Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] 'x-small' [SEP] 'small' [SEP] 'medium' [SEP] 'large' [SEP] 'x-large' [SEP] 'xx-large' [SEP] 'color' [SEP] 'black' [SEP] 'burgundy' [SEP] 'charcoal heather' [SEP] 'light heather grey' [SEP] 'lilac' [SEP] 'navy' [SEP] 'oatmeal heather' [SEP] 'olive' [SEP] 'white' [SEP] 'Amazon Brand - Daily Ritual Women's 100% Cotton Oversized Fit V-Neck Pullover Sweater' [SEP] 'Price: $20.66 to $29.2' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'', Action 11: 'click[x-large]']
+[36m(TaskRunner pid=1918358)[0m [Observation 12: ''Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] 'x-small' [SEP] 'small' [SEP] 'medium' [SEP] 'large' [SEP] 'x-large' [SEP] 'xx-large' [SEP] 'color' [SEP] 'black' [SEP] 'burgundy' [SEP] 'charcoal heather' [SEP] 'light heather grey' [SEP] 'lilac' [SEP] 'navy' [SEP] 'oatmeal heather' [SEP] 'olive' [SEP] 'white' [SEP] 'Amazon Brand - Daily Ritual Women's 100% Cotton Oversized Fit V-Neck Pullover Sweater' [SEP] 'Price: $20.66 to $29.2' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'', Action 12: 'click[x-large]']
+[36m(TaskRunner pid=1918358)[0m You are now at step 13 and your current observation is: 'Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] 'x-small' [SEP] 'small' [SEP] 'medium' [SEP] 'large' [SEP] 'x-large' [SEP] 'xx-large' [SEP] 'color' [SEP] 'black' [SEP] 'burgundy' [SEP] 'charcoal heather' [SEP] 'light heather grey' [SEP] 'lilac' [SEP] 'navy' [SEP] 'oatmeal heather' [SEP] 'olive' [SEP] 'white' [SEP] 'Amazon Brand - Daily Ritual Women's 100% Cotton Oversized Fit V-Neck Pullover Sweater' [SEP] 'Price: $20.66 to $29.2' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'.
+[36m(TaskRunner pid=1918358)[0m Your admissible actions of the current situation are: 
+[36m(TaskRunner pid=1918358)[0m [
+[36m(TaskRunner pid=1918358)[0m 'click[back to search]',
+[36m(TaskRunner pid=1918358)[0m 'click[< prev]',
+[36m(TaskRunner pid=1918358)[0m 'click[description]',
+[36m(TaskRunner pid=1918358)[0m 'click[features]',
+[36m(TaskRunner pid=1918358)[0m 'click[reviews]',
+[36m(TaskRunner pid=1918358)[0m 'click[buy now]',
+[36m(TaskRunner pid=1918358)[0m 'click[x-small]',
+[36m(TaskRunner pid=1918358)[0m 'click[small]',
+[36m(TaskRunner pid=1918358)[0m 'click[medium]',
+[36m(TaskRunner pid=1918358)[0m 'click[large]',
+[36m(TaskRunner pid=1918358)[0m 'click[x-large]',
+[36m(TaskRunner pid=1918358)[0m 'click[xx-large]',
+[36m(TaskRunner pid=1918358)[0m 'click[black]',
+[36m(TaskRunner pid=1918358)[0m 'click[burgundy]',
+[36m(TaskRunner pid=1918358)[0m 'click[charcoal heather]',
+[36m(TaskRunner pid=1918358)[0m 'click[light heather grey]',
+[36m(TaskRunner pid=1918358)[0m 'click[lilac]',
+[36m(TaskRunner pid=1918358)[0m 'click[navy]',
+[36m(TaskRunner pid=1918358)[0m 'click[oatmeal heather]',
+[36m(TaskRunner pid=1918358)[0m 'click[olive]',
+[36m(TaskRunner pid=1918358)[0m 'click[white]',
+[36m(TaskRunner pid=1918358)[0m ].
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m Now it's your turn to take one action for the current step.
+[36m(TaskRunner pid=1918358)[0m You should first reason step-by-step about the current situation, then think carefully which admissible action best advances the shopping goal. This reasoning process MUST be enclosed within <think> </think> tags. 
+[36m(TaskRunner pid=1918358)[0m Once you've finished your reasoning, you should choose an admissible action for current step and present it within <action> </action> tags.
+[36m(TaskRunner pid=1918358)[0m <|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>assistant
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m [text][response] <think> 
+[36m(TaskRunner pid=1918358)[0m The user has already searched for "machine wash men's dress shirts with polyester heathers, heathers cotton, cotton heather, needle sleeve, classic fit with color: black, and fit type: women, and size: x-large, and price lower than 30.00 dollars." 
+[36m(TaskRunner pid=1918358)[0m The user has not specified any additional filters yet. 
+[36m(TaskRunner pid=1918358)[0m The most recent observation shows the user is on the product page for an Amazon Brand - Daily Ritual Women's 100% Cotton Oversized Fit V-Neck Pullover Sweater. 
+[36m(TaskRunner pid=1918358)[0m The user has not made any selections yet. 
+[36m(TaskRunner pid=1918358)[0m The user has not specified any additional filters yet. 
+[36m(TaskRunner pid=1918358)[0m </think>
+[36m(TaskRunner pid=1918358)[0m <action>click[x-large]</action><|im_end|>
+[36m(TaskRunner pid=1918358)[0m [text][score] 0.0
+[36m(TaskRunner pid=1918358)[0m test_gen_batch meta info: {'eos_token_id': 151645, 'pad_token_id': 151643, 'recompute_log_prob': False, 'do_sample': True, 'validate': True}
+[36m(TaskRunner pid=1918358)[0m validation generation end
+[36m(TaskRunner pid=1918358)[0m [text][prompt] <|im_start|>system
+[36m(TaskRunner pid=1918358)[0m You are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>user
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m You are an expert autonomous agent operating in the WebShop e‑commerce environment.
+[36m(TaskRunner pid=1918358)[0m Your task is to: Find me machine wash, wash cold women's fashion hoodies & sweatshirts for dry clean, tumble dry with color: kelly green, and size: x-large, and price lower than 50.00 dollars.
+[36m(TaskRunner pid=1918358)[0m Prior to this step, you have already taken 7 step(s). Below are the most recent 2 observations and the corresponding actions you took: [Observation 6: ''Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] 'small' [SEP] 'medium' [SEP] 'large' [SEP] 'x-large' [SEP] 'xx-large' [SEP] '3x-large' [SEP] '4x-large' [SEP] 'color' [SEP] 'black' [SEP] 'charcoal grey' [SEP] 'forest green' [SEP] 'heather grey' [SEP] 'kelly green' [SEP] 'maroon' [SEP] 'navy blue' [SEP] 'red' [SEP] 'royal blue' [SEP] 'white' [SEP] 'cotton candy' [SEP] 'sand camo' [SEP] 'vintage camo' [SEP] 'Expression Tees Pug Life Funny Thug Life Unisex Adult Hoodie' [SEP] 'Price: $36.99 to $48.99' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'', Action 6: 'click[x-large]']
+[36m(TaskRunner pid=1918358)[0m [Observation 7: ''Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] 'small' [SEP] 'medium' [SEP] 'large' [SEP] 'x-large' [SEP] 'xx-large' [SEP] '3x-large' [SEP] '4x-large' [SEP] 'color' [SEP] 'black' [SEP] 'charcoal grey' [SEP] 'forest green' [SEP] 'heather grey' [SEP] 'kelly green' [SEP] 'maroon' [SEP] 'navy blue' [SEP] 'red' [SEP] 'royal blue' [SEP] 'white' [SEP] 'cotton candy' [SEP] 'sand camo' [SEP] 'vintage camo' [SEP] 'Expression Tees Pug Life Funny Thug Life Unisex Adult Hoodie' [SEP] 'Price: $36.99 to $48.99' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'', Action 7: 'click[x-large]']
+[36m(TaskRunner pid=1918358)[0m You are now at step 8 and your current observation is: 'Back to Search' [SEP] '< Prev' [SEP] 'size' [SEP] 'small' [SEP] 'medium' [SEP] 'large' [SEP] 'x-large' [SEP] 'xx-large' [SEP] '3x-large' [SEP] '4x-large' [SEP] 'color' [SEP] 'black' [SEP] 'charcoal grey' [SEP] 'forest green' [SEP] 'heather grey' [SEP] 'kelly green' [SEP] 'maroon' [SEP] 'navy blue' [SEP] 'red' [SEP] 'royal blue' [SEP] 'white' [SEP] 'cotton candy' [SEP] 'sand camo' [SEP] 'vintage camo' [SEP] 'Expression Tees Pug Life Funny Thug Life Unisex Adult Hoodie' [SEP] 'Price: $36.99 to $48.99' [SEP] 'Rating: N.A.' [SEP] 'Description' [SEP] 'Features' [SEP] 'Reviews' [SEP] 'Buy Now'.
+[36m(TaskRunner pid=1918358)[0m Your admissible actions of the current situation are: 
+[36m(TaskRunner pid=1918358)[0m [
+[36m(TaskRunner pid=1918358)[0m 'click[back to search]',
+[36m(TaskRunner pid=1918358)[0m 'click[< prev]',
+[36m(TaskRunner pid=1918358)[0m 'click[description]',
+[36m(TaskRunner pid=1918358)[0m 'click[features]',
+[36m(TaskRunner pid=1918358)[0m 'click[reviews]',
+[36m(TaskRunner pid=1918358)[0m 'click[buy now]',
+[36m(TaskRunner pid=1918358)[0m 'click[small]',
+[36m(TaskRunner pid=1918358)[0m 'click[medium]',
+[36m(TaskRunner pid=1918358)[0m 'click[large]',
+[36m(TaskRunner pid=1918358)[0m 'click[x-large]',
+[36m(TaskRunner pid=1918358)[0m 'click[xx-large]',
+[36m(TaskRunner pid=1918358)[0m 'click[3x-large]',
+[36m(TaskRunner pid=1918358)[0m 'click[4x-large]',
+[36m(TaskRunner pid=1918358)[0m 'click[black]',
+[36m(TaskRunner pid=1918358)[0m 'click[charcoal grey]',
+[36m(TaskRunner pid=1918358)[0m 'click[forest green]',
+[36m(TaskRunner pid=1918358)[0m 'click[heather grey]',
+[36m(TaskRunner pid=1918358)[0m 'click[kelly green]',
+[36m(TaskRunner pid=1918358)[0m 'click[maroon]',
+[36m(TaskRunner pid=1918358)[0m 'click[navy blue]',
+[36m(TaskRunner pid=1918358)[0m 'click[red]',
+[36m(TaskRunner pid=1918358)[0m 'click[royal blue]',
+[36m(TaskRunner pid=1918358)[0m 'click[white]',
+[36m(TaskRunner pid=1918358)[0m 'click[cotton candy]',
+[36m(TaskRunner pid=1918358)[0m 'click[sand camo]',
+[36m(TaskRunner pid=1918358)[0m 'click[vintage camo]',
+[36m(TaskRunner pid=1918358)[0m ].
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m Now it's your turn to take one action for the current step.
+[36m(TaskRunner pid=1918358)[0m You should first reason step-by-step about the current situation, then think carefully which admissible action best advances the shopping goal. This reasoning process MUST be enclosed within <think> </think> tags. 
+[36m(TaskRunner pid=1918358)[0m Once you've finished your reasoning, you should choose an admissible action for current step and present it within <action> </action> tags.
+[36m(TaskRunner pid=1918358)[0m <|im_end|>
+[36m(TaskRunner pid=1918358)[0m <|im_start|>assistant
+[36m(TaskRunner pid=1918358)[0m 
+[36m(TaskRunner pid=1918358)[0m [text][response] <think>
+[36m(TaskRunner pid=1918358)[0m To find the machine wash, wash cold women's fashion hoodies & sweatshirts for dry clean, tumble dry with color: kelly green, and size: x-large, and price lower than 50.00 dollars, I need to filter the search results based on these criteria. I will start by narrowing down the options to those that match the size and color, and then filter further to find those that match the price range.
+[36m(TaskRunner pid=1918358)[0m </think>
+[36m(TaskRunner pid=1918358)[0m <action>click[x-large]</action><|im_end|>
+[36m(TaskRunner pid=1918358)[0m [text][score] 0.0
+[36m(TaskRunner pid=1918358)[0m step:10 - global_seqlen/min:388891.000 - global_seqlen/max:464210.000 - global_seqlen/minmax_diff:75319.000 - global_seqlen/balanced_min:416061.000 - global_seqlen/balanced_max:416061.000 - global_seqlen/mean:416061.000 - actor/entropy_loss:0.969 - training/rollout_probs_diff_max:0.294 - training/rollout_probs_diff_mean:0.005 - training/rollout_probs_diff_std:0.009 - episode/valid_action_ratio:0.738 - actor/kl_loss:0.020 - actor/kl_coef:0.010 - actor/value_loss:1.308 - actor/value_clipfrac:0.000 - actor/value_rmse:0.697 - actor/value_mae:0.426 - actor/value_explained_variance:-3.919 - actor/value_pred_mean:-0.095 - actor/value_pred_std:0.085 - actor/value_return_mean:0.159 - actor/value_return_std:0.557 - actor/value_loss_coef:0.030 - actor/pg_loss:-0.060 - actor/pg_clipfrac:0.010 - actor/ppo_kl:0.001 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:3.537 - perf/mfu/actor:0.231 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:91.795 - perf/cpu_memory_used_gb:328.865 - actor/lr:0.000 - val/text/test_score:0.918 - val/text/tool_call_count/mean:0.000 - val/success_rate:0.102 - val/webshop_task_score (not success_rate):0.431 - training/global_step:10.000 - training/epoch:9.000 - critic/score/mean:0.279 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.279 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:-0.024 - critic/advantages/max:17.824 - critic/advantages/min:-9.818 - critic/returns/mean:-0.024 - critic/returns/max:17.824 - critic/returns/min:-9.818 - response_length/mean:132.869 - response_length/max:512.000 - response_length/min:29.000 - response_length/clip_ratio:0.013 - prompt_length/mean:1167.322 - prompt_length/max:2640.000 - prompt_length/min:206.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:0.312 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:9.844 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.031 - episode/webshop_task_score (not success_rate):0.331 - timing_s/gen:149.769 - timing_s/reward:0.481 - timing_s/old_log_prob:5.235 - timing_s/ref:4.882 - timing_s/adv:0.209 - timing_s/update_actor:21.002 - timing_s/testing:305.865 - timing_s/step:487.811 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.881 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:1664244.000 - perf/time_per_step:487.811 - perf/throughput:852.915
+[36m(TaskRunner pid=1918358)[0m Training Progress:   4%|▍         | 10/250 [40:21<19:21:03, 290.26s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 5.485714285714286
+[36m(TaskRunner pid=1918358)[0m step:11 - global_seqlen/min:398314.000 - global_seqlen/max:527675.000 - global_seqlen/minmax_diff:129361.000 - global_seqlen/balanced_min:450770.000 - global_seqlen/balanced_max:450771.000 - global_seqlen/mean:450770.750 - actor/entropy_loss:1.000 - training/rollout_probs_diff_max:0.245 - training/rollout_probs_diff_mean:0.005 - training/rollout_probs_diff_std:0.009 - episode/valid_action_ratio:0.714 - actor/kl_loss:0.020 - actor/kl_coef:0.010 - actor/value_loss:1.634 - actor/value_clipfrac:0.000 - actor/value_rmse:0.894 - actor/value_mae:0.520 - actor/value_explained_variance:-0.452 - actor/value_pred_mean:-0.120 - actor/value_pred_std:0.084 - actor/value_return_mean:0.220 - actor/value_return_std:0.740 - actor/value_loss_coef:0.030 - actor/pg_loss:0.132 - actor/pg_clipfrac:0.009 - actor/ppo_kl:0.001 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:6.203 - perf/mfu/actor:0.225 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:91.795 - perf/cpu_memory_used_gb:331.323 - actor/lr:0.000 - training/global_step:11.000 - training/epoch:10.000 - critic/score/mean:0.663 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.663 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:-0.015 - critic/advantages/max:16.245 - critic/advantages/min:-11.991 - critic/returns/mean:-0.015 - critic/returns/max:16.245 - critic/returns/min:-11.991 - response_length/mean:132.746 - response_length/max:512.000 - response_length/min:17.000 - response_length/clip_ratio:0.004 - prompt_length/mean:1208.834 - prompt_length/max:2667.000 - prompt_length/min:196.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:0.938 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:10.141 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.094 - episode/webshop_task_score (not success_rate):0.336 - timing_s/gen:140.819 - timing_s/reward:0.521 - timing_s/old_log_prob:5.762 - timing_s/ref:5.408 - timing_s/adv:0.256 - timing_s/update_actor:23.470 - timing_s/step:176.574 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.789 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:1803083.000 - perf/time_per_step:176.574 - perf/throughput:2552.866
+[36m(TaskRunner pid=1918358)[0m Training Progress:   4%|▍         | 11/250 [43:18<16:58:23, 255.66s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 5.714285714285714
+[36m(TaskRunner pid=1918358)[0m step:12 - global_seqlen/min:369452.000 - global_seqlen/max:457017.000 - global_seqlen/minmax_diff:87565.000 - global_seqlen/balanced_min:406929.000 - global_seqlen/balanced_max:406930.000 - global_seqlen/mean:406929.500 - actor/entropy_loss:1.020 - training/rollout_probs_diff_max:0.174 - training/rollout_probs_diff_mean:0.005 - training/rollout_probs_diff_std:0.009 - episode/valid_action_ratio:0.720 - actor/kl_loss:0.034 - actor/kl_coef:0.010 - actor/value_loss:2.864 - actor/value_clipfrac:0.000 - actor/value_rmse:1.397 - actor/value_mae:0.870 - actor/value_explained_variance:-0.155 - actor/value_pred_mean:0.009 - actor/value_pred_std:0.076 - actor/value_return_mean:0.566 - actor/value_return_std:1.105 - actor/value_loss_coef:0.030 - actor/pg_loss:0.041 - actor/pg_clipfrac:0.010 - actor/ppo_kl:0.001 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:9.265 - perf/mfu/actor:0.222 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:96.760 - perf/cpu_memory_used_gb:331.811 - actor/lr:0.000 - training/global_step:12.000 - training/epoch:11.000 - critic/score/mean:0.917 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.917 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:0.090 - critic/advantages/max:17.783 - critic/advantages/min:-8.974 - critic/returns/mean:0.090 - critic/returns/max:17.783 - critic/returns/min:-8.974 - response_length/mean:125.415 - response_length/max:512.000 - response_length/min:30.000 - response_length/clip_ratio:0.003 - prompt_length/mean:1146.240 - prompt_length/max:2445.000 - prompt_length/min:198.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:0.859 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:9.914 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.086 - episode/webshop_task_score (not success_rate):0.389 - timing_s/gen:134.208 - timing_s/reward:0.496 - timing_s/old_log_prob:5.212 - timing_s/ref:4.842 - timing_s/adv:0.193 - timing_s/update_actor:21.355 - timing_s/step:166.629 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.836 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:1627718.000 - perf/time_per_step:166.629 - perf/throughput:2442.123
+[36m(TaskRunner pid=1918358)[0m Training Progress:   5%|▍         | 12/250 [46:05<15:07:35, 228.80s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 5.1891891891891895
+[36m(TaskRunner pid=1918358)[0m step:13 - global_seqlen/min:335657.000 - global_seqlen/max:378184.000 - global_seqlen/minmax_diff:42527.000 - global_seqlen/balanced_min:358295.000 - global_seqlen/balanced_max:358295.000 - global_seqlen/mean:358295.000 - actor/entropy_loss:1.013 - training/rollout_probs_diff_max:0.190 - training/rollout_probs_diff_mean:0.005 - training/rollout_probs_diff_std:0.009 - episode/valid_action_ratio:0.690 - actor/kl_loss:0.039 - actor/kl_coef:0.010 - actor/value_loss:2.491 - actor/value_clipfrac:0.000 - actor/value_rmse:1.112 - actor/value_mae:0.851 - actor/value_explained_variance:-0.311 - actor/value_pred_mean:0.108 - actor/value_pred_std:0.083 - actor/value_return_mean:0.474 - actor/value_return_std:0.709 - actor/value_loss_coef:0.030 - actor/pg_loss:0.038 - actor/pg_clipfrac:0.012 - actor/ppo_kl:0.001 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:6.172 - perf/mfu/actor:0.220 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:96.760 - perf/cpu_memory_used_gb:332.563 - actor/lr:0.000 - training/global_step:13.000 - training/epoch:12.000 - critic/score/mean:0.768 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.768 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:0.007 - critic/advantages/max:14.540 - critic/advantages/min:-9.470 - critic/returns/mean:0.007 - critic/returns/max:14.540 - critic/returns/min:-9.470 - response_length/mean:130.868 - response_length/max:512.000 - response_length/min:20.000 - response_length/clip_ratio:0.003 - prompt_length/mean:1113.212 - prompt_length/max:2636.000 - prompt_length/min:195.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:0.859 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:8.578 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.086 - episode/webshop_task_score (not success_rate):0.371 - timing_s/gen:146.475 - timing_s/reward:0.451 - timing_s/old_log_prob:4.593 - timing_s/ref:4.360 - timing_s/adv:0.207 - timing_s/update_actor:18.976 - timing_s/step:175.354 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.972 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:1433180.000 - perf/time_per_step:175.354 - perf/throughput:2043.269
+[36m(TaskRunner pid=1918358)[0m Training Progress:   5%|▌         | 13/250 [49:01<14:00:42, 212.84s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 6.0497512437810945
+[36m(TaskRunner pid=1918358)[0m step:14 - global_seqlen/min:327310.000 - global_seqlen/max:447447.000 - global_seqlen/minmax_diff:120137.000 - global_seqlen/balanced_min:402497.000 - global_seqlen/balanced_max:402497.000 - global_seqlen/mean:402497.000 - actor/entropy_loss:1.050 - training/rollout_probs_diff_max:0.159 - training/rollout_probs_diff_mean:0.005 - training/rollout_probs_diff_std:0.009 - episode/valid_action_ratio:0.707 - actor/kl_loss:0.022 - actor/kl_coef:0.010 - actor/value_loss:2.827 - actor/value_clipfrac:0.000 - actor/value_rmse:1.169 - actor/value_mae:0.774 - actor/value_explained_variance:-0.315 - actor/value_pred_mean:-0.173 - actor/value_pred_std:0.081 - actor/value_return_mean:0.507 - actor/value_return_std:0.876 - actor/value_loss_coef:0.030 - actor/pg_loss:0.116 - actor/pg_clipfrac:0.010 - actor/ppo_kl:0.001 - actor/pg_clipfrac_lower:0.000 - actor/grad_norm:6.453 - perf/mfu/actor:0.232 - perf/max_memory_allocated_gb:71.444 - perf/max_memory_reserved_gb:96.760 - perf/cpu_memory_used_gb:333.134 - actor/lr:0.000 - training/global_step:14.000 - training/epoch:13.000 - critic/score/mean:0.916 - critic/score/max:10.000 - critic/score/min:-0.100 - critic/rewards/mean:0.916 - critic/rewards/max:10.000 - critic/rewards/min:-0.100 - critic/advantages/mean:-0.069 - critic/advantages/max:16.380 - critic/advantages/min:-8.244 - critic/returns/mean:-0.069 - critic/returns/max:16.380 - critic/returns/min:-8.244 - response_length/mean:135.438 - response_length/max:512.000 - response_length/min:22.000 - response_length/clip_ratio:0.002 - prompt_length/mean:1188.565 - prompt_length/max:2310.000 - prompt_length/min:197.000 - prompt_length/clip_ratio:0.000 - episode/reward/mean:1.250 - episode/reward/max:10.000 - episode/reward/min:0.000 - episode/length/mean:9.484 - episode/length/max:15.000 - episode/length/min:3.000 - episode/tool_call_count/mean:0.000 - episode/success_rate:0.125 - episode/webshop_task_score (not success_rate):0.407 - timing_s/gen:134.284 - timing_s/reward:0.503 - timing_s/old_log_prob:4.902 - timing_s/ref:4.596 - timing_s/adv:0.183 - timing_s/update_actor:20.302 - timing_s/step:165.081 - timing_per_token_ms/ref:0.003 - timing_per_token_ms/adv:0.000 - timing_per_token_ms/gen:0.815 - timing_per_token_ms/update_actor:0.013 - perf/total_num_tokens:1609988.000 - perf/time_per_step:165.081 - perf/throughput:2438.175
+[36m(TaskRunner pid=1918358)[0m Training Progress:   6%|▌         | 14/250 [51:47<13:01:15, 198.62s/it]
+[36m(TaskRunner pid=1918358)[0m list(reward_extra_infos_dict.keys())=[]
+[36m(TaskRunner pid=1918358)[0m Avg size of step-level group: 5.109243697478991
+[36m(TaskRunner pid=1918358)[0m test_gen_batch meta info: {'eos_token_id': 151645, 'pad_token_id': 151643, 'recompute_log_prob': False, 'do_sample': True, 'validate': True}
+*** SIGTERM received at time=1780983931 on cpu 128 ***

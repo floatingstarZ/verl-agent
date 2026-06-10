@@ -1,0 +1,141 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,booktabs,array}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{hyperref}
+\setlist[itemize]{leftmargin=1.5em}
+\setlist[enumerate]{leftmargin=1.8em}
+\lstset{basicstyle=\ttfamily\small,breaklines=true,columns=fullflexible,keepspaces=true,frame=single,framerule=0.2pt,xleftmargin=0.5em,xrightmargin=0.5em}
+\title{017：StepPPO-v3 Value Head 是否有效学习分析}
+\author{}
+\date{2026-06-09}
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{结论}
+我认为 \textbf{value head 是有效学到了一部分东西的}，尤其是 \textbf{pred-target ranking / correlation}。
+
+但它还不是一个“标定很好”的 value function：raw \path{value_loss} 不稳定，actor 日志里的 \path{value_explained_variance} 很差。
+
+更准确地说：\textbf{value head 已经从近似常数预测，逐渐学成能跟随 target 排序和尺度的 predictor；但 absolute calibration 仍然不够稳定。}
+
+\section*{使用的日志}
+主要依据如下两个文件：
+\begin{lstlisting}
+logs/webshop_gigpo_v1_value_aux_step_ppo_v3_value_head_detach_false_qwen25_15b_4gpu_paper_align_simple_20260609_070507.log
+logs/value_diagnostics/step_ppo_v3_value_head_detach_false_qwen2.5_1.5b_4gpu_paper_align_full_e250/summary.jsonl
+\end{lstlisting}
+
+其中 console log 给出训练过程中 actor microbatch 侧聚合指标；\path{summary.jsonl} 给出每个 global step 的 batch-level value diagnostics，包括 pre-update prediction、target、error、correlation、std 等。
+
+\section*{关键证据}
+\subsection*{1. pred-target correlation 明显提升}
+\begin{center}
+\begin{tabular}{lccccc}
+\toprule
+Step Window & 1--20 & 41--60 & 61--80 & 81--100 & 101--122 \\
+\midrule
+Correlation & 0.075 & 0.288 & 0.437 & 0.641 & 0.738 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这个趋势说明 value head 不是完全随机或只输出常数。它后期已经能较好地区分哪些 step-level target 更高，哪些更低。
+
+\subsection*{2. 归一化误差在下降}
+如果只看 raw RMSE，会被 target scale 增大误导。因此更合理的指标是：
+\begin{equation}
+\mathrm{NRMSE} = \frac{\mathrm{RMSE}(V_\theta(s_t), \hat R_t)}{\mathrm{Std}(\hat R_t)}.
+\end{equation}
+
+窗口均值如下：
+\begin{center}
+\begin{tabular}{lcccccc}
+\toprule
+Step Window & 1--20 & 21--40 & 41--60 & 61--80 & 81--100 & 101--122 \\
+\midrule
+RMSE / target std & 1.034 & 1.017 & 0.995 & 0.921 & 0.798 & 0.686 \\
+MAE / target std & 0.336 & 0.578 & 0.824 & 0.815 & 0.626 & 0.478 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这说明虽然 raw value loss 没有单调下降，但相对于 target 的尺度，value prediction 的误差是在变小的。
+
+\subsection*{3. 预测方差开始接近 target 方差}
+早期 value head 基本输出近似常数，预测方差很小。后期 \path{pred_std / target_std} 明显上升：
+\begin{center}
+\begin{tabular}{lcccccc}
+\toprule
+Step Window & 1--20 & 21--40 & 41--60 & 61--80 & 81--100 & 101--122 \\
+\midrule
+pred std / target std & 0.096 & 0.033 & 0.102 & 0.366 & 0.665 & 0.795 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这个结果说明 value head 从“压缩预测”逐步变成了能覆盖 target 动态范围的 predictor。
+
+\section*{为什么 raw value loss 没下降}
+raw \path{value_loss} 从前期约 0.9 上升到后期 3--5，看起来像没学好。但 target 本身不是 stationary 的：policy 变好后，episode reward 和 return scale 明显变大。
+
+例如 diagnostics 中 target std 从 1.224 增到 3.981。因此 absolute MSE 变大是预期内的，不应只看 raw loss。
+
+当前更应该关注：
+\begin{itemize}
+  \item normalized RMSE；
+  \item pred-target correlation；
+  \item prediction std / target std；
+  \item full-batch value explained variance，而不是小 microbatch 上的 explained variance。
+\end{itemize}
+
+\section*{仍然存在的问题}
+actor 日志里的 \path{actor/value_explained_variance} 很差，后面甚至到 -20 左右。
+
+这个指标是在较小 microbatch 上算的，target variance 很小时会极端不稳定；所以我更信 diagnostics 的 full-batch summary。但这也说明 value head 的 calibration 还不够稳，尤其是局部 batch 上可能偏差很大。
+
+另外，bias 没有完全消失。后期窗口平均 bias 接近 -0.041，但单步仍然有明显波动。
+
+\section*{Selected Step 证据}
+\begin{center}
+\begin{tabular}{rrrrrrr}
+\toprule
+Step & Corr & NRMSE & Bias & Std Ratio & RMSE & Target Std \\
+\midrule
+1 & -0.042 & 1.120 & -0.461 & 0.140 & 1.095 & 0.977 \\
+20 & 0.104 & 0.998 & 0.009 & 0.023 & 1.815 & 1.818 \\
+50 & 0.461 & 0.975 & -0.560 & 0.094 & 3.265 & 3.349 \\
+80 & 0.623 & 0.795 & -0.323 & 0.505 & 3.072 & 3.862 \\
+100 & 0.674 & 0.749 & 0.496 & 0.686 & 3.011 & 4.020 \\
+110 & 0.836 & 0.564 & -0.235 & 0.721 & 2.279 & 4.041 \\
+120 & 0.809 & 0.588 & 0.028 & 0.790 & 2.435 & 4.140 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+后期 correlation 达到 0.8 左右，NRMSE 下降到 0.56--0.59，std ratio 接近 0.8。这是比较明确的有效学习信号。
+
+\section*{判断}
+如果目标是“验证 value head 能不能学到 step-level return signal”：\textbf{目前答案偏 yes}。
+
+如果目标是“这个 value 已经可以安全替代或影响 policy advantage”：\textbf{目前还不够}。
+
+v3 作为 auxiliary value-head 实验是合理的；下一步建议把 normalized value metrics 写入主日志，例如：
+\begin{lstlisting}
+actor/value_nrmse
+actor/value_corr
+actor/value_full_batch_ev
+actor/value_std_ratio
+actor/value_bias
+\end{lstlisting}
+
+否则只看 raw \path{value_loss} 会误导判断。
+
+\section*{最终结论}
+value head 确实学到了 signal，但主要体现在 correlation、normalized error 和 scale matching 上，而不是 raw loss 单调下降。当前 value head 对 target 的排序能力已经明显增强；但 calibration 和 explained variance 仍需改进。因此，v3 的 value-head-only 方向是有希望的，但还不能把这个 value 直接当成稳定 critic 使用。
+
+\end{document}

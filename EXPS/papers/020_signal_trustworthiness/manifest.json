@@ -1,0 +1,130 @@
+[
+  {
+    "cites": "choi2026poise",
+    "title": "Your Language Model is Its Own Critic: Reinforcement Learning with Value Estimation from Actor's Internal States",
+    "url": "https://arxiv.org/abs/2605.07579",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/Your Language Model is Its Own Critic: Reinforcement Learning with Value Estimation from Actor's Internal States.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/Your Language Model is Its Own Critic: Reinforcement Learning with Value Estimation from Actor's Internal States.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "feng2025group",
+    "title": "Group-in-Group Policy Optimization for LLM Agent Training",
+    "url": "https://arxiv.org/abs/2505.10978",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/Group-in-Group Policy Optimization for LLM Agent Training.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/Group-in-Group Policy Optimization for LLM Agent Training.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "zhu2026gagpogeneralizedadvantagegroupedpolicy",
+    "title": "GAGPO: Generalized Advantage Grouped Policy Optimization",
+    "url": "https://arxiv.org/abs/2605.13217",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/GAGPO: Generalized Advantage Grouped Policy Optimization.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/GAGPO: Generalized Advantage Grouped Policy Optimization.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "liu2025agentic",
+    "title": "Agentic Reinforcement Learning with Implicit Step Rewards",
+    "url": "https://arxiv.org/abs/2509.19199",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/Agentic Reinforcement Learning with Implicit Step Rewards.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/Agentic Reinforcement Learning with Implicit Step Rewards.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "han2026threespoStateScoreSupervised",
+    "title": "3SPO: State-Score-Supervised Policy Optimization for LLM Agents",
+    "url": "https://arxiv.org/abs/2606.09961",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/3SPO: State-Score-Supervised Policy Optimization for LLM Agents.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/3SPO: State-Score-Supervised Policy Optimization for LLM Agents.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "song2026environmentSpeakItselfTwo",
+    "title": "Can the Environment Speak for Itself? $T^{2}$-GRPO: A Turn-Trajectory Group Relative Policy Optimization for Caregiver Agents",
+    "url": "https://arxiv.org/abs/2606.08875",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/Can the Environment Speak for Itself? $T^{2}$-GRPO: A Turn-Trajectory Group Relative Policy Optimization for Caregiver Agents.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/Can the Environment Speak for Itself? $T^{2}$-GRPO: A Turn-Trajectory Group Relative Policy Optimization for Caregiver Agents.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "tian2026pbsdPrivilegedBayesianSelf",
+    "title": "PBSD: Privileged Bayesian Self-Distillation for Long-Horizon Credit Assignment",
+    "url": "https://arxiv.org/abs/2606.09348",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/PBSD: Privileged Bayesian Self-Distillation for Long-Horizon Credit Assignment.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/PBSD: Privileged Bayesian Self-Distillation for Long-Horizon Credit Assignment.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "wang2026sppo",
+    "title": "SPPO: Sequence-Level PPO for Long-Horizon Reasoning Tasks",
+    "url": "https://arxiv.org/abs/2604.08865",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/SPPO: Sequence-Level PPO for Long-Horizon Reasoning Tasks.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/SPPO: Sequence-Level PPO for Long-Horizon Reasoning Tasks.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "yu2026Reinforcement",
+    "title": "Reinforcement World Model Learning for LLM-based Agents",
+    "url": "https://arxiv.org/abs/2602.05842",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/Reinforcement World Model Learning for LLM-based Agents.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/Reinforcement World Model Learning for LLM-based Agents.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "zhang2026webarbiter",
+    "title": "WebArbiter: A Principle-Guided Reasoning Process Reward Model for Web Agents",
+    "url": "https://arxiv.org/abs/2601.21872",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/WebArbiter: A Principle-Guided Reasoning Process Reward Model for Web Agents.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/WebArbiter: A Principle-Guided Reasoning Process Reward Model for Web Agents.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "li2026toolprmbench",
+    "title": "ToolPRMBench: Evaluating and Advancing Process Reward Models for Tool-using Agents",
+    "url": "https://arxiv.org/abs/2601.12294",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/ToolPRMBench: Evaluating and Advancing Process Reward Models for Tool-using Agents.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/ToolPRMBench: Evaluating and Advancing Process Reward Models for Tool-using Agents.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "oh2026uncertaintyquantificationllmagents",
+    "title": "Uncertainty Quantification in LLM Agents: Foundations, Emerging Challenges, and Opportunities",
+    "url": "https://arxiv.org/abs/2602.05073",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/Uncertainty Quantification in LLM Agents: Foundations, Emerging Challenges, and Opportunities.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/Uncertainty Quantification in LLM Agents: Foundations, Emerging Challenges, and Opportunities.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "yan2026denoiseflow",
+    "title": "DenoiseFlow: Uncertainty-Aware Denoising for Reliable LLM Agentic Workflows",
+    "url": "https://arxiv.org/abs/2603.00532",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/DenoiseFlow: Uncertainty-Aware Denoising for Reliable LLM Agentic Workflows.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/DenoiseFlow: Uncertainty-Aware Denoising for Reliable LLM Agentic Workflows.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "liu2026stapo",
+    "title": "STAPO: Stabilizing Reinforcement Learning for LLMs by Silencing Rare Spurious Tokens",
+    "url": "https://arxiv.org/abs/2602.15620",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/STAPO: Stabilizing Reinforcement Learning for LLMs by Silencing Rare Spurious Tokens.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/STAPO: Stabilizing Reinforcement Learning for LLMs by Silencing Rare Spurious Tokens.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "ding2026prpo",
+    "title": "PRPO: Aligning Process Reward with Outcome Reward in Policy Optimization",
+    "url": "https://arxiv.org/abs/2601.07182",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/PRPO: Aligning Process Reward with Outcome Reward in Policy Optimization.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/PRPO: Aligning Process Reward with Outcome Reward in Policy Optimization.pdf",
+    "status": "copied"
+  },
+  {
+    "cites": "wang2026clawR1StepLevel",
+    "title": "Claw-R1: A Step-Level Data Middleware System for Agentic Reinforcement Learning",
+    "url": "https://arxiv.org/abs/2606.09138",
+    "source": "/Users/hzy/Desktop/STUDY/Papers/Claw-R1: A Step-Level Data Middleware System for Agentic Reinforcement Learning.pdf",
+    "copied_to": "EXPS/papers/020_signal_trustworthiness/Claw-R1: A Step-Level Data Middleware System for Agentic Reinforcement Learning.pdf",
+    "status": "copied"
+  }
+]

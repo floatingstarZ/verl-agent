@@ -1,0 +1,50 @@
+[
+  {
+    "title": "Metrics for Finite Markov Decision Processes",
+    "role": "Bisimulation metric; state similarity through reward and transition distance.",
+    "source_url": "https://arxiv.org/abs/1207.4114",
+    "local_file": "Metrics for Finite Markov Decision Processes.pdf"
+  },
+  {
+    "title": "Towards a Unified Theory of State Abstraction for MDPs",
+    "role": "State abstraction; exact states can be aggregated when value/model/action-relevant quantities agree.",
+    "source_url": "https://rbr.cs.umass.edu/aimath06/proceedings/P21.pdf",
+    "local_file": "Towards a Unified Theory of State Abstraction for MDPs.pdf"
+  },
+  {
+    "title": "Improving Generalisation for Temporal Difference Learning: The Successor Representation",
+    "role": "Successor representation; state similarity by predictive future occupancy.",
+    "source_url": "https://www.gatsby.ucl.ac.uk/~dayan/papers/d93b.pdf",
+    "local_file": "Improving Generalisation for Temporal Difference Learning - The Successor Representation.pdf"
+  },
+  {
+    "title": "Predictive Representations of State",
+    "role": "Predictive state representation; history can be represented by predictions over future tests.",
+    "source_url": "https://papers.nips.cc/paper/1983-predictive-representations-of-state",
+    "local_file": "Predictive Representations of State.pdf"
+  },
+  {
+    "title": "Group-in-Group Policy Optimization for LLM Agent Training",
+    "role": "Original hard anchor-state grouping baseline.",
+    "source_url": "https://arxiv.org/abs/2505.10978",
+    "local_file": "Group-in-Group Policy Optimization for LLM Agent Training.pdf"
+  },
+  {
+    "title": "GAGPO: Generalized Advantage Grouped Policy Optimization",
+    "role": "Grouped value proxy and temporal step advantage for LLM agents.",
+    "source_url": "https://arxiv.org/abs/2605.13217",
+    "local_file": "GAGPO: Generalized Advantage Grouped Policy Optimization.pdf"
+  },
+  {
+    "title": "Your Language Model is Its Own Critic: Reinforcement Learning with Value Estimation from Actor's Internal States",
+    "role": "Actor internal state as value/baseline signal; useful but requires bias control.",
+    "source_url": "https://arxiv.org/abs/2605.07579",
+    "local_file": "Your Language Model is Its Own Critic: Reinforcement Learning with Value Estimation from Actor's Internal States.pdf"
+  },
+  {
+    "title": "Agentic Reinforcement Learning with Implicit Step Rewards",
+    "role": "Implicit step reward with previous policy snapshots; relevant to few-step previous relative rewards.",
+    "source_url": "https://arxiv.org/abs/2509.19199",
+    "local_file": "Agentic Reinforcement Learning with Implicit Step Rewards.pdf"
+  }
+]

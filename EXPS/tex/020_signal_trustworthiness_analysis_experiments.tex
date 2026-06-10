@@ -1,0 +1,1097 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+\documentclass[
+  10pt,
+]{ctexart}
+\usepackage{xcolor}
+\usepackage[a4paper,margin=0.9in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\newcounter{none} % for unnumbered tables
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  colorlinks=true,
+  linkcolor={Maroon},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={Blue},
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{2026-06-10}
+
+\begin{document}
+
+\section{020: Signal Trustworthiness Analysis
+Experiments}\label{signal-trustworthiness-analysis-experiments}
+
+日期：2026-06-10
+
+\subsection{1. 问题}\label{ux95eeux9898}
+
+我们已经有一轮 StepPPO-v3 / value-head-only 训练结果：value head 的
+sample-level ranking 逐渐变强，但最终 WebShop validation 没有超过 GiGPO
+baseline，后期还出现 valid action ratio 下降、response clip ratio 上升和
+runtime 变慢。
+
+这说明当前最值得做的不是马上继续叠新算法，而是先回答一个更底层的问题：
+
+\textbf{哪些 step-level / trajectory-level
+信号是真的可信，哪些只是训练日志里看起来相关？}
+
+本文把下一阶段定义为分析类实验。目标是用已有日志、已有
+rollout、已有训练模型
+checkpoint，在不先开启大规模新训练的前提下，审计以下信号是否可靠：
+
+\begin{itemize}
+\tightlist
+\item
+  value head prediction；
+\item
+  actor hidden-state similarity / 模型既视感；
+\item
+  GiGPO hard group advantage；
+\item
+  Soft-GiGPO semantic neighbor baseline；
+\item
+  entropy / logprob uncertainty；
+\item
+  environment transition signals；
+\item
+  previous-policy / implicit step reward ratio；
+\item
+  external PRM / judge / privileged teacher signals。
+\end{itemize}
+
+\subsection{2.
+参考论文与本地资料}\label{ux53c2ux8003ux8bbaux6587ux4e0eux672cux5730ux8d44ux6599}
+
+已从 PaperIndex 复制 16 篇相关 PDF 到：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{EXPS/papers/020\_signal\_trustworthiness/}
+\end{Highlighting}
+\end{Shaded}
+
+该目录包含 \texttt{manifest.json}，记录 citation key、title、PaperIndex
+原路径和 arXiv URL。
+
+\subsubsection{2.1
+直接相关论文}\label{ux76f4ux63a5ux76f8ux5173ux8bbaux6587}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.5000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+论文
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+对本项目的启发
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+POISE: Your Language Model is Its Own Critic & 直接支持``actor internal
+state 可以作为 value / baseline 信号''的方向，但要求 cross-rollout
+设计来避免 biased policy gradient。 \\
+GiGPO & hard anchor-state grouping 是当前 Soft-GiGPO 的起点；关键假设是
+same state 下的 actions 可比较。 \\
+GAGPO & critic-free grouped value proxy + TD/GAE-style temporal
+advantage，是 step advantage 可信性的重要参照。 \\
+Agentic RL with Implicit Step Rewards / iStar & 用 previous policy
+snapshot 和 implicit PRM 构造 step reward，提醒我们不要只依赖 initial
+reference。 \\
+3SPO & historical success-rate state score 是一种离线可验证的
+state-value surrogate。 \\
+T2-GRPO & 把 turn-level environment-state transition reward 和
+trajectory reward 分开标准化，适合分析环境转移信号。 \\
+PBSD & 用 privileged answer-conditioned teacher 分解 Bayesian
+evidence，适合做``失败轨迹中哪些 step 其实有价值''的对照。 \\
+SPPO & 反过来提醒我们：长 horizon 下不一定要强行 token/step
+credit，sequence-level scalar value 可能更稳。 \\
+RWML & 用 textual world model / next-state reward 评估 agent action
+后果，适合分析 transition signal。 \\
+WebArbiter & Web agent PRM 应输出 reasoning-first verdict，而不是只给弱
+scalar。 \\
+ToolPRMBench & step-level tool/action reward
+需要成对比较和多模型验证，不能只看最终结果。 \\
+Uncertainty Quantification in LLM Agents & agent UQ 不能照搬单轮
+QA，需要跟随 interaction history、state、tool result 传播。 \\
+DenoiseFlow & 把 agent workflow 当作 noisy MDP，分析 uncertainty
+propagation 和 root-cause localization。 \\
+STAPO & rare spurious tokens 可继承 positive advantage，提醒我们要查
+reward 信号是否被格式/长度/罕见 token 污染。 \\
+PRPO & process reward 与 outcome reward 必须对齐，否则 dense signal
+可能强化错误中间行为。 \\
+Claw-R1 & step-level data middleware 说明信号审计需要先把 step
+数据结构化。 \\
+\end{longtable}
+}
+
+\subsubsection{2.2
+当前本地证据}\label{ux5f53ux524dux672cux5730ux8bc1ux636e}
+
+已有结果来自：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{EXPS/data/018\_step\_ppo\_v3\_complete\_analysis\_summary.txt}
+\NormalTok{logs/value\_diagnostics/step\_ppo\_v3\_value\_head\_detach\_false\_qwen2.5\_1.5b\_4gpu\_paper\_align\_full\_e250/}
+\NormalTok{logs/value\_diagnostics/step\_ppo\_v3\_value\_head\_detach\_false\_qwen2.5\_1.5b\_4gpu\_paper\_align\_full\_e250\_resume\_20260610\_012700/}
+\end{Highlighting}
+\end{Shaded}
+
+关键观察：
+
+\begin{itemize}
+\tightlist
+\item
+  value pred-target correlation 后期很强，\texttt{201-250} 窗口
+  sample-level \texttt{pearson=0.873}、\texttt{spearman=0.909}。
+\item
+  final validation 没有提升：\texttt{val/success\_rate} 为
+  \texttt{0.742}，GiGPO mean 为
+  \texttt{0.752}；\texttt{val/webshop\_task\_score} 为
+  \texttt{0.843}，GiGPO mean 为 \texttt{0.885}。
+\item
+  value signal 变强时，policy 行为不一定更好：后期 valid action ratio
+  下降，response clip ratio 从 GiGPO 的约 \texttt{0.002} 升到
+  \texttt{0.426}。
+\end{itemize}
+
+初步结论：
+
+\textbf{value head 当前可作为 ranking / diagnostic
+signal，但还不能直接视为可训练 policy advantage。}
+
+\subsection{3.
+可信信号的判据}\label{ux53efux4fe1ux4fe1ux53f7ux7684ux5224ux636e}
+
+一个信号要进入 policy update，至少需要通过以下审计。否则只能作为诊断或
+reranking 辅助。
+
+\subsubsection{3.1 Predictive validity}\label{predictive-validity}
+
+信号必须预测未来结果，而不是只解释当前格式。
+
+要测：
+
+\begin{itemize}
+\tightlist
+\item
+  与 episode success / task score 的 Pearson、Spearman；
+\item
+  与 discounted future return 的相关性；
+\item
+  top-k vs bottom-k lift；
+\item
+  sign accuracy：\texttt{sign(signal\_i\ -\ signal\_j)} 是否预测同组未来
+  return 排序。
+\end{itemize}
+
+\subsubsection{3.2 Locality}\label{locality}
+
+信号必须能回答``当前 step/action 是否好''，而不是只复述整条 trajectory
+已经成功。
+
+要测：
+
+\begin{itemize}
+\tightlist
+\item
+  同一 \texttt{uid} 内、相近 \texttt{step\_idx} 内的 pairwise ranking；
+\item
+  same anchor / soft-neighbor 内的 action ranking；
+\item
+  去掉最终 reward 泄漏后的 early-step prediction。
+\end{itemize}
+
+\subsubsection{3.3 Calibration}\label{calibration}
+
+信号数值大小必须有意义。ranking 强但 calibration
+弱时，只能用来排序，不能直接作为 value target 或 dense reward。
+
+要测：
+
+\begin{itemize}
+\tightlist
+\item
+  bin calibration curve；
+\item
+  ECE / NLL / Brier；
+\item
+  predicted value std 与 target std 的比例；
+\item
+  per-step-index calibration。
+\end{itemize}
+
+\subsubsection{3.4 Stability}\label{stability}
+
+信号不能只在某个 checkpoint、某个 seed、某个训练阶段成立。
+
+要测：
+
+\begin{itemize}
+\tightlist
+\item
+  early / middle / late checkpoints；
+\item
+  train task vs held-out validation task；
+\item
+  GiGPO baseline checkpoint vs StepPPO-v3 checkpoint；
+\item
+  text embedding vs actor hidden state vs frozen actor hidden state。
+\end{itemize}
+
+\subsubsection{3.5 Non-leakage}\label{non-leakage}
+
+信号不能偷偷看到自己要预测的 reward。
+
+要测：
+
+\begin{itemize}
+\tightlist
+\item
+  leave-one-out baseline；
+\item
+  不用同一 sample 的 future reward 构造自己的 baseline；
+\item
+  对 value/PRM 训练集和评估集按 \texttt{uid} 切分；
+\item
+  对 length、format、invalid action 做 partial correlation。
+\end{itemize}
+
+\subsubsection{3.6 Intervention safety}\label{intervention-safety}
+
+离线相关性不等于在线有效。信号进入训练前，需要先做低风险干预。
+
+推荐顺序：
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  offline ranking；
+\item
+  best-of-k reranking；
+\item
+  rollout filtering / early stop；
+\item
+  small 2GPU smoke；
+\item
+  full 4GPU training。
+\end{enumerate}
+
+\subsection{4. 实验 A：Value Head Reliability
+Audit}\label{ux5b9eux9a8c-avalue-head-reliability-audit}
+
+\subsubsection{4.1 问题}\label{ux95eeux9898-1}
+
+value head 是否真的学到了 step-level return？它能否从 diagnostic signal
+升级为 advantage / critic？
+
+\subsubsection{4.2 数据}\label{ux6570ux636e}
+
+优先使用已有 JSONL：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{logs/value\_diagnostics/*/step\_*.jsonl}
+\NormalTok{logs/value\_diagnostics/*/summary.jsonl}
+\end{Highlighting}
+\end{Shaded}
+
+如果外部 checkpoint 可恢复，再补一次 held-out rollout forward probe。
+
+\subsubsection{4.3 指标}\label{ux6307ux6807}
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{corr(value\_pred,\ value\_target)} by step window；
+\item
+  \texttt{spearman(value\_pred,\ value\_target)} by \texttt{uid}；
+\item
+  \texttt{top\_decile\_return\ -\ bottom\_decile\_return}；
+\item
+  calibration bin：predicted value 分桶后的 true return；
+\item
+  residual by \texttt{step\_idx}；
+\item
+  residual by response length / valid action / anchor group size；
+\item
+  value error 与后续 policy regression 的相关性。
+\end{itemize}
+
+\subsubsection{4.4 判定}\label{ux5224ux5b9a}
+
+可信：
+
+\begin{itemize}
+\tightlist
+\item
+  held-out \texttt{uid} 上 Spearman 稳定为正；
+\item
+  top-bottom lift 稳定；
+\item
+  calibration 不随 \texttt{step\_idx} 明显翻转；
+\item
+  partial correlation 控制 response length / valid action 后仍存在。
+\end{itemize}
+
+不可信：
+
+\begin{itemize}
+\tightlist
+\item
+  只在训练 batch 内相关；
+\item
+  主要预测 response length、format 或 invalid action；
+\item
+  高 value 区间对应更高 clip ratio 或更差 valid action；
+\item
+  detach=false 时 value 变好但 policy 变坏。
+\end{itemize}
+
+\subsubsection{4.5 当前预判}\label{ux5f53ux524dux9884ux5224}
+
+已有证据支持``value head 有 ranking signal''，但不支持``直接作为 actor
+shared critic''。下一步应重点测 held-out correlation 和 partial
+correlation。
+
+\subsection{5. 实验 B：Actor Hidden-State Deja-vu / Semantic
+Similarity}\label{ux5b9eux9a8c-bactor-hidden-state-deja-vu-semantic-similarity}
+
+\subsubsection{5.1 问题}\label{ux95eeux9898-2}
+
+用户提出的核心问题是：actor 自己是否能感觉到当前 state 和之前某个 state
+很接近？
+
+这可以转化为：
+
+给定 pre-action context 的 hidden representation \texttt{z\_i}，它的
+nearest neighbors 是否真的是同一决策处境？这些 neighbors 的 future
+return 是否能构成可信 baseline？
+
+\subsubsection{5.2 表示选择}\label{ux8868ux793aux9009ux62e9}
+
+先比较四种表示：
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \texttt{anchor\_obs} text embedding；
+\item
+  current actor \texttt{pre\_action\_last\_context\_token} hidden
+  state；
+\item
+  frozen initial/SFT actor hidden state；
+\item
+  frozen trained checkpoint hidden state。
+\end{enumerate}
+
+如果 checkpoint 暂时不在当前 repo，可先用 text embedding 做 pipeline
+验证，再等模型路径可用后切 actor-hidden 版。
+
+\subsubsection{5.3 指标}\label{ux6307ux6807-1}
+
+\begin{itemize}
+\tightlist
+\item
+  top-k neighbor 的 same \texttt{uid} / same stage / same action-space
+  precision；
+\item
+  hard group singleton 被 soft neighbor 扩展后的比例；
+\item
+  effective neighbor count：\texttt{1\ /\ sum\_j\ w\_ij\^{}2}；
+\item
+  neighbor return variance；
+\item
+  similarity 与 \texttt{abs(R\_i\ -\ R\_j)} 的相关性，理想上越相似
+  return gap 越小；
+\item
+  soft advantage 与 hard advantage 的 correlation / sign flip ratio；
+\item
+  人工抽样检查 top-5 neighbors。
+\end{itemize}
+
+\subsubsection{5.4 判定}\label{ux5224ux5b9a-1}
+
+可信：
+
+\begin{itemize}
+\tightlist
+\item
+  top-k neighbors 人工看是同一任务阶段；
+\item
+  similarity 越高，future return gap 越小；
+\item
+  soft baseline 降低 singleton，又不过度平滑；
+\item
+  actor-hidden 比 text embedding 更能预测 action success。
+\end{itemize}
+
+不可信：
+
+\begin{itemize}
+\tightlist
+\item
+  neighbor 主要按表面文本、商品词、长度聚类；
+\item
+  跨阶段误匹配严重；
+\item
+  similarity 高但 return gap 大；
+\item
+  soft advantage 大量翻转 hard advantage 且无法解释。
+\end{itemize}
+
+\subsection{6. 实验 C：Hard GiGPO Group vs Soft-GiGPO
+Group}\label{ux5b9eux9a8c-chard-gigpo-group-vs-soft-gigpo-group}
+
+\subsubsection{6.1 问题}\label{ux95eeux9898-3}
+
+GiGPO 的 hard anchor grouping 是否真的提供可靠 step
+advantage？Soft-GiGPO 是否只是制造更多 baseline，还是能提高信号质量？
+
+\subsubsection{6.2 离线计算}\label{ux79bbux7ebfux8ba1ux7b97}
+
+对同一批 rollout 计算：
+
+\begin{itemize}
+\tightlist
+\item
+  hard group return mean/std；
+\item
+  hard advantage；
+\item
+  soft top-k baseline；
+\item
+  soft weighted std；
+\item
+  fallback ratio；
+\item
+  singleton ratio；
+\item
+  hard-soft advantage correlation；
+\item
+  sign flip ratio；
+\item
+  advantage outlier rate。
+\end{itemize}
+
+\subsubsection{6.3 Ablation}\label{ablation}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{encoder: text\_embedding / actor\_hidden / frozen\_actor}
+\NormalTok{scope: same\_uid only}
+\NormalTok{top\_k: 2 / 4 / 8 / 16}
+\NormalTok{temperature: 0.03 / 0.07 / 0.10 / 0.20}
+\NormalTok{fallback: hard / uid\_mean / zero}
+\end{Highlighting}
+\end{Shaded}
+
+\subsubsection{6.4 判定}\label{ux5224ux5b9a-2}
+
+Soft-GiGPO 可进入训练的最低标准：
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{fallback\_ratio} 不高于 hard singleton ratio；
+\item
+  \texttt{effective\_neighbors} 不塌缩到 1，也不接近整个 uid group；
+\item
+  soft advantage 对 held-out return 的 ranking 不低于 hard advantage；
+\item
+  人工检查 top-k neighbor 没有系统性错误；
+\item
+  soft advantage outlier 少于 hard advantage。
+\end{itemize}
+
+\subsection{7. 实验 D：Entropy / Logprob
+Uncertainty}\label{ux5b9eux9a8c-dentropy-logprob-uncertainty}
+
+\subsubsection{7.1 问题}\label{ux95eeux9898-4}
+
+entropy、logprob、margin 是否能作为``当前 action 风险''的信号？
+
+这个实验对应 Agent UQ 和 DenoiseFlow 的问题：agent 的不确定性是否沿
+interaction history 累积，并能定位错误源？
+
+\subsubsection{7.2 特征}\label{ux7279ux5f81}
+
+\begin{itemize}
+\tightlist
+\item
+  sequence mean entropy；
+\item
+  first action-token entropy；
+\item
+  action verb token entropy；
+\item
+  mean old logprob；
+\item
+  response length；
+\item
+  top token margin，如果可 dump logits；
+\item
+  entropy delta across steps。
+\end{itemize}
+
+\subsubsection{7.3 标签}\label{ux6807ux7b7e}
+
+\begin{itemize}
+\tightlist
+\item
+  invalid action；
+\item
+  next observation 是否异常或不变；
+\item
+  episode failure；
+\item
+  future discounted return；
+\item
+  value residual；
+\item
+  high clip-ratio sample。
+\end{itemize}
+
+\subsubsection{7.4 指标}\label{ux6307ux6807-2}
+
+\begin{itemize}
+\tightlist
+\item
+  AUROC / AUPRC for invalid action and failure；
+\item
+  ECE for failure probability；
+\item
+  entropy-by-step trend；
+\item
+  uncertainty propagation：early high entropy 是否预测后面失败；
+\item
+  root-cause localization：失败轨迹里 entropy spike 是否出现在关键错误
+  step 前后。
+\end{itemize}
+
+\subsubsection{7.5 判定}\label{ux5224ux5b9a-3}
+
+如果 entropy 只预测 response length 或 decoding randomness，它只能做
+diagnostics。如果它能稳定提前预测 invalid action / bad
+transition，则可以用于 adaptive rollout、branching 或 early stop。
+
+\subsection{8. 实验 E：Environment Transition
+Signals}\label{ux5b9eux9a8c-eenvironment-transition-signals}
+
+\subsubsection{8.1 问题}\label{ux95eeux9898-5}
+
+环境自身给出的状态变化是否比模型内部信号更可信？
+
+T2-GRPO 和 RWML 都提示：step signal 可以来自 environment
+transition，而不是只来自 LLM judge 或 value model。
+
+\subsubsection{8.2 WebShop
+候选信号}\label{webshop-ux5019ux9009ux4fe1ux53f7}
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{is\_action\_valid}；
+\item
+  observation 是否变化；
+\item
+  search page / detail page / item page stage；
+\item
+  price / option / buy-button 是否出现；
+\item
+  task query 与 observation 的 lexical/semantic overlap；
+\item
+  repeated action / loop count；
+\item
+  immediate reward delta；
+\item
+  distance-to-purchase heuristic。
+\end{itemize}
+
+\subsubsection{8.3 指标}\label{ux6307ux6807-3}
+
+\begin{itemize}
+\tightlist
+\item
+  单个 transition feature 对 final success 的 predictive power；
+\item
+  与 value head prediction 的互补性；
+\item
+  与 hard/soft advantage 的一致性；
+\item
+  failed trajectories 中是否能定位首个不可恢复错误。
+\end{itemize}
+
+\subsubsection{8.4 判定}\label{ux5224ux5b9a-4}
+
+这类信号如果稳定，应优先作为 low-risk shaping / filtering
+feature，因为它们比 hidden-state value 更可解释、更容易 debug。
+
+\subsection{9. 实验 F：Previous-Policy / Implicit Step
+Reward}\label{ux5b9eux9a8c-fprevious-policy-implicit-step-reward}
+
+\subsubsection{9.1 问题}\label{ux95eeux9898-6}
+
+SIRPO/iStar 类思路强调 previous policy snapshot，而不是固定 initial
+reference。我们可以测：
+
+当前 policy 相对 few-step previous policy 的 logprob ratio
+是否能反映行为质量变化？
+
+\subsubsection{9.2 需要的数据}\label{ux9700ux8981ux7684ux6570ux636e}
+
+\begin{itemize}
+\tightlist
+\item
+  current checkpoint；
+\item
+  previous checkpoint，例如每 25 或 50 steps；
+\item
+  same rollout batch 上的 action logprob；
+\item
+  final outcome / future return。
+\end{itemize}
+
+\subsubsection{9.3 候选信号}\label{ux5019ux9009ux4fe1ux53f7}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{delta\_logp\_prev = log pi\_t(a | s) {-} log pi\_\{t{-}k\}(a | s)}
+\NormalTok{delta\_logp\_ref = log pi\_t(a | s) {-} log pi\_0(a | s)}
+\NormalTok{implicit\_step\_reward = delta\_logp\_prev {-} baseline(uid or neighbor)}
+\end{Highlighting}
+\end{Shaded}
+
+\subsubsection{9.4 审计}\label{ux5ba1ux8ba1}
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{delta\_logp\_prev} 是否预测 future return；
+\item
+  它是否只是 reward model / format reward；
+\item
+  few-step previous 比 initial reference 是否更稳定；
+\item
+  正 delta 的 actions 是否更容易 invalid 或过长；
+\item
+  与 value prediction / soft-neighbor advantage 是否互补。
+\end{itemize}
+
+\subsubsection{9.5 判定}\label{ux5224ux5b9a-5}
+
+如果 few-step previous ratio 比 initial ref 更能预测 held-out
+success，并且不被长度/格式污染，它可以作为 SIRPO-style step reward
+候选。否则只能作为 drift detector。
+
+\subsection{10. 实验 G：External PRM / Judge / Privileged
+Teacher}\label{ux5b9eux9a8c-gexternal-prm-judge-privileged-teacher}
+
+\subsubsection{10.1 问题}\label{ux95eeux9898-7}
+
+外部 PRM 或 judge 是否能给 WebShop step 更可信的局部判断？
+
+WebArbiter 和 ToolPRMBench 的共同提醒是：PRM 不能只给 scalar，最好要有
+pairwise action comparison、structured reason 和 verifier-style 标签。
+
+\subsubsection{10.2 低成本做法}\label{ux4f4eux6210ux672cux505aux6cd5}
+
+先不训练 PRM，构造 offline pairwise set：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{(history, observation, action\_good, action\_bad, task)}
+\end{Highlighting}
+\end{Shaded}
+
+来源：
+
+\begin{itemize}
+\tightlist
+\item
+  same anchor / same soft neighbor 下 final return 高低不同的 action
+  pair；
+\item
+  success trajectory 与 failure trajectory 的 aligned step pair；
+\item
+  invalid action vs valid action；
+\item
+  human-checkable WebShop state/action pair。
+\end{itemize}
+
+\subsubsection{10.3 输出}\label{ux8f93ux51fa}
+
+每个 pair 让 judge 输出：
+
+\begin{itemize}
+\tightlist
+\item
+  哪个 action 更接近任务完成；
+\item
+  当前 state 属于哪个 stage；
+\item
+  action 的局部风险；
+\item
+  verdict reason；
+\item
+  confidence。
+\end{itemize}
+
+\subsubsection{10.4 审计}\label{ux5ba1ux8ba1-1}
+
+\begin{itemize}
+\tightlist
+\item
+  judge verdict 与 future return pairwise accuracy；
+\item
+  judge confidence calibration；
+\item
+  judge 是否偏好格式正确但任务错误的 action；
+\item
+  judge reason 是否能定位错误类型；
+\item
+  与 value / hidden similarity / environment features 的互补性。
+\end{itemize}
+
+\subsubsection{10.5 判定}\label{ux5224ux5b9a-6}
+
+如果 judge 只在显然 invalid action
+上有效，则不值得进入训练；如果它能区分同一页面下两个 plausible actions
+的长期差异，则可以作为 PRM distillation 或 reranking 数据源。
+
+\subsection{11. 实验 H：Small Intervention Before
+Training}\label{ux5b9eux9a8c-hsmall-intervention-before-training}
+
+任何信号进入 policy gradient 前，都先做小干预。
+
+\subsubsection{11.1 Best-of-k reranking}\label{best-of-k-reranking}
+
+在同一 prompt/task 上采样 k 条 trajectory，用候选信号选择 best
+trajectory 或 best next action。比较：
+
+\begin{itemize}
+\tightlist
+\item
+  selected trajectory success；
+\item
+  oracle best success；
+\item
+  random selected success；
+\item
+  signal selected vs value selected vs entropy selected。
+\end{itemize}
+
+\subsubsection{11.2 Rollout filtering}\label{rollout-filtering}
+
+过滤高风险 step 或 trajectory，仅用于构造 SFT / DPO / correction
+数据，不更新 RL objective。比较过滤后数据质量。
+
+\subsubsection{11.3 Early stop / adaptive
+rollout}\label{early-stop-adaptive-rollout}
+
+如果信号能提前预测失败，测试提前终止或分支探索是否节省 rollout budget。
+
+\subsubsection{11.4 2GPU smoke}\label{gpu-smoke}
+
+只有当离线和 reranking 都通过，才把信号接入 policy update。smoke
+标准不是提高最终分数，而是：
+
+\begin{itemize}
+\tightlist
+\item
+  valid action ratio 不掉；
+\item
+  response clip ratio 不爆；
+\item
+  advantage std 不极端；
+\item
+  validation 不出现快速 collapse。
+\end{itemize}
+
+\subsection{12. 执行顺序}\label{ux6267ux884cux987aux5e8f}
+
+\subsubsection{Stage 0：数据整理}\label{stage-0ux6570ux636eux6574ux7406}
+
+输出目录建议：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{EXPS/analysis/020\_signal\_trustworthiness/}
+\end{Highlighting}
+\end{Shaded}
+
+整理：
+
+\begin{itemize}
+\tightlist
+\item
+  训练日志；
+\item
+  value diagnostics JSONL；
+\item
+  rollout step table；
+\item
+  optional checkpoint path；
+\item
+  selected paper manifest。
+\end{itemize}
+
+\subsubsection{Stage 1：不需要 checkpoint
+的审计}\label{stage-1ux4e0dux9700ux8981-checkpoint-ux7684ux5ba1ux8ba1}
+
+先用已有日志和 JSONL 完成：
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  value head reliability audit；
+\item
+  entropy/logprob basic audit，如果日志里已有；
+\item
+  valid action / response length / clip ratio 与 value residual 的关系；
+\item
+  existing hard group signal，如果 diagnostics 中已有 group 字段。
+\end{enumerate}
+
+\subsubsection{Stage 2：需要 checkpoint 的 forward
+probe}\label{stage-2ux9700ux8981-checkpoint-ux7684-forward-probe}
+
+如果训练好的模型 checkpoint 可用，补：
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  actor hidden-state extraction；
+\item
+  current vs previous checkpoint logprob ratio；
+\item
+  hidden neighbor retrieval；
+\item
+  held-out rollout value prediction。
+\end{enumerate}
+
+\subsubsection{Stage 3：Soft-GiGPO offline
+matching}\label{stage-3soft-gigpo-offline-matching}
+
+在同一批 rollout 上比较：
+
+\begin{itemize}
+\tightlist
+\item
+  hard anchor group；
+\item
+  text embedding soft group；
+\item
+  actor hidden soft group；
+\item
+  frozen actor soft group。
+\end{itemize}
+
+\subsubsection{Stage 4：外部 PRM / Judge pairwise
+audit}\label{stage-4ux5916ux90e8-prm-judge-pairwise-audit}
+
+构造 200-500 个 pairwise state/action case，先测 judge
+是否有局部辨别力。
+
+\subsubsection{Stage 5：小干预}\label{stage-5ux5c0fux5e72ux9884}
+
+只把通过审计的信号用于 best-of-k reranking、rollout filtering 或 2GPU
+smoke。
+
+\subsection{13.
+预期结论格式}\label{ux9884ux671fux7ed3ux8bbaux683cux5f0f}
+
+每个信号最后给一个 verdict：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{Signal:}
+\NormalTok{Evidence:}
+\NormalTok{Failure modes:}
+\NormalTok{Trust level: diagnostic / reranking / filtering / policy{-}gradient{-}ready}
+\NormalTok{Next action:}
+\end{Highlighting}
+\end{Shaded}
+
+初始预判如下：
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3333}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+信号
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+当前信任等级
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+原因
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+value head prediction & diagnostic / ranking & 已有强 Spearman，但
+policy 未收益，calibration 和干扰风险未过关。 \\
+hard same-anchor GiGPO advantage & filtering / weak policy signal &
+exact same state 时语义最干净，但 group 稀疏。 \\
+actor hidden-state similarity & unknown & 直觉强，但必须证明 neighbor
+真是同一决策处境。 \\
+text embedding similarity & diagnostic & 可快速验证
+pipeline，但可能只抓表面文本。 \\
+entropy / uncertainty & diagnostic & 可能预测
+invalid/failure，也可能只是长度或 decoding 噪声。 \\
+env transition features & filtering candidate & 可解释，风险低，适合先做
+shaping/filtering。 \\
+previous-policy ratio & unknown & 需要 checkpoint logprob，对比 initial
+ref 才能判断是否更好。 \\
+external PRM / judge & reranking candidate & 需要 pairwise audit 和
+calibration，不能直接信 scalar。 \\
+\end{longtable}
+}
+
+\subsection{14. 具体下一步}\label{ux5177ux4f53ux4e0bux4e00ux6b65}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  写 \texttt{collect\_020\_signal\_table.py}：把 value
+  diagnostics、training logs、rollout metadata 合成 step-level
+  parquet/csv。
+\item
+  写 \texttt{analyze\_020\_value\_signal.py}：输出 value reliability
+  report。
+\item
+  若 checkpoint 可用，写
+  \texttt{dump\_020\_actor\_state\_probe.py}：dump selected hidden
+  state、entropy、logprob。
+\item
+  写 \texttt{analyze\_020\_soft\_neighbors.py}：比较 hard group 与 soft
+  neighbor 的 quality。
+\item
+  抽样 100 个 neighbor pair 和 100 个 high/low value pair，做人眼检查。
+\item
+  再决定 Soft-GiGPO 是用 text embedding、actor hidden state，还是先只做
+  env-feature baseline。
+\end{enumerate}
+
+\subsection{15. 风险}\label{ux98ceux9669}
+
+\begin{itemize}
+\tightlist
+\item
+  packaged repo 当前没有实际 \texttt{checkpoints/} 目录；checkpoint
+  forward probe 依赖外部路径。
+\item
+  现有 v3 脚本和 AGENTS 约定存在 \texttt{detach\_value\_backbone=false}
+  与 safe default \texttt{true} 的不一致；做信号判断时要明确当前结果来自
+  detach=false。
+\item
+  如果只在训练 batch 上做分析，会高估信号可信度。
+\item
+  如果不控制 response length、valid action、step
+  index，很多信号会被格式因素污染。
+\item
+  如果直接把 soft similarity 接入 policy update，错误 neighbor 会把 bias
+  放大成训练崩溃。
+\end{itemize}
+
+\end{document}

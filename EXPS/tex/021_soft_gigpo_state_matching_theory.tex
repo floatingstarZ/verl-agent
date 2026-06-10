@@ -1,0 +1,837 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+\documentclass[
+  10pt,
+]{ctexart}
+\usepackage{xcolor}
+\usepackage[a4paper,margin=0.9in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\newenvironment{Shaded}{}{}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.49,0.56,0.16}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\BuiltInTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{#1}}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.53,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.56,0.13,0.00}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.73,0.13,0.13}{\textit{#1}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{1.00,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.25,0.63,0.44}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.02,0.16,0.49}{#1}}
+\newcommand{\ImportTok}[1]{\textcolor[rgb]{0.00,0.50,0.00}{\textbf{#1}}}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.00,0.44,0.13}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.74,0.48,0.00}{#1}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.73,0.40,0.53}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  colorlinks=true,
+  linkcolor={Maroon},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={Blue},
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{2026-06-10}
+
+\begin{document}
+
+\section{021: Soft-GiGPO State Matching
+的理论路线}\label{soft-gigpo-state-matching-ux7684ux7406ux8bbaux8defux7ebf}
+
+日期：2026-06-10
+
+\subsection{1. 收敛后的问题}\label{ux6536ux655bux540eux7684ux95eeux9898}
+
+本文只讨论一个问题：
+
+\textbf{GiGPO 依赖 exact same state / anchor observation 才能构造 step
+group；如果 WebShop/agent 任务中很少出现完全一致 state，我们能否从 RL
+理论或 LLM 表示角度，把 same-state 放宽成 soft state matching？}
+
+这不是泛化地讨论所有 reward signal，也不是重新设计 StepPPO。目标是明确
+Soft-GiGPO 的合理路线。
+
+\subsection{2. GiGPO
+的核心假设}\label{gigpo-ux7684ux6838ux5fc3ux5047ux8bbe}
+
+GiGPO 的 step-level comparison 隐含了一个条件：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{如果两个 rollout step 处在同一个 state，那么它们后续 return 的差异主要来自当前 action / response 的差异。}
+\end{Highlighting}
+\end{Shaded}
+
+因此，同一 state 下可以用 group 内平均 return 作为 baseline：
+
+\[
+A_i^{hard}=R_i-\frac{1}{|G_i|}\sum_{j\in G_i} R_j .
+\]
+
+这个估计在 exact same state 下比较自然；但在 WebShop
+里，\texttt{anchor\_obs} 的 exact match 有两个问题：
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  太严格：页面文本轻微变化、商品排序变化、历史上下文变化都会破坏 exact
+  match。
+\item
+  太表面：文本相同也不一定代表 agent 的历史、约束、任务进展完全相同。
+\end{enumerate}
+
+所以真正的问题不是``怎么找文本相似 state''，而是：
+
+\textbf{什么条件下两个 histories 可以被当成可比较的 decision state？}
+
+\subsection{3. RL
+理论给出的放松方式}\label{rl-ux7406ux8bbaux7ed9ux51faux7684ux653eux677eux65b9ux5f0f}
+
+\subsubsection{3.1 从 state equality 到
+value-equivalence}\label{ux4ece-state-equality-ux5230-value-equivalence}
+
+设 agent 真实可决策状态是 \(s\)，当前 action 后的 discounted return 为
+\(Q^\pi(s,a)\)，baseline 应是 \(V^\pi(s)\)。如果我们用一组近邻 \(s_j\)
+的 return 做 soft baseline：
+
+\[
+b_i^{soft}=\sum_j w_{ij}R_j,
+\qquad
+A_i^{soft}=R_i-b_i^{soft}.
+\]
+
+理想 advantage 是：
+
+\[
+A_i^\pi = Q^\pi(s_i,a_i)-V^\pi(s_i).
+\]
+
+soft baseline 的偏差大致来自：
+
+\[
+\mathrm{Bias}_i \approx V^\pi(s_i)-\sum_j w_{ij}V^\pi(s_j).
+\]
+
+因此 soft matching 成立的核心条件是：
+
+\[
+\sum_j w_{ij}|V^\pi(s_i)-V^\pi(s_j)| \text{ small}.
+\]
+
+也就是说，\textbf{soft group 不需要 state 完全相同，但必须近似
+value-equivalent}。如果 neighbor 的 value 差异小，则 soft baseline 的
+bias 可控；如果 neighbor 只是文本相似但 value 差异大，soft advantage
+会系统性偏。
+
+这给了一个很清楚的审计目标：所有 soft matching 方法都要证明它选出的
+neighbor 有小的 future-return / value gap。
+
+\subsubsection{3.2
+Bisimulation：更强的``行为等价''}\label{bisimulationux66f4ux5f3aux7684ux884cux4e3aux7b49ux4ef7}
+
+MDP 中更强的等价是 bisimulation：两个 state 在所有 action 下有相近
+immediate reward，并且转移到相近 future states。bisimulation metric 把
+exact equivalence 放宽为连续距离：
+
+\[
+d(s,s') \approx \max_a
+\left(
+|r(s,a)-r(s',a)|
++ \gamma W_d(P(\cdot|s,a),P(\cdot|s',a))
+\right).
+\]
+
+如果 \(d(s,s')\) 小，则两者在长期行为上相似，value difference
+也可被界定。
+
+对 Soft-GiGPO 的启发：
+
+\begin{itemize}
+\tightlist
+\item
+  不应该只比较 observation 文本。
+\item
+  应该比较 reward、action availability、next observation / transition
+  pattern、future return。
+\item
+  如果我们没有环境模型，就用可观测 proxy 近似这些项。
+\end{itemize}
+
+这说明 raw hidden cosine 不是理论终点；它只是一个可能的 proxy。更合理的
+soft distance 应该接近：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{decision distance = reward/transition/action/value/policy{-}prediction distance}
+\end{Highlighting}
+\end{Shaded}
+
+\subsubsection{3.3 State abstraction：same state 可以变成 abstract
+state}\label{state-abstractionsame-state-ux53efux4ee5ux53d8ux6210-abstract-state}
+
+state abstraction 理论关心什么时候可以把多个 ground states 聚成一个
+abstract state。常见的抽象条件包括：
+
+\begin{itemize}
+\tightlist
+\item
+  model-equivalence：reward 和 transition 相同；
+\item
+  Q-equivalence：optimal/action value 相同；
+\item
+  policy-equivalence：当前 policy 下行为和 value 相近。
+\end{itemize}
+
+GiGPO 的 exact anchor group 可以看成最保守的 abstraction。Soft-GiGPO
+可以看成近似 abstraction：
+
+\[
+\phi(h_i) \approx \phi(h_j)
+\Rightarrow
+h_i,h_j \text{ 可比较}.
+\]
+
+这里更准确地应该写 history \(h\)，而不是 observation \(o\)，因为
+multi-turn agent 的有效状态是完整交互历史或 belief state。
+
+\subsubsection{3.4 Successor
+representation：比较``未来会到哪里''}\label{successor-representationux6bd4ux8f83ux672aux6765ux4f1aux5230ux54eaux91cc}
+
+Successor Representation (SR) 把 state 表示为未来 occupancy：
+
+\[
+\psi(s)=\mathbb{E}\left[\sum_{t\ge0}\gamma^t \mathbf{1}[s_t]\mid s_0=s\right].
+\]
+
+如果两个 state 的 successor representation
+相近，它们未来会访问的状态分布相近，因此对一大类 reward function 的
+value 也相近。
+
+对 WebShop 来说，SR 的可操作近似是：
+
+\begin{itemize}
+\tightlist
+\item
+  两个 state 是否处在相近页面阶段；
+\item
+  下一步会不会进入相似页面；
+\item
+  是否都有同类可执行 action；
+\item
+  是否都接近 purchase / failure / loop；
+\item
+  未来 success probability 是否接近。
+\end{itemize}
+
+所以 Soft-GiGPO 最好的理论口径不是``语义相似''，而是：
+
+\textbf{predictive future similarity}。
+
+\subsubsection{3.5 POMDP / Predictive State：agent 的 state 是
+history}\label{pomdp-predictive-stateagent-ux7684-state-ux662f-history}
+
+WebShop 对 LLM agent 更像 POMDP：单个 observation
+不一定包含全部任务进展，完整 trace 才决定下一步。Predictive State
+Representation (PSR) 的观点是：state 可以表示为对未来 action-observation
+tests 的预测。
+
+这正好解释用户的问题：\textbf{agent 行为依赖 trace，而不是单个 step
+observation。}
+
+因此 Soft-GiGPO 不应在 \texttt{anchor\_obs} 上做相似度，而应在：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{h\_t = task + previous observations + previous actions + current observation}
+\end{Highlighting}
+\end{Shaded}
+
+这个 pre-action history 上做相似度。更进一步，相似度应比较两个 histories
+对未来的预测，而不是当前表面文本。
+
+\subsection{4. LLM 角度：hidden state 能不能作为 soft
+state？}\label{llm-ux89d2ux5ea6hidden-state-ux80fdux4e0dux80fdux4f5cux4e3a-soft-state}
+
+Transformer 的 pre-action hidden state 是对完整上下文的压缩；由于
+attention，它可以依赖整个 trace。但训练目标主要是 next-token
+prediction，不保证它天然保留 reward-relevant state。
+
+所以结论要分两层：
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{可以用 actor 内部表示作为候选 soft state
+  representation}，因为它确实是 policy 做决策时使用的内部状态。
+\item
+  \textbf{不能直接相信 raw hidden cosine}，因为 hidden 相似不必然等价于
+  value 相似、transition 相似或 action 可比。
+\end{enumerate}
+
+比 raw hidden cosine 更稳的是比较 actor 诱导出来的预测对象：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{pi\_theta(a | h) over executable/candidate actions}
+\NormalTok{V\_theta(h) or return probe}
+\NormalTok{predicted next observation / stage}
+\NormalTok{hidden projection trained to predict future{-}return neighborhood}
+\end{Highlighting}
+\end{Shaded}
+
+换句话说，LLM theory 支持的不是``最后一个 token hidden state
+本身神奇地代表 state''，而是：
+
+\textbf{actor hidden state 可以被用来产生 predictive decision
+fingerprints。}
+
+\subsection{5. Soft-GiGPO
+的理论目标}\label{soft-gigpo-ux7684ux7406ux8bbaux76eeux6807}
+
+Soft-GiGPO 应该把 hard same-state 改成以下条件：
+
+\[
+h_i \sim h_j
+\quad\text{if}\quad
+D_{decision}(h_i,h_j)\le \epsilon.
+\]
+
+其中 \(D_{decision}\) 不是单一文本距离，而是近似
+value/bisimulation/predictive-state 距离：
+
+\[
+D_{decision}
+=
+\alpha D_{stage}
++\beta D_{action\_mask}
++\chi D_{\pi}
++\delta D_{value}
++\eta D_{transition}.
+\]
+
+每一项的含义：
+
+\begin{itemize}
+\tightlist
+\item
+  \(D_{stage}\)：是否同处搜索页、详情页、选项页、购买页、失败/循环状态。
+\item
+  \(D_{action\_mask}\)：可执行动作集合是否相近。
+\item
+  \(D_{\pi}\)：actor 在候选 action 上的分布是否相近。
+\item
+  \(D_{value}\)：value / future-return probe 是否相近。
+\item
+  \(D_{transition}\)：执行候选 action 后的 next-observation / stage
+  prediction 是否相近。
+\end{itemize}
+
+第一版不需要全部实现，但这个公式明确了路线：\textbf{soft matching 要逼近
+decision equivalence，而不是 plain semantic similarity。}
+
+\subsection{6. 推荐路线}\label{ux63a8ux8350ux8defux7ebf}
+
+\subsubsection{6.1 第一优先级：Hard + Soft
+Backoff}\label{ux7b2cux4e00ux4f18ux5148ux7ea7hard-soft-backoff}
+
+不要第一版就完全替代 hard GiGPO。推荐：
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  如果 hard group size 足够，继续用 hard group。
+\item
+  如果 hard group 是 singleton 或 group size 太小，启用 soft backoff。
+\item
+  soft backoff 只在同一个 \texttt{uid} 内找 neighbors。
+\item
+  soft neighbors 必须先通过 stage/action-mask 过滤。
+\item
+  再用 actor predictive distance 或 representation distance 排 top-k。
+\end{enumerate}
+
+形式：
+
+\[
+A_i =
+\begin{cases}
+A_i^{hard}, & |G_i^{hard}|\ge m \\
+A_i^{soft}, & |G_i^{hard}|<m \text{ and confidence high}\\
+0 \text{ or episode-only}, & otherwise.
+\end{cases}
+\]
+
+这个版本最稳，因为它不破坏 GiGPO 已经可靠的 exact-state signal，只补
+exact match 缺失处。
+
+\subsubsection{6.2 第二优先级：Actor Predictive Distribution
+Matching}\label{ux7b2cux4e8cux4f18ux5148ux7ea7actor-predictive-distribution-matching}
+
+相比 hidden cosine，更推荐先比较 actor 在候选 action 上的分布。
+
+对每个 history \(h_i\)，构造候选 action set：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{C\_i = actions sampled in same uid}
+\NormalTok{      + valid action templates}
+\NormalTok{      + actions observed in nearby steps}
+\end{Highlighting}
+\end{Shaded}
+
+计算：
+
+\[
+p_i(a)=\pi_\theta(a|h_i),\quad a\in C_i.
+\]
+
+然后用 JS/KL 距离：
+
+\[
+D_\pi(h_i,h_j)=JS(p_i,p_j).
+\]
+
+优点：
+
+\begin{itemize}
+\tightlist
+\item
+  直接比较 actor 自己认为``现在能做什么''。
+\item
+  比 raw hidden cosine 更贴近 decision state。
+\item
+  不需要训练新模型。
+\item
+  可用 frozen actor，减少 non-stationarity。
+\end{itemize}
+
+缺点：
+
+\begin{itemize}
+\tightlist
+\item
+  如果 actor 本身错误或过度自信，两个错误状态也可能被认为相似。
+\item
+  需要 action candidate normalization。
+\end{itemize}
+
+因此必须和 stage/action-mask 一起用。
+
+\subsubsection{6.3 第三优先级：Predictive / SR-style
+Matching}\label{ux7b2cux4e09ux4f18ux5148ux7ea7predictive-sr-style-matching}
+
+如果有额外工程预算，可以训练轻量 probe：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{z(h) {-}\textgreater{} future return bucket}
+\NormalTok{z(h) {-}\textgreater{} next stage}
+\NormalTok{z(h) {-}\textgreater{} success probability}
+\NormalTok{z(h) {-}\textgreater{} loop / invalid risk}
+\end{Highlighting}
+\end{Shaded}
+
+然后用 probe 的中间表示或输出分布做 matching。这更接近 SR / PSR
+的理论路线，因为它显式预测 future。
+
+但它比 actor distribution route 风险更高：
+
+\begin{itemize}
+\tightlist
+\item
+  probe 可能泄漏训练 reward；
+\item
+  probe 可能只学到长度/格式；
+\item
+  probe 需要 held-out uid 验证。
+\end{itemize}
+
+所以它适合作为第二阶段，不适合第一版直接进 policy update。
+
+\subsubsection{6.4 第四优先级：Raw Hidden
+Cosine}\label{ux7b2cux56dbux4f18ux5148ux7ea7raw-hidden-cosine}
+
+raw hidden cosine 可以保留为 ablation，但不应作为主路线。
+
+如果要用，也建议：
+
+\begin{itemize}
+\tightlist
+\item
+  用 frozen checkpoint hidden；
+\item
+  加 projection layer，不直接用原 hidden；
+\item
+  whitening / normalize；
+\item
+  只在 same uid + same stage/action-mask 后使用；
+\item
+  用 offline neighbor audit 证明 value gap 小。
+\end{itemize}
+
+\subsubsection{6.5 暂不推荐：跨 uid
+matching}\label{ux6682ux4e0dux63a8ux8350ux8de8-uid-matching}
+
+不同 WebShop task 目标不同，跨 uid 即使 observation 很像，reward
+语义也可能相反。第一版必须 same uid。跨 uid 只有在引入
+task-goal-conditioned representation 后再考虑。
+
+\subsection{7. Soft Baseline 计算}\label{soft-baseline-ux8ba1ux7b97}
+
+同一 \texttt{uid} 内，过滤候选 neighbors：
+
+\[
+\mathcal{N}_i
+=
+\{j: u_j=u_i, j\ne i, D_{stage/action}(h_i,h_j)\le\epsilon\}.
+\]
+
+再计算 soft weight：
+
+\[
+w_{ij}=
+\frac{\exp(-D_{decision}(h_i,h_j)/\tau)}
+{\sum_{k\in\mathcal{N}_i}\exp(-D_{decision}(h_i,h_k)/\tau)}.
+\]
+
+soft baseline：
+
+\[
+b_i^{soft}=\sum_{j\in\mathcal{N}_i}w_{ij}R_j.
+\]
+
+soft advantage：
+
+\[
+A_i^{soft}=R_i-b_i^{soft}.
+\]
+
+可选标准化：
+
+\[
+\hat A_i^{soft}
+=
+\frac{R_i-b_i^{soft}}
+{\sqrt{\sum_jw_{ij}(R_j-b_i^{soft})^2+\epsilon}}.
+\]
+
+必须使用 leave-one-out，避免自己的 return 进入自己的 baseline。
+
+\subsection{8. Confidence Gate}\label{confidence-gate}
+
+Soft-GiGPO 的关键是不要在不确定时硬用 soft signal。建议加 confidence
+gate：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{min\_neighbors \textgreater{}= 2}
+\NormalTok{effective\_neighbors in [2, 8]}
+\NormalTok{top1\_distance \textless{} threshold}
+\NormalTok{neighbor\_return\_std not too high}
+\NormalTok{stage/action\_mask match is true}
+\NormalTok{soft\_baseline not dominated by one neighbor}
+\end{Highlighting}
+\end{Shaded}
+
+effective neighbors：
+
+\[
+N_{eff}=\frac{1}{\sum_jw_{ij}^2}.
+\]
+
+如果 gate 不通过：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{fallback = hard advantage if available}
+\NormalTok{        or episode{-}level GiGPO advantage}
+\NormalTok{        or zero step advantage}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{9.
+离线验证必须先做}\label{ux79bbux7ebfux9a8cux8bc1ux5fc5ux987bux5148ux505a}
+
+Soft route 是否成立，先不看训练分数，而看四类理论审计。
+
+\subsubsection{9.1 Value-gap audit}\label{value-gap-audit}
+
+检查 selected neighbors 是否满足：
+
+\[
+|R_i-R_j| \text{ small or rank-consistent}.
+\]
+
+更具体：
+
+\begin{itemize}
+\tightlist
+\item
+  similarity 越高，future return gap 是否越小；
+\item
+  top-k neighbor return variance 是否低于 uid random neighbor；
+\item
+  soft baseline error 是否低于 uid mean baseline；
+\item
+  soft advantage 对 future return ranking 是否优于 hard singleton/uid
+  mean。
+\end{itemize}
+
+\subsubsection{9.2 Decision audit}\label{decision-audit}
+
+人工或规则检查 top-k neighbors：
+
+\begin{itemize}
+\tightlist
+\item
+  是否同一 WebShop stage；
+\item
+  是否有相近 action space；
+\item
+  是否任务目标仍一致；
+\item
+  是否 action 的局部语义可比较。
+\end{itemize}
+
+\subsubsection{9.3 Bias audit}\label{bias-audit}
+
+估计：
+
+\[
+\widehat{Bias}_i = R_i^{future} - b_i^{soft}
+\]
+
+或用 value probe 估：
+
+\[
+\widehat{Bias}_i = V(h_i)-\sum_jw_{ij}V(h_j).
+\]
+
+如果 bias 比 hard/uid baseline 更大，soft matching 不应进入训练。
+
+\subsubsection{9.4 Sign audit}\label{sign-audit}
+
+policy update 关心 sign。检查：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{sign(A\_soft) vs sign(future{-}return advantage)}
+\NormalTok{sign(A\_soft) vs sign(A\_hard) on non{-}singleton hard groups}
+\end{Highlighting}
+\end{Shaded}
+
+如果 sign flip 很多，而且无法解释，soft route 不可信。
+
+\subsection{10.
+第一版配置建议}\label{ux7b2cux4e00ux7248ux914dux7f6eux5efaux8bae}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{algorithm}\KeywordTok{:}
+\AttributeTok{  }\FunctionTok{adv\_estimator}\KeywordTok{:}\AttributeTok{ gigpo}
+\AttributeTok{  }\FunctionTok{gigpo}\KeywordTok{:}
+\AttributeTok{    }\FunctionTok{step\_advantage\_w}\KeywordTok{:}\AttributeTok{ }\FloatTok{1.0}
+\AttributeTok{    }\FunctionTok{soft\_matching}\KeywordTok{:}
+\AttributeTok{      }\FunctionTok{enable}\KeywordTok{:}\AttributeTok{ }\CharTok{true}
+\AttributeTok{      }\FunctionTok{mode}\KeywordTok{:}\AttributeTok{ hard\_backoff}
+\AttributeTok{      }\FunctionTok{scope}\KeywordTok{:}\AttributeTok{ same\_uid}
+\AttributeTok{      }\FunctionTok{min\_hard\_group\_size}\KeywordTok{:}\AttributeTok{ }\DecValTok{2}
+\AttributeTok{      }\FunctionTok{prefilter}\KeywordTok{:}
+\AttributeTok{        }\FunctionTok{same\_stage}\KeywordTok{:}\AttributeTok{ }\CharTok{true}
+\AttributeTok{        }\FunctionTok{compatible\_action\_mask}\KeywordTok{:}\AttributeTok{ }\CharTok{true}
+\AttributeTok{      }\FunctionTok{encoder}\KeywordTok{:}\AttributeTok{ actor\_action\_distribution}
+\AttributeTok{      }\FunctionTok{actor\_snapshot}\KeywordTok{:}\AttributeTok{ frozen\_current\_or\_previous}
+\AttributeTok{      }\FunctionTok{distance}\KeywordTok{:}\AttributeTok{ js\_divergence}
+\AttributeTok{      }\FunctionTok{top\_k}\KeywordTok{:}\AttributeTok{ }\DecValTok{8}
+\AttributeTok{      }\FunctionTok{temperature}\KeywordTok{:}\AttributeTok{ }\FloatTok{0.1}
+\AttributeTok{      }\FunctionTok{min\_neighbors}\KeywordTok{:}\AttributeTok{ }\DecValTok{2}
+\AttributeTok{      }\FunctionTok{effective\_neighbors\_min}\KeywordTok{:}\AttributeTok{ }\DecValTok{2}
+\AttributeTok{      }\FunctionTok{effective\_neighbors\_max}\KeywordTok{:}\AttributeTok{ }\DecValTok{8}
+\AttributeTok{      }\FunctionTok{leave\_one\_out}\KeywordTok{:}\AttributeTok{ }\CharTok{true}
+\AttributeTok{      }\FunctionTok{fallback}\KeywordTok{:}\AttributeTok{ episode\_advantage\_or\_zero}
+\end{Highlighting}
+\end{Shaded}
+
+如果 action-distribution route 工程成本太高，临时降级：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{encoder}\KeywordTok{:}\AttributeTok{ text\_embedding}
+\FunctionTok{prefilter.same\_stage}\KeywordTok{:}\AttributeTok{ }\CharTok{true}
+\FunctionTok{prefilter.compatible\_action\_mask}\KeywordTok{:}\AttributeTok{ }\CharTok{true}
+\end{Highlighting}
+\end{Shaded}
+
+但这只能作为 pipeline smoke，不应视为最终理论路线。
+
+\subsection{11.
+和用户原问题的关系}\label{ux548cux7528ux6237ux539fux95eeux9898ux7684ux5173ux7cfb}
+
+用户的担心是对的：agent 的行为依赖 trace，而不是单个 observation。因此：
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{anchor\_obs\ exact\ match} 太窄；
+\item
+  \texttt{anchor\_obs\ text\ similarity} 仍然不够；
+\item
+  应该以 pre-action history \(h_t\) 为 state；
+\item
+  soft matching 应该比较 histories 的 decision/predictive equivalence。
+\end{itemize}
+
+如果 actor 确实有``既视感''，它不应该只表现为 hidden
+cosine，而应该表现为：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{两个 histories 下，actor 对可执行 action 的相对偏好相近；}
+\NormalTok{或 actor/probe 对 future transition / return 的预测相近。}
+\end{Highlighting}
+\end{Shaded}
+
+这才是可以从理论上站住的 soft route。
+
+\subsection{12. 最终建议}\label{ux6700ux7ec8ux5efaux8bae}
+
+Soft-GiGPO 最合理的第一条路线是：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{same uid}
+\NormalTok{  {-}\textgreater{} history{-}level state, not observation{-}only}
+\NormalTok{  {-}\textgreater{} stage/action{-}mask prefilter}
+\NormalTok{  {-}\textgreater{} frozen actor action{-}distribution distance}
+\NormalTok{  {-}\textgreater{} top{-}k leave{-}one{-}out weighted baseline}
+\NormalTok{  {-}\textgreater{} confidence gate}
+\NormalTok{  {-}\textgreater{} hard group fallback / episode fallback}
+\end{Highlighting}
+\end{Shaded}
+
+不建议第一版做：
+
+\begin{itemize}
+\tightlist
+\item
+  跨 uid matching；
+\item
+  raw hidden cosine 直接进 advantage；
+\item
+  online actor hidden 不冻结；
+\item
+  value-only matching；
+\item
+  external judge scalar 直接做 step reward；
+\item
+  一次性合并 value head、Soft-GiGPO、StepPPO action-level ratio。
+\end{itemize}
+
+一句话总结：
+
+\textbf{Soft-GiGPO 可行，但理论依据不是``语义相似''，而是``近似
+value-equivalence / bisimulation-equivalence / predictive-state
+equivalence''。第一版应把这种等价落实到 actor action-distribution +
+environment stage/action mask 上。}
+
+\subsection{13. 参考资料}\label{ux53c2ux8003ux8d44ux6599}
+
+相关 PDF 已归档到：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{EXPS/papers/021\_soft\_state\_matching\_theory/}
+\end{Highlighting}
+\end{Shaded}
+
+核心参考：
+
+\begin{itemize}
+\tightlist
+\item
+  Ferns, Panangaden, Precup: Metrics for Finite Markov Decision
+  Processes.
+\item
+  Li, Walsh, Littman: Towards a Unified Theory of State Abstraction for
+  MDPs.
+\item
+  Dayan: Improving Generalisation for Temporal Difference Learning: The
+  Successor Representation.
+\item
+  Littman, Sutton, Singh: Predictive Representations of State.
+\item
+  Feng et al.: Group-in-Group Policy Optimization for LLM Agent
+  Training.
+\item
+  Zhu et al.: GAGPO: Generalized Advantage Grouped Policy Optimization.
+\item
+  Choi et al.: Your Language Model is Its Own Critic.
+\item
+  Liu et al.: Agentic Reinforcement Learning with Implicit Step Rewards.
+\end{itemize}
+
+\end{document}

@@ -819,4 +819,38 @@ A_{i,t}^{\mathrm{GAE}}
 \]
 它仍不是标准 PPO，因为 policy advantage 仍为 GiGPO；但它更适合测试 shared value head 是否能学习 StepPPO/Turn-PPO 风格的 critic target。
 
+
+\section*{Turn 7 | User}
+\begin{Verbatim}[breaklines=true,breakanywhere=true]
+接下来我有个想法，GiGPO是使用硬文本匹配来计算step的advatage的。有没有一种其他方法？比如模型的既视感之类的，来对各个step之间进行软匹配，从而实现估计。这个的好处是不需要硬性匹配了。
+
+请你草拟这个想法为一个文档
+\end{Verbatim}
+
+\section*{Turn 7 | Codex}
+Codex 将这个想法整理为一个新的 GiGPO 扩展方向，暂命名为 \textbf{Soft-GiGPO / Semantic Step Matching}。核心观点是：当前 GiGPO 的 step group 默认依赖 exact anchor observation match，可选 \code{SequenceMatcher} 也仍然是阈值式 hard clustering；新的设想把“相同 state”的硬文本定义放宽成“相似 state”的连续语义定义。
+
+文档中定义了 soft matching 的基本形式。给定 step 表示 $z_i=f_{\mathrm{match}}(s_i)$ 和相似度 $\mathrm{sim}_{ij}=\cos(z_i,z_j)$，在同一 task \code{uid} 内构造 leave-one-out softmax 权重：
+\[
+w_{ij}=\frac{\mathbf{1}[u_i=u_j]\mathbf{1}[i\ne j]\exp(\mathrm{sim}_{ij}/\tau)}
+{\sum_{k:u_k=u_i,k\ne i}\exp(\mathrm{sim}_{ik}/\tau)+\epsilon}.
+\]
+再用加权 baseline
+\[
+b_i^{\mathrm{soft}}=\sum_j w_{ij}R_j
+\]
+得到 soft step advantage：
+\[
+A_i^{\mathrm{soft}}=R_i-b_i^{\mathrm{soft}}.
+\]
+
+文档建议第一版只做 \textbf{Soft-GiGPO-v0}：不改变 policy loss、不接入 StepPPO-v3 value head、不改变 rollout recipe，只替换或增强 GiGPO 的 step relative advantage estimator。候选匹配表示包括 text embedding、actor selected hidden state、frozen actor snapshot，以及后续更高风险的 value-aware similarity。
+
+新增文档位置：
+\begin{itemize}
+  \item \path{EXPS/019_soft_gigpo_semantic_step_matching.md}
+  \item \path{EXPS/tex/019_soft_gigpo_semantic_step_matching.tex}
+  \item \path{EXPS/019_soft_gigpo_semantic_step_matching.pdf}
+\end{itemize}
+
 \end{document}

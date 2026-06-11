@@ -718,10 +718,9 @@ class RayPPOTrainer:
             else:
                 value = value.tolist()
         if isinstance(value, np.ndarray):
-            if value.shape == ():
-                value = value.item()
-            elif value.size == 1:
-                value = value.reshape(-1)[0].item()
+            if value.shape == () or value.size == 1:
+                elem = value.reshape(-1)[0]
+                value = elem.item() if isinstance(elem, np.generic) else elem
             else:
                 value = value.tolist()
         if isinstance(value, np.generic):
@@ -757,7 +756,202 @@ class RayPPOTrainer:
             value = values[idx]
         except Exception:
             return None
+        return RayPPOTrainer._json_safe_value(value)
+
+    @staticmethod
+    def _json_safe_value(value):
+        """Recursively convert common tensor/numpy objects into JSON-safe values."""
+        if isinstance(value, torch.Tensor):
+            value = value.detach().cpu()
+            if value.numel() == 1:
+                return RayPPOTrainer._json_safe_scalar(value.item())
+            return {
+                "type": "tensor",
+                "shape": list(value.shape),
+                "dtype": str(value.dtype),
+            }
+        if isinstance(value, np.ndarray):
+            if value.shape == () or value.size == 1:
+                return RayPPOTrainer._json_safe_value(value.reshape(-1)[0])
+            if value.dtype == object:
+                return [RayPPOTrainer._json_safe_value(item) for item in value.tolist()]
+            return value.tolist()
+        if isinstance(value, np.generic):
+            return RayPPOTrainer._json_safe_scalar(value.item())
+        if isinstance(value, dict):
+            return {str(k): RayPPOTrainer._json_safe_value(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [RayPPOTrainer._json_safe_value(item) for item in value]
         return RayPPOTrainer._json_safe_scalar(value)
+
+    @staticmethod
+    def _tensor_manifest(batch: DataProto):
+        manifest = {}
+        if batch.batch is None:
+            return manifest
+        for key, value in batch.batch.items():
+            if isinstance(value, torch.Tensor):
+                manifest[key] = {
+                    "shape": list(value.shape),
+                    "dtype": str(value.dtype),
+                    "device": str(value.device),
+                }
+            else:
+                manifest[key] = {"type": str(type(value))}
+        return manifest
+
+    @staticmethod
+    def _tensor_row_list(batch: DataProto, key: str, idx: int, max_items: int = 0):
+        if batch.batch is None or key not in batch.batch:
+            return None
+        value = batch.batch[key][idx].detach().cpu()
+        if value.numel() == 1:
+            return RayPPOTrainer._json_safe_scalar(value.reshape(-1)[0].item())
+        if value.dtype in (torch.float16, torch.bfloat16, torch.float32, torch.float64):
+            flat = value.reshape(-1).float().tolist()
+        else:
+            flat = value.reshape(-1).tolist()
+        if max_items and max_items > 0:
+            flat = flat[:max_items]
+        return [RayPPOTrainer._json_safe_scalar(item) for item in flat]
+
+    def _dump_rl_trace(self, batch: DataProto, dump_path: str, epoch: int | None = None, phase: str = "post_adv_pre_update"):
+        """Dump a comprehensive RL-step trace for offline analysis.
+
+        The binary DataProto is the source of truth: it preserves tensor fields such
+        as rollout/actor/ref log-probs, values, rewards, advantages, masks, token ids,
+        and all non-tensor rollout metadata. The JSONL rows are a convenient, decoded
+        view for quick inspection and lightweight scripts.
+        """
+        os.makedirs(dump_path, exist_ok=True)
+        step_dir = os.path.join(dump_path, f"step_{self.global_steps:06d}")
+        os.makedirs(step_dir, exist_ok=True)
+
+        n_rows = len(batch)
+        max_rows = int(self.config.trainer.get("rl_trace_max_rows", 0) or 0)
+        rows_to_dump = min(n_rows, max_rows) if max_rows > 0 else n_rows
+        include_text = bool(self.config.trainer.get("rl_trace_include_text", True))
+        include_token_arrays = bool(self.config.trainer.get("rl_trace_include_token_arrays", True))
+        include_prob_arrays = bool(self.config.trainer.get("rl_trace_include_prob_arrays", True))
+        include_full_prompt_tokens = bool(self.config.trainer.get("rl_trace_include_full_prompt_tokens", False))
+        token_array_max_items = int(self.config.trainer.get("rl_trace_token_array_max_items", 0) or 0)
+        save_dataproto = bool(self.config.trainer.get("rl_trace_save_dataproto", True))
+
+        response_len = int(batch.batch["responses"].shape[-1]) if batch.batch is not None and "responses" in batch.batch else 0
+        response_mask = None
+        if batch.batch is not None:
+            if "response_mask" in batch.batch:
+                response_mask = batch.batch["response_mask"].detach().cpu()
+            elif "attention_mask" in batch.batch and response_len > 0:
+                response_mask = batch.batch["attention_mask"][:, -response_len:].detach().cpu()
+
+        prompt_texts = [None] * rows_to_dump
+        response_texts = [None] * rows_to_dump
+        if include_text:
+            try:
+                if "prompts" in batch.batch:
+                    prompt_texts = self.tokenizer.batch_decode(batch.batch["prompts"][:rows_to_dump], skip_special_tokens=True)
+                if "responses" in batch.batch:
+                    response_texts = self.tokenizer.batch_decode(batch.batch["responses"][:rows_to_dump], skip_special_tokens=True)
+            except Exception as exc:
+                print(f"[WARN] Failed to decode rl trace text: {exc}")
+
+        if save_dataproto:
+            binary_batch = deepcopy(batch)
+            binary_batch.to("cpu")
+            binary_batch.save_to_disk(os.path.join(step_dir, "batch.pkl"))
+
+        tensor_keys = list(batch.batch.keys()) if batch.batch is not None else []
+        non_tensor_keys = list(batch.non_tensor_batch.keys()) if batch.non_tensor_batch is not None else []
+        metadata = {
+            "global_step": self.global_steps,
+            "epoch": int(epoch) if epoch is not None else None,
+            "phase": phase,
+            "num_rows": n_rows,
+            "dumped_rows": rows_to_dump,
+            "tensor_keys": tensor_keys,
+            "tensor_manifest": self._tensor_manifest(batch),
+            "non_tensor_keys": non_tensor_keys,
+            "meta_info": self._json_safe_value(batch.meta_info),
+            "include_text": include_text,
+            "include_token_arrays": include_token_arrays,
+            "include_prob_arrays": include_prob_arrays,
+            "include_full_prompt_tokens": include_full_prompt_tokens,
+            "token_array_max_items": token_array_max_items,
+            "save_dataproto": save_dataproto,
+            "files": {
+                "binary_batch": "batch.pkl" if save_dataproto else None,
+                "rows": "rows.jsonl",
+            },
+        }
+        with open(os.path.join(step_dir, "metadata.json"), "w") as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=2)
+
+        scalar_tensor_keys = [
+            "state_values",
+            "step_returns",
+            "step_rewards",
+            "value_step_rewards",
+        ]
+        token_tensor_keys = [
+            "responses",
+            "response_mask",
+            "rollout_log_probs",
+            "old_log_probs",
+            "ref_log_prob",
+            "actor_entropys",
+            "token_level_scores",
+            "token_level_rewards",
+            "advantages",
+            "returns",
+        ]
+        if include_full_prompt_tokens:
+            token_tensor_keys.extend(["prompts", "input_ids", "attention_mask", "position_ids"])
+
+        logprob_keys = ["rollout_log_probs", "old_log_probs", "ref_log_prob"]
+        rows_filename = os.path.join(step_dir, "rows.jsonl")
+        with open(rows_filename, "w") as f:
+            for idx in range(rows_to_dump):
+                entry = {
+                    "global_step": self.global_steps,
+                    "epoch": int(epoch) if epoch is not None else None,
+                    "phase": phase,
+                    "row_idx": idx,
+                    "response_valid_length": self._json_safe_scalar(response_mask[idx].sum().item()) if response_mask is not None else None,
+                    "non_tensors": {
+                        key: self._safe_non_tensor_at(batch.non_tensor_batch, key, idx) for key in non_tensor_keys
+                    },
+                    "scalars": {},
+                }
+                for key in scalar_tensor_keys:
+                    value = self._tensor_row_list(batch, key, idx, max_items=1)
+                    if isinstance(value, list):
+                        value = value[0] if value else None
+                    entry["scalars"][key] = value
+
+                if include_text:
+                    entry["prompt_text"] = prompt_texts[idx]
+                    entry["response_text"] = response_texts[idx]
+
+                if include_token_arrays:
+                    entry["token_arrays"] = {}
+                    for key in token_tensor_keys:
+                        value = self._tensor_row_list(batch, key, idx, max_items=token_array_max_items)
+                        if value is not None:
+                            entry["token_arrays"][key] = value
+                    if include_prob_arrays:
+                        for key in logprob_keys:
+                            values = entry["token_arrays"].get(key)
+                            if isinstance(values, list):
+                                entry["token_arrays"][key.replace("log_probs", "probs").replace("log_prob", "prob")] = [
+                                    self._json_safe_scalar(float(np.exp(v))) if v is not None else None for v in values
+                                ]
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+        latest_filename = os.path.join(dump_path, "latest_trace_step.txt")
+        with open(latest_filename, "w") as f:
+            f.write(str(self.global_steps))
+        print(f"Dumped RL trace to {step_dir}")
 
     def _dump_value_diagnostics(self, batch: DataProto, dump_path: str, epoch: int | None = None):
         """Dump sample-level value-head targets/predictions for offline analysis."""
@@ -1411,6 +1605,8 @@ class RayPPOTrainer:
                         entropy_loss = agg_loss(loss_mat=entropys, loss_mask=response_masks, loss_agg_mode=loss_agg_mode)
                         old_log_prob_metrics = {"actor/entropy_loss": entropy_loss.detach().item()}
                         metrics.update(old_log_prob_metrics)
+                        if self.config.trainer.get("rl_trace_keep_entropy", False):
+                            old_log_prob.batch["actor_entropys"] = entropys.detach().clone()
                         old_log_prob.batch.pop("entropys")
                         batch = batch.union(old_log_prob)
 
@@ -1499,6 +1695,16 @@ class RayPPOTrainer:
                             gigpo_similarity_thresh=self.config.algorithm.gigpo.similarity_thresh,
                             use_process_only=self.config.algorithm.istar.use_process_only,
                         )
+
+                    rl_trace_dir = self.config.trainer.get("rl_trace_dir", None)
+                    rl_trace_interval = int(self.config.trainer.get("rl_trace_interval", 0) or 0)
+                    if (
+                        rl_trace_dir
+                        and rl_trace_interval > 0
+                        and (is_last_step or self.global_steps % rl_trace_interval == 0)
+                    ):
+                        with _timer("dump_rl_trace", timing_raw):
+                            self._dump_rl_trace(batch=batch, dump_path=rl_trace_dir, epoch=epoch)
 
                     value_diagnostics_dir = self.config.trainer.get("value_diagnostics_dir", None)
                     value_diagnostics_interval = int(self.config.trainer.get("value_diagnostics_interval", 0) or 0)

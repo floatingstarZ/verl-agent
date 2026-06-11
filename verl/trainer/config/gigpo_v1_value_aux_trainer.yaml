@@ -284,6 +284,16 @@ trainer:
   value_diagnostics_interval: 1 # dump every N training steps when value_diagnostics_dir is set
   value_diagnostics_max_rows: 512 # max per-step rows to dump; <=0 means all rows
   value_diagnostics_include_text: False # include decoded prompt/response text in value diagnostics
+  rl_trace_dir: null # directory for full RL trace dumps; stores per-step DataProto + JSONL rows when set
+  rl_trace_interval: 1 # dump full RL trace every N training steps when rl_trace_dir is set
+  rl_trace_max_rows: 0 # max JSONL rows per RL trace step; <=0 means all rows
+  rl_trace_save_dataproto: True # save full DataProto batch.pkl with tensors/non-tensors as source of truth
+  rl_trace_include_text: True # include decoded prompt/response text in RL trace rows
+  rl_trace_include_token_arrays: True # include per-token ids/logprobs/rewards/advantages in JSONL rows
+  rl_trace_include_prob_arrays: True # also include exp(logprob) probability arrays in JSONL rows
+  rl_trace_include_full_prompt_tokens: False # include full prompt/input token arrays in JSONL rows; batch.pkl always has them
+  rl_trace_token_array_max_items: 0 # truncate token arrays in JSONL rows; <=0 means no truncation
+  rl_trace_keep_entropy: True # keep actor token entropy tensor in the traced batch
   validation_data_dir: null # directory for logging the validation data, no dump if null
   nnodes: 1
   n_gpus_per_node: 8

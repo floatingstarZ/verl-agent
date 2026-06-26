@@ -15,8 +15,12 @@
 
 import os
 import yaml
-import gymnasium as gym
-from gymnasium import spaces
+try:
+    import gymnasium as gym
+    from gymnasium import spaces
+except ModuleNotFoundError:
+    import gym
+    from gym import spaces
 import numpy as np
 import torch
 import torchvision.transforms as T
@@ -60,6 +64,7 @@ class AlfworldWorker:
     
     def __init__(self, config, seed, base_env):
         self.env = base_env.init_env(batch_size=1)  # Each worker holds only one sub-environment
+        self.seed_value = seed
         self.env.seed(seed)
     
     def step(self, action):
@@ -70,8 +75,10 @@ class AlfworldWorker:
         infos['observation_text'] = obs
         return obs, scores, dones, infos
     
-    def reset(self):
+    def reset(self, reseed=False):
         """Reset the environment"""
+        if reseed:
+            self.env.seed(self.seed_value)
         obs, infos = self.env.reset()
         infos['observation_text'] = obs
         return obs, infos
@@ -143,7 +150,7 @@ class AlfworldEnvs(gym.Env):
 
         return text_obs_list, image_obs_list, rewards_list, dones_list, info_list
 
-    def reset(self):
+    def reset(self, retry_same_seed=False):
         """
         Send the reset command to all workers at once and collect initial obs/info from each environment.
         """
@@ -154,7 +161,7 @@ class AlfworldEnvs(gym.Env):
         # Send reset commands to all workers
         futures = []
         for worker in self.workers:
-            future = worker.reset.remote()
+            future = worker.reset.remote(reseed=retry_same_seed)
             futures.append(future)
 
         # Collect results

@@ -13,5 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
+
+_ALFWORLD_PACKAGE_ROOT = os.path.dirname(__file__)
+if _ALFWORLD_PACKAGE_ROOT not in sys.path:
+    sys.path.insert(0, _ALFWORLD_PACKAGE_ROOT)
+
 from .projection import alfworld_projection
 from .envs import build_alfworld_envs

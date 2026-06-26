@@ -136,7 +136,10 @@ class AlfWorldEnvironmentManager(EnvironmentManagerBase):
         super().__init__(envs, projection_f, config)
     
     def reset(self, kwargs):
-        text_obs, image_obs, infos = self.envs.reset()
+        retry_same_seed = False
+        if isinstance(kwargs, dict):
+            retry_same_seed = bool(kwargs.get('retry_same_seed', False))
+        text_obs, image_obs, infos = self.envs.reset(retry_same_seed=retry_same_seed)
         self.gamefile = parse_gamefile(infos)
         # initialize the history buffer
         self.memory.reset(batch_size = len(text_obs))

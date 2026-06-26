@@ -1,0 +1,267 @@
+{
+  "global_step": 1,
+  "epoch": 0,
+  "phase": "post_adv_pre_update",
+  "num_rows": 96,
+  "dumped_rows": 96,
+  "tensor_keys": [
+    "prompts",
+    "responses",
+    "input_ids",
+    "rollout_log_probs",
+    "attention_mask",
+    "position_ids",
+    "response_mask",
+    "old_log_probs",
+    "ref_log_prob",
+    "token_level_scores",
+    "token_level_rewards",
+    "advantages",
+    "returns"
+  ],
+  "tensor_manifest": {
+    "prompts": {
+      "shape": [
+        96,
+        4096
+      ],
+      "dtype": "torch.int64",
+      "device": "cpu"
+    },
+    "responses": {
+      "shape": [
+        96,
+        512
+      ],
+      "dtype": "torch.int64",
+      "device": "cpu"
+    },
+    "input_ids": {
+      "shape": [
+        96,
+        4608
+      ],
+      "dtype": "torch.int64",
+      "device": "cpu"
+    },
+    "rollout_log_probs": {
+      "shape": [
+        96,
+        512
+      ],
+      "dtype": "torch.float32",
+      "device": "cpu"
+    },
+    "attention_mask": {
+      "shape": [
+        96,
+        4608
+      ],
+      "dtype": "torch.int64",
+      "device": "cpu"
+    },
+    "position_ids": {
+      "shape": [
+        96,
+        4608
+      ],
+      "dtype": "torch.int64",
+      "device": "cpu"
+    },
+    "response_mask": {
+      "shape": [
+        96,
+        512
+      ],
+      "dtype": "torch.int64",
+      "device": "cpu"
+    },
+    "old_log_probs": {
+      "shape": [
+        96,
+        512
+      ],
+      "dtype": "torch.float32",
+      "device": "cpu"
+    },
+    "ref_log_prob": {
+      "shape": [
+        96,
+        512
+      ],
+      "dtype": "torch.float32",
+      "device": "cpu"
+    },
+    "token_level_scores": {
+      "shape": [
+        96,
+        512
+      ],
+      "dtype": "torch.float32",
+      "device": "cpu"
+    },
+    "token_level_rewards": {
+      "shape": [
+        96,
+        512
+      ],
+      "dtype": "torch.float32",
+      "device": "cpu"
+    },
+    "advantages": {
+      "shape": [
+        96,
+        512
+      ],
+      "dtype": "torch.float32",
+      "device": "cpu"
+    },
+    "returns": {
+      "shape": [
+        96,
+        512
+      ],
+      "dtype": "torch.float32",
+      "device": "cpu"
+    }
+  },
+  "non_tensor_keys": [
+    "anchor_obs",
+    "index",
+    "data_source",
+    "raw_prompt",
+    "uid",
+    "traj_uid",
+    "ssca_phase",
+    "ssca_attempt",
+    "ssca_step_idx",
+    "ssca_is_summary",
+    "ssca_summary_is_policy_action",
+    "ssca_chain_stage",
+    "ssca_reward_source",
+    "ssca_context_contract",
+    "ssca_visible_first_trajectory",
+    "ssca_summary_text",
+    "ssca_retry_prompt_match",
+    "ssca_linked_first_traj_uid",
+    "active_masks",
+    "is_action_valid",
+    "rewards",
+    "episode_rewards",
+    "episode_lengths",
+    "tool_callings",
+    "success_rate",
+    "ssca_retry_prompt_match_rate"
+  ],
+  "meta_info": {
+    "global_token_num": [
+      535,
+      384,
+      421,
+      1234,
+      626,
+      482,
+      498,
+      820,
+      922,
+      752,
+      1380,
+      1177,
+      782,
+      803,
+      841,
+      822,
+      1018,
+      685,
+      2348,
+      1138,
+      574,
+      3197,
+      2342,
+      482,
+      390,
+      1018,
+      813,
+      484,
+      531,
+      545,
+      574,
+      3019,
+      1316,
+      848,
+      859,
+      2413,
+      820,
+      825,
+      2342,
+      594,
+      752,
+      685,
+      462,
+      772,
+      415,
+      1091,
+      1141,
+      1554,
+      389,
+      415,
+      1211,
+      1138,
+      543,
+      489,
+      462,
+      505,
+      585,
+      2339,
+      816,
+      858,
+      823,
+      3197,
+      1554,
+      2364,
+      621,
+      664,
+      790,
+      952,
+      792,
+      737,
+      1177,
+      841,
+      555,
+      498,
+      952,
+      1141,
+      792,
+      648,
+      423,
+      401,
+      482,
+      854,
+      817,
+      2428,
+      1091,
+      1379,
+      1569,
+      1210,
+      772,
+      737,
+      2348,
+      813,
+      585,
+      531,
+      2413,
+      823
+    ],
+    "temperature": 1.0
+  },
+  "include_text": true,
+  "include_token_arrays": true,
+  "include_prob_arrays": false,
+  "include_full_prompt_tokens": false,
+  "token_array_max_items": 0,
+  "save_dataproto": true,
+  "files": {
+    "binary_batch": "batch.pkl",
+    "rows": "rows.jsonl"
+  }
+}

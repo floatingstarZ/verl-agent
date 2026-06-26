@@ -476,7 +476,144 @@ Retry action rows:
 4. GRPO group 当前沿用 repo 的 multi-turn row-level 处理方式：同一 `uid` 下的 summary row 与 action rows 都参与 group normalization。这个和现有 multi-turn GRPO/GiGPO 数据流一致，但如果要做“trajectory-level only”的 baseline，需要额外控制 `compute_mean_std_cross_steps` 或单独实现 advantage 路径。
 5. 旧 smoke trace 没有新增的 `ssca_context_contract` 等字段；需要新跑一次脚本才能看到这些更清楚的 review 字段。
 
-## 12. Review 建议
+## 12. Summary 质量审计与 Prompt 改造建议
+
+对最新 smoke trace 的逐条人工检查显示：当前 summary prompt 能让模型写出结构化“反思”，但不能稳定产出忠实、可执行、能约束 retry policy 的 summary。典型问题包括：
+
+- summary 编造未在 trajectory 中出现的 object / receptacle，例如把不存在或未观察到的物体写进 state belief。
+- summary 把有效动作误判为失败原因，或把 invalid / malformed action 的根因描述错。
+- retry plan 太泛，例如“更仔细探索”“检查可能位置”，没有给出 ALFWorld 风格的具体行动顺序。
+- 部分 summary 诱导 traj2 重复同一动作，例如连续 `go to countertop 1` 或连续 `go to diningtable 1`。
+- traj2 仍会输出 `[Action] ...`、markdown、缺少 `<think>/<action>` 等 malformed response，说明 summary prompt 没有明确约束 retry 输出格式。
+
+因此下一版不建议继续把 full trajectory 原样塞进 summary prompt。当前 full traj dump 中包含大量重复的 system/task instruction、history wrapper、admissible action list 和长文本截断碎片，这些信息对 summary 反而是噪声。更合理的做法是仿照 ALFWorld 自己给 agent 的 observation 方式，给 summary 一个压缩后的环境状态轨迹，而不是完整 prompt 轨迹。
+
+### 12.1 将 full trajectory 改成 compact obs trace
+
+建议新增 `summary_context_mode=compact_obs_trace`，把 summary prompt 中的 `[First trajectory]` 从完整 `obs["text"]` 改成以下结构：
+
+```text
+[Task]
+find two newspaper and put them in sofa.
+
+[Initial scene]
+You are in the middle of a room. Looking quickly around you, you see ...
+
+[Compact first attempt]
+Step 1
+Obs: <raw environment observation / anchor_obs only>
+Action output: <raw model response, clipped or omitted unless malformed>
+Projected action: inventory
+Valid: true
+Env feedback: You are not carrying anything.
+
+Step 2
+Obs: You are not carrying anything.
+Projected action: look
+Valid: false
+Malformed reason: contains Chinese / missing action tag / not one exact admissible action
+Env feedback: You are in the middle of a room. Looking quickly around you, you see nothing.
+
+[Outcome]
+Reward: 0.0
+Won: false
+Invalid action count: 3
+Final observation: ...
+```
+
+核心原则：
+
+- 只保留 ALFWorld 原始 observation / `anchor_obs`，不要重复完整 prompt 模板。
+- task 和 initial scene 只出现一次。
+- 每步只保留 `Obs -> projected action -> valid -> env feedback`。
+- 默认不保存每步完整 admissible actions；只在 invalid 时保存当步 admissible action excerpt，用于解释为什么 invalid。
+- raw model response 默认截断；只有 malformed 时保留，用于让 summary 识别格式错误。
+- 对长 episode 只保留最近 `k` 步、失败附近步骤、首次看到目标物的步骤、invalid 步和 final observation。
+
+这样 summary 看到的是“环境变化轨迹”，不是“prompt 日志”。这和 ALFWorld agent 每一步收到的 observation 形式更一致，也能降低 hallucination 和重复行动。
+
+### 12.2 Summary prompt 应改成 evidence-grounded retry plan
+
+当前 instruction 太像开放式反思，容易产生漂亮但不可执行的文本。建议改成更硬的 schema：
+
+```text
+You are writing an evidence-grounded retry memory for the same ALFWorld task.
+Use only facts supported by the compact first attempt.
+Do not invent objects, receptacles, locations, or actions.
+
+Return exactly these fields:
+
+Task:
+Observed facts:
+- target object observed: yes/no/unknown; evidence step:
+- target receptacle observed: yes/no/unknown; evidence step:
+- checked locations:
+- empty or unhelpful locations:
+- inventory state:
+
+Failure diagnosis:
+- invalid or malformed actions:
+- repeated or wasted actions:
+- missing necessary subgoal:
+
+Retry plan:
+- search priority:
+- first action intention:
+- next action intention if target not found:
+- action/output format rule:
+
+Rules:
+1. If the target object was not observed, write "target not observed yet".
+2. Mention only object/receptacle names appearing in observations, actions, or the original task.
+3. Give concrete ALFWorld-style action intentions, not generic advice.
+4. Keep under 160 words.
+```
+
+这里的目标不是让 summary 文学化，而是让它成为一个可被 retry policy 消化的短期工作记忆。
+
+### 12.3 加 summary quality gate
+
+在 reward 还很稀疏、短 smoke 大多 `0` reward 时，坏 summary 和好 summary 没有足够强的 outcome 区分。如果直接把所有 summary 都放进 `uid_retry` 训练，模型可能学到 verbose reflection，而不是有效 memory。建议至少记录并可选过滤：
+
+- `faithfulness_pass`: summary 中的 object / receptacle / action 是否都能在 task、observations、actions 或 final observation 中找到证据。
+- `actionability_pass`: 是否包含具体 search priority 或 action intention。
+- `format_warning_pass`: 是否明确提醒 retry 输出必须使用 `<think>...</think><action>...</action>` 且只选一个 admissible action。
+- `retry_follow_rate`: traj2 前几步是否遵循 summary 中的 search priority。
+- `invalid_delta`: `invalid_count(traj2) - invalid_count(traj1)`，若变差则降低 summary credit。
+
+第一版可以只打日志，不过滤训练；下一版可以加入 gate：
+
+```text
+summary_train_weight =
+  1.0 if faithfulness_pass and actionability_pass
+  0.3 if only actionability_pass
+  0.0 if hallucination or retry invalid rate worsens significantly
+```
+
+### 12.4 推荐 ablation
+
+为了确认“简化 trajectory”是否真的更好，建议下一批实验至少比较：
+
+- `SSCA-FullTraj`: 当前版本，summary 看完整 prompt/history dump。
+- `SSCA-CompactObsTrace`: summary 只看 compact observation/action/feedback trace。
+- `SSCA-CompactObsTrace-NoRawResponse`: 不给 raw model response，只给 projected action 和 valid/malformed reason。
+- `SSCA-RandomSummary`: 用随机或 shuffle summary 控制“只是增加上下文长度”的收益。
+- `SSCA-NoSummary`: reset 后普通 retry，不提供 summary。
+
+主要指标：
+
+```text
+summary_faithfulness_fail_rate
+summary_actionability_pass_rate
+traj2_invalid_rate
+retry_follow_rate
+reward2 - reward1
+success2 - success1
+```
+
+如果 `CompactObsTrace` 明显降低 hallucination / invalid rate，即使短期 reward 还没涨，也说明 prompt 方向更健康。
+
+## 13. Review 建议
 
 人工 review 时建议看三件事：
 

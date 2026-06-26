@@ -1,0 +1,396 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=0.9in]{geometry}
+\usepackage{amsmath,amssymb,booktabs,array,tabularx}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{xurl}
+
+\setlist[itemize]{leftmargin=1.5em}
+\setlist[enumerate]{leftmargin=1.8em}
+\setlength{\parskip}{0.35em}
+\setlength{\parindent}{0em}
+\renewcommand{\arraystretch}{1.15}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  frame=single,
+  framerule=0.2pt,
+  xleftmargin=0.5em,
+  xrightmargin=0.5em
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\title{022：Self-Summary Credit Assignment：\\用轨迹自总结连接长程 Agent RL 的过程监督与策略改进}
+\author{}
+\date{2026-06-26}
+
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{摘要}
+本文将一个新的长程 Agent RL 训练思路整理为可落地实验方案：在 rollout 中显式插入由 actor 自己生成的 summary / policy-improvement note，形成
+\begin{lstlisting}
+prompt -> traj1 -> summary -> traj2 -> reward
+\end{lstlisting}
+
+其中 summary 不是旁路日志，而是一个可训练的中间动作。它一方面被后续 \path{traj2} 的 reward 训练，另一方面可以作为 hindsight condition 反过来评价 \path{traj1} 中哪些 step / token / action 更值得强化或抑制。本文暂称该方向为 \textbf{Self-Summary Credit Assignment, SSCA}。
+
+本文定位不是替代 GiGPO / GAGPO / StepPPO，而是补充一个新的 credit source：当 exact same-state grouping 稀疏、local rerollout 昂贵、critic 学习慢时，利用“summary-conditioned policy shift”给 prefix trajectory 提供低成本的隐式过程监督。
+
+\section{核心问题}
+当前长程 Agent RL 的主要困难不是只有 sparse reward，而是三件事同时出现：
+\begin{enumerate}
+  \item rollout 昂贵，不能为每个中间 state 大量重采样；
+  \item trajectory 很长，episode reward 直接广播会污染大量 routine steps；
+  \item state 复现稀疏，GiGPO / GAGPO 依赖的 same-state group 在开放式环境中不稳定。
+\end{enumerate}
+
+已有方案大致分成三类：
+\begin{itemize}
+  \item \textbf{Within-batch step credit}：GiGPO / GAGPO 用同状态或 grouped value proxy 从当前 batch 中构造 step-level advantage。
+  \item \textbf{Reflection / retry training}：Reflexion、Self-Refine、Reflect, Retry, Reward 证明反思可以改善下一次尝试。
+  \item \textbf{Policy-implied dense credit}：VIMPO、SC-GRPO、SDPO 用 policy log-ratio 或 self-conditioned distribution shift 提供 token-level credit。
+\end{itemize}
+
+SSCA 的切口是把这三条线合并：
+\begin{quote}
+summary 不只是给后续决策用的上下文，也可以作为 prefix trajectory 的 hindsight policy condition，从而构造 prefix-level / step-level / token-level 的隐式 advantage 和 value target。
+\end{quote}
+
+\section{Rollout 结构}
+对同一个任务 prompt $x$，将一条 trajectory 切成三段：
+\begin{equation}
+  \tau = (\tau_1,\sigma,\tau_2).
+\end{equation}
+
+其中：
+\begin{itemize}
+  \item $\tau_1=(o_0,a_0,\ldots,o_k,a_k)$：前半段尝试；
+  \item $r_1$：阶段性 feedback，可来自 verifier、环境中间分、失败原因、工具 stderr、GUI state diff 或测试结果；
+  \item $\sigma=\mathrm{Summary}_\theta(\tau_1,r_1)$：actor 生成的总结、失败归因和下一步策略改进；
+  \item $\tau_2\sim\pi_\theta(\cdot\mid x,\tau_1,\sigma)$：actor 在 summary 条件下继续执行；
+  \item $R=R(\tau_1,\sigma,\tau_2)$：suffix reward 或 final reward。
+\end{itemize}
+
+建议第一版 summary prompt 固定成结构化格式：
+\begin{lstlisting}
+Summarize the previous trajectory using the observed feedback.
+1. State belief: what is currently known?
+2. Failure / success causes: which decisions helped or hurt?
+3. Policy improvement: what should be done differently next?
+4. Next-step plan: what should the agent do in the continuation?
+\end{lstlisting}
+
+这样做的目的不是追求漂亮自然语言，而是让 summary 的信息密度、可验证性和可训练性更稳定。
+
+\section{训练目标}
+\subsection{目标一：用 suffix reward 训练 summary 和 traj2}
+最直接的目标是让 summary 和后续动作共同解释 suffix improvement。定义 prefix-conditioned advantage：
+\begin{equation}
+  A_{\mathrm{suffix}} = R(\tau_1,\sigma,\tau_2) - b(x,\tau_1).
+\end{equation}
+
+这里 baseline 不应只用同 prompt group mean。更合理的是估计“给定同一个 prefix，不靠当前 summary 时的 continuation 期望”：
+\begin{equation}
+  b(x,\tau_1) \approx \mathbb{E}[R\mid x,\tau_1,\mathrm{no\ summary/generic\ summary}].
+\end{equation}
+
+第一版可以分三档实现：
+\begin{center}
+\begin{tabularx}{\linewidth}{lllX}
+\toprule
+版本 & baseline & 优点 & 风险 \\
+\midrule
+V0 & prompt group mean & 最简单，便于 smoke test & prefix quality 和 summary quality 混在一起 \\
+V1 & 同一 $\tau_1$ 下多条 continuation & 因果更干净 & 需要额外 rerollout \\
+V2 & $V_\phi(x,\tau_1)$ & rollout 成本低 & value 早期不稳 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+suffix loss 可写为：
+\begin{equation}
+  \mathcal{L}_{\mathrm{suffix}}
+  = - \sum_{t\in\sigma\cup\tau_2}
+      \mathrm{clip\_ratio}_t\cdot \mathrm{sg}(A_{\mathrm{suffix}}).
+\end{equation}
+
+为了避免空泛 summary 被 final reward 顺带奖励，建议加 gate：
+\begin{equation}
+  g_{\mathrm{useful}}=\mathbf{1}[R(\tau_2)>b(x,\tau_1)]
+\end{equation}
+或更严格地只奖励“$\tau_1$ 失败但 $\tau_2$ 成功”的 summary。这与 Reflect, Retry, Reward 的经验一致：只有能把 retry 变好的 reflection 才值得奖励。
+
+\subsection{目标二：用 summary-conditioned shift 监督 traj1}
+VIMPO 用 policy-reference log-ratio 构造 policy-implied value / advantage：
+\begin{equation}
+  \rho_t = \beta \log\frac{\pi_\theta(a_t\mid s_t)}{\pi_{\mathrm{ref}}(a_t\mid s_t)}.
+\end{equation}
+
+SSCA 的关键替换是：不把分母设为固定 reference，而是构造同一模型在两个上下文下的 counterfactual policy：
+\begin{align}
+  \pi_{\mathrm{now}}(a_t\mid h_t) &= \pi_\theta(a_t\mid x,h_t),\\
+  \pi_{\mathrm{sum}}(a_t\mid h_t,\sigma) &= \pi_\theta(a_t\mid x,\sigma,h_t).
+\end{align}
+
+其中 $h_t$ 是 \path{traj1} 的 prefix。定义 summary-conditioned log-ratio：
+\begin{equation}
+  \Delta_t^{\mathrm{sum}}
+  = \log\pi_{\mathrm{sum}}(a_t\mid h_t,\sigma)
+    - \log\pi_{\mathrm{now}}(a_t\mid h_t).
+\end{equation}
+
+直觉是：如果模型看到 summary 后更认可 \path{traj1} 的某个动作，则 $\Delta_t^{\mathrm{sum}}>0$；如果 summary 暗示该动作是错误分叉，则 $\Delta_t^{\mathrm{sum}}<0$。这让 summary 成为 \path{traj1} 的 hindsight evaluator。
+
+为了降低自举风险，第一版不要让 numerator / denominator 同时反传。建议采用 stop-gradient weight：
+\begin{equation}
+  \mathcal{L}_{\mathrm{prefix}}
+  = -\sum_{t\in\tau_1}
+    \mathrm{sg}\left(g_{\mathrm{useful}}\cdot
+    \mathrm{Normalize}(\Delta_t^{\mathrm{sum}})\right)
+    \log \pi_\theta(a_t\mid h_t).
+\end{equation}
+
+也可以加入 KL-centering 的 VIMPO-style 版本：
+\begin{equation}
+  A_t^{\mathrm{sum}}
+  = \beta\Delta_t^{\mathrm{sum}}
+  - \beta\,\mathrm{KL}\!\left(\pi_{\mathrm{sum}}(\cdot\mid h_t,\sigma)
+    \Vert \pi_{\mathrm{now}}(\cdot\mid h_t)\right),
+\end{equation}
+但第一版可以先用 sampled-token score、top-k KL 或 candidate-set KL 近似，避免完整 vocab KL 的额外开销。
+
+\subsection{目标三：用 summary 改善 value prediction}
+summary 还可以作为 value predictor 的外部信息源。最直接的 learned value 版本是：
+\begin{align}
+  V_\phi(h_t) &\rightarrow \text{summary 前 expected return},\\
+  V_\phi(h_t,\sigma) &\rightarrow \text{summary 后 expected return},\\
+  \Delta V_\phi(h_t,\sigma) &= V_\phi(h_t,\sigma)-V_\phi(h_t).
+\end{align}
+
+如果 summary 有用，应满足：
+\begin{equation}
+  \Delta V_\phi(h_k,\sigma)
+  \approx R(\tau_2)-b(x,\tau_1).
+\end{equation}
+
+也可以构造 VIMPO-style policy-implied value loss：
+\begin{equation}
+  \mathcal{L}_{V,\mathrm{sum}}
+  = \left[
+    \sum_{t\in\tau_1}\beta\Delta_t^{\mathrm{sum}}
+    - \left(R(\tau_2)-b(x,\tau_1)\right)
+  \right]^2.
+\end{equation}
+
+这条路线的含义是：summary-conditioned policy shift 的 cumulative score 应该对齐 suffix improvement。若 suffix 没有改善，累计 log-ratio 不应无条件变大。
+
+\section{完整目标与推荐分阶段实现}
+总目标可以写成：
+\begin{equation}
+  \mathcal{L}
+  = \mathcal{L}_{\mathrm{suffix}}
+  + \lambda_{\mathrm{prefix}}\mathcal{L}_{\mathrm{prefix}}
+  + \lambda_{\mathrm{value}}\mathcal{L}_{V}
+  + \lambda_{\mathrm{format}}\mathcal{L}_{\mathrm{format}}
+  + \lambda_{\mathrm{kl}}\mathrm{KL}(\pi_\theta\Vert\pi_{\mathrm{anchor}}).
+\end{equation}
+
+不建议第一版同时打开所有项。推荐阶段如下：
+\begin{enumerate}
+  \item \textbf{SSCA-Suffix}：只优化 summary tokens 和 \path{traj2} actions。
+  \item \textbf{SSCA-PrefixWeight}：加入 $\Delta_t^{\mathrm{sum}}$ 作为 \path{traj1} 的 stop-grad advantage weight。
+  \item \textbf{SSCA-Value}：加入 $V_\phi(h_t,\sigma)$ 或 $\mathcal{L}_{V,\mathrm{sum}}$。
+  \item \textbf{SSCA-Retrieve}：把有效 summary 写入历史经验库，形成跨 batch memory-conditioned critic。
+\end{enumerate}
+
+\section{推荐第一版算法}
+\begin{lstlisting}
+Algorithm: Self-Summary Policy Optimization (SSPO / SSCA)
+
+1. Roll out tau_1 under pi_old.
+2. Obtain intermediate feedback r_1.
+3. Generate sigma = Summary(tau_1, r_1) under pi_old.
+4. Continue rollout tau_2 under pi_old conditioned on sigma.
+5. Compute suffix reward R and prefix baseline b(x, tau_1).
+6. Update summary + tau_2 with A_suffix = R - b.
+7. If A_suffix > 0:
+     compute Delta_t^sum =
+       log pi_old(a_t | h_t, sigma) - log pi_old(a_t | h_t)
+     update tau_1 with stopgrad(normalized Delta_t^sum).
+8. Optionally train V_phi(h_t, sigma) to predict R or A_suffix.
+\end{lstlisting}
+
+这个版本的优点是清楚、可诊断、不会过早引入复杂 critic。它把 summary 当成可训练 action，同时只在 summary 被 suffix reward 验证后才让它参与 prefix supervision。
+
+\section{和现有工作的关系}
+\begin{center}
+\begin{tabularx}{\linewidth}{lXX}
+\toprule
+方向 & 代表工作 & 与 SSCA 的关系 \\
+\midrule
+Reflection / retry & Reflexion, Self-Refine, Reflect Retry Reward & 证明 reflection 可以改善后续尝试；SSCA 进一步把有效 summary 反过来监督 prefix。 \\
+Policy-implied credit & VIMPO, SDPO, SC-GRPO & 提供 log-ratio / self-conditioned shift 的理论和工程先例；SSCA 将 reference 换成 summary-conditioned counterfactual policy。 \\
+Agent step credit & GiGPO, GAGPO, HCAPO & 提供长程 agent step-level baseline；SSCA 不依赖 exact same-state group，而依赖 within-trajectory hindsight summary。 \\
+Memory RL & MMPO, Memory-R2 & 关注 summary/memory 质量和公平 credit；SSCA 用 suffix improvement + policy shift 替代或补充 belief entropy / local rerollout。 \\
+Actor-as-critic & POISE, V0.5 & 支持从 actor 内部状态或 prior 读 value；SSCA 可学习 summary-conditioned value。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{与 VIMPO 的关键差异。}
+VIMPO 的 ratio 是 current policy 相对 frozen reference；SSCA 的 ratio 是 summary-conditioned current/old policy 相对 unconditioned current/old policy。因此 SSCA 不应被表述为“把 VIMPO 的 ref 换成 now”，更准确是：
+\begin{quote}
+用 summary 诱导同一 actor 的 counterfactual policy，再用 contextual log-ratio 作为 hindsight credit signal。
+\end{quote}
+
+\paragraph{与 SC-GRPO 的关键联系。}
+SC-GRPO 的重要教训是：own solution 不适合直接当 distillation target，但适合当 credit filter。SSCA 应采用同样原则：
+\begin{quote}
+good summary is not a target; good summary is a credit filter.
+\end{quote}
+也就是 reward / suffix improvement 决定更新方向，summary-conditioned shift 决定哪些 prefix step/token 值得更新。
+
+\section{实验设计}
+\subsection{任务选择}
+第一批任务应满足四个条件：多步 trajectory、可验证 reward、可切分 \path{traj1/traj2}、summary 确实可能改善 continuation。
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lXX}
+\toprule
+任务 & 优点 & 风险 \\
+\midrule
+Countdown / math retry & 成本低，适合验证 summary RL 与 prefix score correlation & 不够 agentic \\
+API / function calling & 失败原因清晰，和 Reflect Retry Reward 可比 & 环境复杂度有限 \\
+WebShop & 经典 agent RL，有 GiGPO/GAGPO 对照 & state/action 模板化，summary 收益可能有限 \\
+ALFWorld & 长程多步，和现有 agent credit baseline 可比 & exact state overlap 可能已经很强 \\
+Code repair / unit test & \path{traj1} 失败、summary、\path{traj2} 修复很自然 & token/action 粒度对齐较难 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+建议路线：
+\begin{lstlisting}
+cheap retry task -> validate summary RL and prefix correlation
+WebShop / ALFWorld -> validate long-horizon agent benefit
+\end{lstlisting}
+
+\subsection{Ablation}
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule
+方法 & 说明 \\
+\midrule
+GRPO / DAPO & trajectory-level reward baseline \\
+Reflect-Retry-Reward style & 只奖励 summary/reflection tokens，不监督 prefix \\
+GiGPO / GAGPO & step-level agent credit baseline \\
+SSCA-Suffix & 训练 summary + \path{traj2} \\
+SSCA-PrefixWeight & 加 summary-conditioned prefix advantage \\
+SSCA-Value & 加 summary-conditioned value predictor \\
+SSCA-NoRewardGiven & summary 不看 $r_1$，验证反馈是否必要 \\
+SSCA-RandomSummary & 控制“只是增加上下文长度”的可能性 \\
+SSCA-BadSummaryGateOff & suffix 未改善时关闭 prefix supervision \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{诊断指标}
+训练前必须先做 offline diagnostics，否则容易把错误 summary 当成监督源。
+
+\paragraph{Summary usefulness.}
+\begin{equation}
+  \Delta R_{\mathrm{summary}}
+  = \mathbb{E}[R(\tau_2)\mid \mathrm{with\ summary}]
+  - \mathbb{E}[R(\tau_2)\mid \mathrm{generic/no\ summary}].
+\end{equation}
+如果该值不显著，说明 summary prompt 或任务切分本身有问题。
+
+\paragraph{Prefix score correlation.}
+\begin{equation}
+  S_{\mathrm{prefix}}=\sum_t\Delta_t^{\mathrm{sum}},\qquad
+  \Delta R=R(\tau_2)-b(x,\tau_1).
+\end{equation}
+检查 $\mathrm{corr}(S_{\mathrm{prefix}},\Delta R)$。如果相关性弱，$\Delta_t^{\mathrm{sum}}$ 不应进入训练，只能作为分析信号。
+
+\paragraph{Key-step localization.}
+在有人工或规则标注的样本上，检查高 $\Delta_t^{\mathrm{sum}}$ 是否集中在关键动作：工具选择、query reformulation、wrong branch、search/filter/compare 决策、code patch 关键行。
+
+\paragraph{Summary faithfulness.}
+检查 summary 是否引用了 \path{traj1} 中不存在的信息。可加一个轻量 verifier：
+\begin{lstlisting}
+summary claim must be supported by trajectory evidence
+\end{lstlisting}
+
+\subsection{建议记录的 metrics}
+\begin{lstlisting}
+ssca/summary_token_len_mean
+ssca/summary_useful_gate_rate
+ssca/suffix_adv_mean
+ssca/suffix_adv_std
+ssca/prefix_delta_sum_mean
+ssca/prefix_delta_sum_std
+ssca/prefix_delta_reward_corr
+ssca/prefix_weight_entropy
+ssca/value_before_mean
+ssca/value_after_mean
+ssca/value_delta_reward_corr
+ssca/summary_faithfulness_fail_rate
+ssca/random_summary_gap
+\end{lstlisting}
+
+\section{主要风险与约束}
+\paragraph{Summary reward hacking.}
+如果只奖励 \path{traj2}，summary 可能学会模板化文本，例如“我应该更仔细”。需要 schema、长度约束、factuality verifier 和 RandomSummary ablation。
+
+\paragraph{Moving-reference instability.}
+VIMPO 的 reference 是 frozen，SSCA 的 $\pi_{\mathrm{now}}$ 和 $\pi_{\mathrm{sum}}$ 都可能随训练漂移。第一版应使用 \path{pi_old} 计算 ratio，并对 $\Delta_t^{\mathrm{sum}}$ stop-gradient。
+
+\paragraph{Action-dependent baseline bias.}
+如果 $V_\phi(x,\tau_1,\sigma)$ 直接看当前 action 并作为 policy-gradient baseline，可能引入 bias。value predictor 第一版应作为 auxiliary loss；若用于 baseline，应采用 cross-rollout / leave-one-out 设计。
+
+\paragraph{错误 summary 污染 prefix.}
+如果 \path{traj2} 没改善，summary 不应 supervise prefix。prefix loss 必须被 suffix improvement gate 控制。
+
+\paragraph{与 StepPPO-v3 的边界。}
+当前 EXPS 主线中 StepPPO-v3 是 value-head-only 实验，不默认改变 GiGPO policy advantage、policy loss 或 rollout recipe。SSCA 应作为新的实验方向，不应写成 v3 的默认修改。
+
+\section{预期结果}
+合理预期不是第一次实验就超过所有 agent RL baseline，而是先证明三件事：
+\begin{enumerate}
+  \item SSCA-Suffix 比普通 GRPO 更快学会有效 reflection / summary；
+  \item $\sum_t\Delta_t^{\mathrm{sum}}$ 与 suffix improvement 有正相关；
+  \item 在长轨迹、routine step 多的任务上，SSCA-PrefixWeight 能提升 sample efficiency 或降低 advantage 方差。
+\end{enumerate}
+
+若上述诊断成立，再推进 SSCA-Value 和历史 summary retrieval；若诊断不成立，应优先改 summary prompt、切分点、feedback 设计，而不是加更复杂的 critic。
+
+\section{参考入口}
+\begin{itemize}
+  \item VIMPO: \url{https://arxiv.org/abs/2606.20008}
+  \item SC-GRPO / Learning from Own Solutions: \url{https://arxiv.org/abs/2606.18810}
+  \item Self-Distillation Policy Optimization: \url{https://arxiv.org/abs/2601.20802}
+  \item Reflect, Retry, Reward: \url{https://arxiv.org/abs/2505.24726}
+  \item Reflexion: \url{https://arxiv.org/abs/2303.11366}
+  \item Self-Refine: \url{https://arxiv.org/abs/2303.17651}
+  \item STaR: \url{https://arxiv.org/abs/2203.14465}
+  \item GAGPO: \url{https://arxiv.org/abs/2605.13217}
+  \item Memory-R2: \url{https://arxiv.org/abs/2605.21768}
+  \item MMPO: \url{https://arxiv.org/abs/2605.30159}
+  \item HCAPO: \url{https://arxiv.org/abs/2603.08754}
+  \item POISE: \url{https://arxiv.org/abs/2605.07579}
+\end{itemize}
+
+\end{document}

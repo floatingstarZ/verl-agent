@@ -1,0 +1,650 @@
+\documentclass[10pt]{ctexart}
+\usepackage[a4paper,margin=0.9in]{geometry}
+\usepackage{amsmath,amssymb,booktabs,array,tabularx,longtable}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{xurl}
+\usepackage{float}
+
+\setlist[itemize]{leftmargin=1.5em}
+\setlist[enumerate]{leftmargin=1.8em}
+\setlength{\parskip}{0.35em}
+\setlength{\parindent}{0em}
+\renewcommand{\arraystretch}{1.15}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  frame=single,
+  framerule=0.2pt,
+  xleftmargin=0.5em,
+  xrightmargin=0.5em
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\title{024：SSCA Retry Full 实验总结\\\large traj1 + summary + traj2 的设计、指标与失败分析}
+\author{}
+\date{2026-06-29}
+
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\section*{摘要}
+本文总结当前 \textbf{SSCA retry}（Self-Summary Credit Assignment）实验线，即用户提出的
+\begin{lstlisting}
+traj1 + summary + traj2
+\end{lstlisting}
+两阶段 retry 训练方案。当前实现已经完成工程闭环：模型先在 ALFWorld 上执行第一次轨迹 \path{traj1}，再根据第一次轨迹和 outcome feedback 生成一个可训练的 \path{summary/retry memory}，随后环境重置，第二次轨迹 \path{traj2} 只看到原始任务 prompt、当前 observation 和 summary，而不直接看到 \path{traj1} 完整历史。
+
+结论是：\textbf{链路跑通，但核心算法假设尚未成立}。seed2026 的 full run 跑满 150 step，整体 validation success 从初始约 6.6\% 提升到 30.9\%；summary 格式质量从 0.296 提升到 0.759，说明模型学会了输出结构化 retry memory。但最终 \path{traj2} 没有超过 paired \path{traj1}：validation 中 \path{traj1_success=0.336}，\path{traj2_success=0.281}，retry improved rate 为 0.172，degraded rate 为 0.227，平均 \path{reward_delta=-0.547}。因此当前版本更多证明了“summary action 可以接入训练”，还没有证明“summary 能稳定提升后续 policy”。
+
+\section{实验目标}
+原始目标是把 reflection / retry 的思想做成一个真正可训练的 RL action，而不是把 summary 当作外部日志。对同一条 ALFWorld task prompt $x$，rollout 被组织为：
+\begin{lstlisting}
+traj1:   task prompt -> action_1 ... action_T -> reward1
+summary: compact(traj1, reward1, feedback) -> retry memory
+traj2:   reset env -> task prompt + retry memory -> action'_1 ... -> reward2
+\end{lstlisting}
+
+设计中的核心约束如下：
+\begin{enumerate}
+  \item \textbf{traj1 只依赖 prompt}：第一次尝试是普通 GRPO/ALFWorld rollout，不看 summary。
+  \item \textbf{summary 是 actor action}：summary 由当前 policy 生成，写入 batch，参与 log-prob 和 policy loss。
+  \item \textbf{traj2 不看完整 traj1}：第二次尝试看不到第一轮完整 history，只能读到 summary 和 live observation。
+  \item \textbf{summary 由后续结果监督}：summary 的好坏不应只由格式判断，而应由它是否提升 \path{traj2} 决定。
+  \item \textbf{paired improvement 是主要信号}：核心指标不是单独的 \path{traj2} success，而是同一 prompt 下 \path{reward2 - reward1} 或 \path{success2 - success1}。
+\end{enumerate}
+
+\section{当前实现结构}
+
+\subsection{Rollout collector}
+核心 collector 是 \path{recipe/SSCA/rollout_loop.py} 中的 \path{SSCA2TrajCollector}。代码注释中当前链路是：
+\begin{itemize}
+  \item \path{traj1}: ALFWorld task prompt $\rightarrow$ first-attempt actions；
+  \item \path{summary}: compact observation trace + outcome feedback + summary prompt $\rightarrow$ retry memory；
+  \item \path{traj2}: reset to initial task $\rightarrow$ ALFWorld task prompt + retry memory $\rightarrow$ retry actions。
+\end{itemize}
+
+训练数据被安排为两组标准 GRPO group：
+\begin{itemize}
+  \item \path{traj1} rows 使用第一次尝试 reward；
+  \item \path{summary + traj2} rows 共享 retry uid / traj uid，并使用第二次尝试 reward。
+\end{itemize}
+这样 summary response tokens 和后续 traj2 action tokens 处在同一个 retry branch 中，理论上可以通过后续 outcome 获得 credit。
+
+\subsection{Summary prompt}
+当前 summary instruction 要求输出固定五行 retry memory：
+\begin{lstlisting}
+Task: <task phrase>
+Known: object=<...>; receptacle=<...>; inventory=<...>
+Attempt1: tried=<...>; bad=<...>; errors=<...>
+Plan: first=<...>; backup=<...>; after_object=<...>
+Rule: one admissible command per action; no or/and-then/list actions; no invented names
+\end{lstlisting}
+
+Prompt 约束包括：
+\begin{itemize}
+  \item 只能基于 task、compact first attempt trace 和 outcome feedback；
+  \item 未观察到的信息必须写 \path{not observed} 或 \path{unknown}，不能发明对象或位置；
+  \item plan verb 必须接近 ALFWorld admissible command，例如 \path{go to}、\path{open}、\path{take}、\path{put}、\path{clean}、\path{heat} 等；
+  \item 不允许 markdown、bullet、wrapper tag、额外解释；
+  \item 总长度限制约 90 words。
+\end{itemize}
+
+这版 prompt 是从 023 文档中的人工 review 循环改出来的，目标是降低早期 full trajectory dump 带来的 hallucination 和不可执行 plan。
+
+\subsection{Summary 输入上下文}
+默认 summary context mode 是 \path{compact_obs_trace}。每个 summary prompt 包含三类信息：
+\begin{enumerate}
+  \item \textbf{Task / initial scene}：从 ALFWorld 初始 observation 或 anchor 中抽取任务目标和初始场景；
+  \item \textbf{Compact first attempt trace}：只保留最多若干个关键 step 的 observation、action output、parsed action、reward、done、valid flag、env feedback；
+  \item \textbf{Outcome feedback}：包括 attempt status、final environment reward、episode length、invalid action count、won flag、goal-condition success rate 和 final observation。
+\end{enumerate}
+
+相比旧版 full trajectory dump，compact trace 不再把完整 prompt、长 history、admissible action list 和截断碎片全部塞给模型，避免 summary 被噪声诱导。
+
+\subsection{traj2 prompt}
+环境 reset 后，traj2 的 observation 会被拼接为：
+\begin{lstlisting}
+<current ALFWorld observation / original task prompt>
+
+[Retry memory generated from the first attempt]
+<summary text>
+
+Retry context contract: use the current ALFWorld observation plus this retry memory only. Treat the retry as starting from the initial scene; choose exactly one admissible action.
+\end{lstlisting}
+
+因此，traj2 的信息契约是：只能使用当前 live observation 和 summary。summary 是对第一次尝试经验的压缩，而不是完整轨迹复制。
+
+\subsection{训练 batch 和 reward 组织}
+一次 SSCA rollout 结束后，会先收集 \path{traj1} rows，再收集 \path{summary + traj2} rows。关键 metadata 包括：
+\begin{itemize}
+  \item \path{ssca_phase}: \path{traj1}、\path{summary} 或 \path{traj2}；
+  \item \path{ssca_summary_is_policy_action}: 只在 summary row 为 true；
+  \item \path{ssca_linked_first_traj_uid}: summary/traj2 指向 paired traj1；
+  \item \path{ssca_env_episode_rewards}: 原始环境 reward，不含 summary 结构 bonus；
+  \item \path{ssca_reward_bonus}: summary row 的格式质量 shaping reward，仅训练时启用；
+  \item \path{ssca_context_contract}: 标记该 row 的可见上下文约束。
+\end{itemize}
+
+主要 metrics 在 rollout 阶段统计：
+\begin{itemize}
+  \item \path{ssca_traj1_success_rate} / \path{ssca_traj2_success_rate}；
+  \item \path{ssca_retry_improved_success_rate} / \path{ssca_retry_degraded_success_rate}；
+  \item \path{ssca_metric/retry/reward_delta_mean}；
+  \item \path{ssca_metric/summary/quality_mean}；
+  \item \path{ssca_metric/summary/quality_reward_corr}。
+\end{itemize}
+
+\subsection{Summary quality score}
+Summary quality parser 主要检查：
+\begin{itemize}
+  \item 五个 label 是否都出现；
+  \item 是否严格按五行顺序输出；
+  \item word count 是否不超过上限；
+  \item 是否没有 \path{<think>}、\path{<action>}、markdown wrapper、bullet list；
+  \item \path{Plan:} 是否包含 \path{first=}、\path{backup=}、\path{after_object=}；
+  \item \path{first=} 是否以允许的 ALFWorld command prefix 开头；
+  \item 是否避免 \path{check/inspect/search/verify/try to} 这类非 admissible-action 风格词；
+  \item task terms 和 summary 是否有 overlap。
+\end{itemize}
+
+训练时 summary row 会获得小的结构 bonus：
+\begin{equation}
+  r_{summary\_bonus} = \alpha \cdot q(summary), \quad \alpha=0.2.
+\end{equation}
+Validation 时该 bonus 关闭。
+
+\section{VIMPO-style value loss}
+为了进一步约束“traj2 policy 应该好于 traj1 policy”，当前实现加入了一个 critic-free 的 VIMPO-style auxiliary loss。
+
+\subsection{Target 构造}
+在 paired prompt 内，使用第一次尝试作为 outcome baseline：
+\begin{equation}
+  \Delta r = r_2 - r_1.
+\end{equation}
+实际 target 为：
+\begin{equation}
+  y_{branch} = \frac{\Delta r + m}{s},
+\end{equation}
+其中默认 margin $m=0.1$，reward scale $s=10.0$，target clip 为 2.0。
+
+当前默认 \path{target_distribution=split_by_retry_rows}，即 branch-level target 被分摊到 summary row 和 traj2 rows 上。
+
+\subsection{Loss 形式}
+VIMPO-style loss 的实现形式为：
+\begin{equation}
+  \mathcal{L}_{vimpo}
+  = \frac{1}{2}\left[\sum_t \beta \left(\log \pi_\theta(a_t|s_t) - \log \pi_{ref}(a_t|s_t) - \mathrm{sg}[KL_t]\right) - y\right]^2.
+\end{equation}
+
+默认 $\beta=0.01$，\path{value_loss_coef=0.05}，loss type 为 Huber。该 loss 只在 summary/traj2 rows 上激活。
+
+这里的 \path{pi_ref} 是同一 state/action 下的 reference model log-prob，不是 traj1 的 token log-prob。原因是 traj1 和 traj2 的 state/action 通常不同，不能逐 token 对齐。paired traj1 reward 只作为 outcome baseline 进入 $r_2-r_1$ target。
+
+\section{Full 训练配置}
+当前 full 脚本为：
+\begin{lstlisting}
+scripts/run_ssca_retry_grpo_alfworld_1p5b_full.sh
+scripts/run_ssca_retry_grpo_alfworld_1p5b_full_3seeds.sh
+\end{lstlisting}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{l l}
+\toprule
+配置项 & 当前值 \\
+\midrule
+Model & \path{Qwen/Qwen2.5-1.5B-Instruct} \\
+Task & \path{alfworld/AlfredTWEnv} \\
+GPU & 4 \\
+Engine & \path{vllm} \\
+Tensor parallel & 2 \\
+Train / val data size & 16 / 128 \\
+Train batch size & 16 \\
+Group size & 8 \\
+Max env steps & 50 \\
+Total steps & 150 \\
+Test freq & 5 \\
+Actor lr & \path{1e-6} \\
+KL loss & enabled, coef 0.01 \\
+Invalid action penalty & enabled, coef 0.1 \\
+Flash attention & \path{flash_attention_2} \\
+Ray CPUs / env worker CPUs & 60 / 0.1 \\
+Heavy trace dump & disabled \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{l l}
+\toprule
+SSCA / VIMPO 配置项 & 当前值 \\
+\midrule
+Summary context mode & \path{compact_obs_trace} \\
+Summary trace max steps & 6 \\
+Summary step obs chars & 240 \\
+Summary feedback chars & 240 \\
+Summary max prompt chars & 1200 \\
+Summary max chars & 1200 \\
+Summary quality reward coef & 0.2 \\
+Summary quality max words & 110 \\
+Retry same seed & True \\
+VIMPO enable & True \\
+VIMPO beta & 0.01 \\
+VIMPO value loss coef & 0.05 \\
+VIMPO target distribution & \path{split_by_retry_rows} \\
+Value head & disabled \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+
+\section{关键参数定义与物理意义}
+本节补充 review 后认为必须明确的参数口径。前文的配置表给出了数值，但如果不解释这些参数在 rollout、优化和资源使用中的物理意义，读者很难判断实验是否与 GRPO / GraphGPO 可比，也很难定位为什么 summary 学到了格式但没有提升 retry outcome。
+
+\subsection{数据、rollout 与训练规模参数}
+\begin{center}
+\scriptsize
+\begin{tabularx}{\linewidth}{l l X X}
+\toprule
+参数 & 当前值 & 定义 & 物理意义 / 对实验的影响 \\
+\midrule
+\path{TRAIN_DATA_SIZE} & 16 & 数据预处理阶段抽取的 train task 数，写入 train parquet。 & 决定一个 epoch 内可见的不同 ALFWorld task 数。当前只有 16 个 task，因此 150 step 更接近小任务集上的反复训练，容易让 \path{traj1} 快速变强，也更容易出现 retry branch 被强 first attempt 压制。 \\
+\path{VAL_DATA_SIZE} & 128 & validation parquet 中的 task 数，同时作为 \path{data.val_batch_size}。 & validation 每次覆盖 128 个任务。SSCA validation 每个任务要执行 \path{traj1+summary+traj2}，因此一次 validation 成本远高于普通 GRPO。 \\
+\path{TRAIN_BATCH_SIZE} & 16 & 每个训练 step 读取的 prompt/task 数。 & 这是 prompt 级 batch size，不等于最终 actor update rows。SSCA 中每个 prompt 会展开为 paired first/retry branch，实际训练 token 数约翻倍，并额外包含 summary row。 \\
+\path{GROUP_SIZE} & 8 & \path{env.rollout.n}，同一 prompt 的 GRPO group size。 & 决定每个 task 的并行采样数和 advantage group。对 SSCA 来说，每个 group 内还会形成 paired \path{traj1} 与 \path{summary+traj2}。group 越大，GRPO baseline 越稳定，但 rollout 成本线性上升。 \\
+\path{MAX_ENV_STEPS} & 50 & 单条 ALFWorld episode 最多环境交互步数。 & 控制 \path{traj1} 和 \path{traj2} 各自最长长度。SSCA 最坏情况下每个 prompt 需要约 \path{2*50} 个环境动作外加一次 summary generation，因此 step 时间显著高于 GraphGPO。 \\
+\path{TOTAL_EPOCHS} & 150 & 当前脚本中等价于 total training steps。 & 决定最终训练长度。由于 train task 只有 16 个，150 step 足以让 \path{traj1} 在训练集上变强，这会改变 retry target 分布，使大量 paired delta 变负。 \\
+\path{TEST_FREQ} & 5 & 每隔多少 training step 跑一次 validation。 & 频繁 validation 提供密集曲线，但 SSCA validation 非常贵，最终 step 中 \path{timing_s/testing=274.708}，显著增加 wall-clock。 \\
+\path{VAL_BEFORE_TRAIN} & True & 训练前先跑一次 validation。 & 提供 step0 baseline，使 summary quality 和 success rate 的提升可被量化。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{模型、优化与资源参数}
+\begin{center}
+\scriptsize
+\begin{tabularx}{\linewidth}{l l X X}
+\toprule
+参数 & 当前值 & 定义 & 物理意义 / 对实验的影响 \\
+\midrule
+\path{MODEL_PATH} & Qwen2.5-1.5B-Instruct & actor/ref 初始化模型。 & 决定初始 ALFWorld 指令跟随和 admissible-action 格式能力。1.5B 可跑通但规划能力有限，summary 信息融合可能弱于更大模型。 \\
+\path{actor.optim.lr} & $10^{-6}$ & actor 参数学习率。 & 日志中显示 \path{actor/lr:0.000} 是格式化舍入，不表示 lr 为零。该 lr 较保守，有利于稳定，但对新引入的 summary behavior 学习可能偏慢。 \\
+\path{actor.use_kl_loss} & True & actor update 中加入 reference KL loss。 & 约束 policy 不要偏离初始模型过远。对 SSCA 的副作用是 summary/retry 新行为需要在 KL 约束下学习，若信号弱，可能只学到格式而不改变 action policy。 \\
+\path{actor.kl_loss_coef} & 0.01 & KL loss 权重。 & KL 越大，policy 越保守；越小，policy 更自由但风险更高。当前值沿用 GRPO/GiGPO 风格，主要保证稳定性。 \\
+\path{invalid_action_penalty_coef} & 0.1 & 无效动作 penalty 系数。 & ALFWorld 中 admissible action 是硬约束。该项鼓励模型输出可执行动作；但 summary 本身不是 env action，因此它主要约束 traj1/traj2 action rows。 \\
+\path{max_response_length} & 512 & 单次模型响应最大 token 数。 & action response 一般较短，但 summary generation 也走同一个 rollout 接口。上限过大可能允许 verbose summary，过小可能截断五行 memory。 \\
+\path{tensor_model_parallel_size} & 2 & vLLM rollout 的 tensor parallel size。 & 影响 rollout generation 的显存和吞吐。SSCA step 中 generation 是主要耗时之一，最终 \path{timing_s/gen=233.660}。 \\
+\path{gpu_memory_utilization} & 0.6 & vLLM 可占用 GPU 显存比例。 & 留出训练/FSDP/缓存空间，降低 OOM 风险；过低会限制 vLLM batch 效率。 \\
+\path{RAY_NUM_CPUS} & 60 & Ray 可用 CPU 总量。 & 防止占满整机 CPU。SSCA 有双 episode rollout 和 validation，CPU 主要被环境 worker、Ray 调度、dataloader 使用。 \\
+\path{ENV_WORKER_CPUS} & 0.1 & 每个 env worker 声明的 CPU resource。 & 允许较多 ALFWorld env 并发。值过高会导致 Ray 排队，过低可能过度超卖 CPU。当前值参考之前 GRPO/GraphGPO 的可运行配置。 \\
+\path{RL_TRACE_*} & heavy trace off & 控制是否 dump DataProto/token/prob 级 trace。 & heavy trace 会显著拖慢训练和占用 IO。full 中关闭 token/prob array dump，只保留轻量 rollout text，是为了解决此前 dump 过慢问题。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{SSCA summary 参数}
+\begin{center}
+\scriptsize
+\begin{tabularx}{\linewidth}{l l X X}
+\toprule
+参数 & 当前值 & 定义 & 物理意义 / 对实验的影响 \\
+\midrule
+\path{summary_context_mode} & \path{compact_obs_trace} & summary 看到的 traj1 上下文格式。 & 物理意义是“把第一次尝试压缩成环境证据”，避免 full prompt trace 的递归 history 和 admissible list 噪声。 \\
+\path{summary_trace_max_steps} & 6 & summary 输入中最多保留的 traj1 step 数。 & 控制证据带宽。太小会漏掉关键搜索轨迹；太大又会引入噪声和长 prompt。当前 6 是 prompt review 后的折中。 \\
+\path{summary_step_obs_chars} & 240 & 每个 step observation 截断字符数。 & 控制每步环境状态的可见细节。过短可能丢目标物/容器；过长会挤占 token budget。 \\
+\path{summary_step_feedback_chars} & 240 & 每步 env feedback 截断字符数。 & 保留 invalid reason、目标达成提示、final observation 等关键信息。 \\
+\path{summary_max_prompt_chars} & 1200 & summary prompt 中初始场景/上下文的最大字符数。 & 限制 summary action 的输入规模，使 summary 任务更像 evidence extraction 而不是长文阅读。 \\
+\path{summary_max_chars} & 1200 & 放入 traj2 prompt 的 summary 最大字符数。 & 防止 summary 过长污染 traj2 prompt。当前上限仍较宽，实际 word limit 由 quality parser 和 prompt 控制。 \\
+\path{summary_quality_reward_coef} & 0.2 & summary 结构质量 bonus 系数。 & 这是格式 shaping，不是 outcome reward。它解释了为什么 summary quality 能快速提高；但若权重相对 outcome 过强，会鼓励“格式漂亮但无用”的 memory。 \\
+\path{summary_quality_max_words} & 110 & quality parser 的 word limit。 & 防止 summary 变成长篇 reflection。最终 word count 约 89.9，说明长度约束生效。 \\
+\path{retry_same_seed} & True & retry reset 是否回到同一任务实例/seed。 & 保证 \path{reward2-reward1} 是 paired comparison，而不是换了环境导致的随机差异。该参数对 credit assignment 是关键前提。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{VIMPO-style 参数}
+\begin{center}
+\scriptsize
+\begin{tabularx}{\linewidth}{l l X X}
+\toprule
+参数 & 当前值 & 定义 & 物理意义 / 对实验的影响 \\
+\midrule
+\path{SSCA_VIMPO_ENABLE} & True & 是否启用 paired-improvement auxiliary loss。 & 这是让 retry branch 显式对齐 \path{reward2-reward1} 的尝试；若关闭，summary 主要依赖 GRPO outcome reward 和结构 bonus。 \\
+\path{reward_scale} & 10.0 & 把环境 reward delta 缩放到 value target 的分母。 & ALFWorld 成功 reward 量级约 10，除以 10 后 target 约落在 $[-1,1]$。物理意义是把任务 reward 转成 log-ratio/value loss 可处理的数值尺度。 \\
+\path{margin} & 0.1 & 在 \path{reward2-reward1} 上加的正 margin。 & 表示希望 retry branch 不只是持平，而是略好于 first branch。scaled 后约为 0.01，当前很弱。 \\
+\path{target_clip} & 2.0 & value target 截断范围。 & 防止极端 reward delta 造成过大 auxiliary loss。当前日志中 \path{target_clip_count=0}，说明没有实际触发。 \\
+\path{target_distribution} & \path{split_by_retry_rows} & branch target 如何分配到 summary/traj2 rows。 & 当前把 branch-level target 分摊给 summary row 和所有 traj2 action rows。优点是稳定，缺点是 summary 获得的直接监督被稀释。 \\
+\path{beta} & 0.01 & VIMPO implied value 中 log-ratio 项的温度/尺度。 & 决定 policy-reference log-ratio 转成 value 的幅度。过小会使 value signal 很弱；当前最终 value-target corr 几乎为 0，提示该项可能偏弱。 \\
+\path{value_loss_coef} & 0.05 & VIMPO auxiliary loss 加入 actor loss 的权重。 & 控制 paired-improvement signal 相对 GRPO policy loss / KL loss 的强度。当前保守，可能不足以改变 summary 行为。 \\
+\path{detach_kl} & True & loss 中 KL 项是否 stop-gradient。 & 保留 VIMPO 的低方差 baseline 作用，避免模型通过直接操纵 KL 项走捷径降低 loss。 \\
+\path{value_loss_type} & Huber & residual loss 类型。 & Huber 对 outlier 比 squared error 稳定。当前 reward delta 分布有较大方差，因此 Huber 更安全。 \\
+\path{value_head_enable} & False & 是否启用独立 learned value head。 & 当前为 critic-free VIMPO-style loss，不训练额外 value head。这样更轻量，但 value 表达完全依赖 policy/ref log-ratio。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{关键指标定义与判读口径}
+\begin{center}
+\scriptsize
+\begin{tabularx}{\linewidth}{l X X}
+\toprule
+指标 & 定义 & 如何判读 \\
+\midrule
+\path{val/success_rate} & validation 中所有展开 episode 的平均成功率。SSCA 中包含 first/retry 分支的聚合口径。 & 衡量整体任务表现，但不能单独证明 summary 有用；必须结合 \path{traj1/traj2} paired 指标。 \\
+\path{val/ssca_traj1_success_rate} & validation 中 first attempt 的成功率。 & 反映没有 summary 时当前 policy 的能力，是 retry 的 paired baseline。 \\
+\path{val/ssca_traj2_success_rate} & validation 中 summary-conditioned retry attempt 的成功率。 & 反映 summary+retry prompt 后的能力。若该值长期低于 traj1，说明 retry memory 没有产生净收益。 \\
+\path{ssca_retry_improved_success_rate} & paired 样本中 \path{success2 > success1} 的比例。 & 衡量 retry 是否把失败变成功。它比总体 success 更直接反映 SSCA 目标。 \\
+\path{ssca_retry_degraded_success_rate} & paired 样本中 \path{success2 < success1} 的比例。 & 衡量 retry 是否把成功变失败。当前 degraded 大于 improved，是主要负信号。 \\
+\path{ssca_metric/retry/reward_delta_mean} & paired 平均 $r_2-r_1$。 & SSCA 的核心 outcome 指标。正值才表示 retry branch 平均优于 first branch；当前最终仍为负。 \\
+\path{ssca_metric/traj*_valid_action_ratio} & 有效动作比例，约等于 $1 - invalid/length$。 & 如果 traj2 valid ratio 低于 traj1，说明 summary 或 retry prompt 可能干扰 admissible-action selection。 \\
+\path{summary/quality_mean} & 结构化 summary parser 给出的格式质量分数。 & 只代表格式和基本 grounding，不代表 outcome 有用。它需要和 reward corr / improvement 一起看。 \\
+\path{summary/five_label_rate} & 五个指定 label 是否完整出现的比例。 & 衡量 prompt following。该值提升说明模板学会了，但不能证明 retry 策略有效。 \\
+\path{summary/plan_ok_rate} & \path{Plan:first=} 是否符合 ALFWorld command 风格等约束。 & 衡量 plan 行是否可执行风格。最终接近 1，说明格式约束有效。 \\
+\path{summary/quality_reward_corr} & summary quality 与 retry reward 的相关性。 & 若接近 0 或为负，说明 summary 格式分数和真正任务收益脱钩。当前为负，是最关键诊断之一。 \\
+\path{actor/ssca_vimpo_value_target_corr_active} & VIMPO implied value 与 paired target 的相关性。 & 衡量 auxiliary value loss 是否学到方向。当前约 0.003，说明没有学到有效 improvement signal。 \\
+\path{actor/ssca_vimpo_sign_acc_active} & implied value 和 target 正负号一致率。 & 若接近 0.5，等价随机方向判断。当前 0.488，说明 value loss 没有可靠区分 improved/degraded branch。 \\
+\path{timing_s/step} & 一个 training step 的 wall-clock 时间。 & SSCA 每步包含双 episode 和 summary generation，因此不能直接与 GraphGPO step time 等价比较。 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{分析充分性 review}
+从 review 角度看，当前报告需要回答三个层面的问题：
+\begin{enumerate}
+  \item \textbf{实现是否符合设计}：是否确实执行了 \path{traj1 -> summary -> reset -> traj2}，summary 是否作为 policy action 进入训练，traj2 是否只看到 summary 而不是完整 traj1。
+  \item \textbf{指标是否覆盖核心假设}：是否同时报告 overall success、traj1/traj2 paired success、reward delta、summary quality、summary-outcome correlation 和 VIMPO target learning。
+  \item \textbf{失败原因是否能被定位}：是否能区分“summary 格式没学会”、“summary 学会但没用”、“traj2 prompt 干扰动作”、“VIMPO signal 太弱”、“成功 traj1 导致自然退化”等不同机制。
+\end{enumerate}
+
+补充上述参数和指标定义后，文档现在基本覆盖了这三层。仍然不足的是：日志中缺少按 \path{traj1_failed} / \path{traj1_success} 分桶后的 retry 指标，也缺少 summary 内容级别的自动统计，例如是否包含目标物、目标容器、第一步 plan 是否在 admissible action 中。因此本文的机制判断是由现有 aggregate metrics 推断出来的，下一版实验应把这些分桶指标直接打进日志。
+
+\section{运行记录}
+当前保留下来的 SSCA full 运行主要是 seed2026：
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{l c l X}
+\toprule
+Run & Seed & 状态 & 日志 \\
+\midrule
+Early SSCA retry & 2026 & 跑到 step 56/150 后中断 & \path{logs/ssca_retry_grpo_qwen25_15b_alfworld_full_seed2026_20260626_164746.log} \\
+SSCA + VIMPO full & 2026 & 跑满 150/150；final validation 后 DataLoader worker 被 kill & \path{logs/ssca_retry_grpo_qwen25_15b_alfworld_full_seed2026_ssca_vimpo_full_20260626_233243_20260626_233243.log} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+没有看到 seed2077、seed2501 的完整 SSCA full 日志。因此下面的结论只代表 seed2026，不是 3-seed 稳健结论。
+
+\section{Validation 曲线}
+下表来自 SSCA + VIMPO full seed2026。重点观察三类信号：总体成功率、traj1/traj2 paired 对比、summary 质量。
+
+\begin{center}
+\scriptsize
+\begin{tabularx}{\linewidth}{r r r r r r r r r r r r}
+\toprule
+Step & Score & Succ & T1 succ & T2 succ & Improve & Degrade & $\Delta r$ & SumQ & 5-label & PlanOK & Corr \\
+\midrule
+0 & 0.328 & 0.066 & 0.086 & 0.047 & 0.023 & 0.062 & -0.391 & 0.296 & 0.148 & 0.094 & 0.113 \\
+5 & 0.264 & 0.062 & 0.086 & 0.039 & 0.039 & 0.086 & -0.469 & 0.493 & 0.547 & 0.219 & -0.093 \\
+10 & 0.604 & 0.109 & 0.133 & 0.086 & 0.078 & 0.125 & -0.469 & 0.539 & 0.711 & 0.297 & -0.114 \\
+15 & 0.307 & 0.082 & 0.109 & 0.055 & 0.047 & 0.102 & -0.547 & 0.605 & 0.758 & 0.125 & 0.032 \\
+25 & 0.492 & 0.121 & 0.203 & 0.039 & 0.031 & 0.195 & -1.641 & 0.625 & 0.750 & 0.305 & -0.057 \\
+50 & 1.107 & 0.230 & 0.281 & 0.180 & 0.109 & 0.211 & -1.016 & 0.705 & 0.695 & 0.758 & 0.026 \\
+75 & 1.124 & 0.254 & 0.297 & 0.211 & 0.125 & 0.211 & -0.859 & 0.749 & 0.742 & 0.961 & 0.002 \\
+100 & 1.022 & 0.223 & 0.258 & 0.188 & 0.102 & 0.172 & -0.703 & 0.751 & 0.734 & 0.969 & 0.005 \\
+125 & 0.839 & 0.180 & 0.219 & 0.141 & 0.109 & 0.188 & -0.781 & 0.760 & 0.734 & 0.992 & -0.133 \\
+150 & 1.203 & 0.309 & 0.336 & 0.281 & 0.172 & 0.227 & -0.547 & 0.759 & 0.734 & 0.992 & -0.061 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+表中缩写：\path{Score} 是 \path{val/text/test_score}，\path{Succ} 是 \path{val/success_rate}，\path{T1/T2 succ} 是 \path{traj1/traj2} success，\path{SumQ} 是 summary quality，\path{Corr} 是 summary quality 与 retry reward 的相关性。
+
+\section{最终 step 指标}
+
+\subsection{整体任务指标}
+最终 step150 的整体指标如下：
+
+\begin{center}
+\small
+\begin{tabularx}{0.78\linewidth}{l r}
+\toprule
+Metric & Value \\
+\midrule
+\path{val/text/test_score} & 1.203 \\
+\path{val/success_rate} & 0.309 \\
+\path{episode/success_rate} & 0.605 \\
+\path{episode/reward/mean} & 6.071 \\
+\path{response_length/mean} & 110.699 \\
+\path{prompt_length/mean} & 617.534 \\
+\path{timing_s/step} & 610.902 \\
+\path{timing_s/testing} & 274.708 \\
+\path{perf/throughput} & 2212.467 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+日志中 \path{actor/lr} 显示为 0.000，这是 console 三位小数格式导致；脚本中的真实 lr 是 \path{1e-6}。
+
+\subsection{traj1 vs traj2}
+最终 validation 中，paired retry 没有超过 first attempt：
+
+\begin{center}
+\small
+\begin{tabularx}{0.92\linewidth}{l r}
+\toprule
+Metric & Value \\
+\midrule
+\path{val/ssca_traj1_success_rate} & 0.336 \\
+\path{val/ssca_traj2_success_rate} & 0.281 \\
+\path{val/ssca_retry_improved_success_rate} & 0.172 \\
+\path{val/ssca_retry_degraded_success_rate} & 0.227 \\
+\path{val/ssca_metric/traj1/reward_mean} & 3.359 \\
+\path{val/ssca_metric/traj2/reward_mean} & 2.812 \\
+\path{val/ssca_metric/retry/reward_delta_mean} & -0.547 \\
+\path{val/ssca_metric/traj1/length_mean} & 37.219 \\
+\path{val/ssca_metric/traj2/length_mean} & 41.195 \\
+\path{val/ssca_metric/traj1/valid_action_ratio} & 0.998 \\
+\path{val/ssca_metric/traj2/valid_action_ratio} & 0.994 \\
+\path{val/ssca_metric/traj1/invalid_count_mean} & 0.109 \\
+\path{val/ssca_metric/traj2/invalid_count_mean} & 0.250 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+训练 batch 侧的差距更明显：
+
+\begin{center}
+\small
+\begin{tabularx}{0.92\linewidth}{l r}
+\toprule
+Metric & Value \\
+\midrule
+\path{episode/ssca_traj1_success_rate} & 0.797 \\
+\path{episode/ssca_traj2_success_rate} & 0.414 \\
+\path{episode/ssca_retry_improved_success_rate} & 0.070 \\
+\path{episode/ssca_retry_degraded_success_rate} & 0.453 \\
+\path{episode/ssca_metric/traj1/reward_mean} & 7.969 \\
+\path{episode/ssca_metric/traj2/reward_mean} & 4.141 \\
+\path{episode/ssca_metric/retry/reward_delta_mean} & -3.828 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+这说明随着训练推进，traj1 已经相当强，而 summary-conditioned traj2 反而经常不如第一次尝试。
+
+\subsection{Summary 质量指标}
+最终 validation 的 summary 质量如下：
+
+\begin{center}
+\small
+\begin{tabularx}{0.92\linewidth}{l r}
+\toprule
+Metric & Value \\
+\midrule
+\path{val/ssca_metric/summary/quality_mean} & 0.759 \\
+\path{val/ssca_metric/summary/quality_std} & 0.079 \\
+\path{val/ssca_metric/summary/label_count_mean} & 4.453 \\
+\path{val/ssca_metric/summary/five_label_rate} & 0.734 \\
+\path{val/ssca_metric/summary/ordered_five_line_rate} & 0.000 \\
+\path{val/ssca_metric/summary/plan_ok_rate} & 0.992 \\
+\path{val/ssca_metric/summary/word_count_mean} & 89.898 \\
+\path{val/ssca_metric/summary/bonus_mean} & 0.000 \\
+\path{val/ssca_metric/summary/quality_reward_corr} & -0.061 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+解读：summary 的格式确实被训练起来了。\path{quality_mean} 从 0.296 到 0.759，\path{five_label_rate} 从 0.148 到 0.734，\path{plan_ok_rate} 从 0.094 到 0.992。问题在于 \path{quality_reward_corr=-0.061}，说明“格式好”并不等于“能提升 retry reward”。
+
+\subsection{VIMPO-style loss 指标}
+最终 step150 的 VIMPO 指标如下：
+
+\begin{center}
+\small
+\begin{tabularx}{0.92\linewidth}{l r}
+\toprule
+Metric & Value \\
+\midrule
+\path{actor/ssca_vimpo_value_loss} & 0.000 \\
+\path{actor/ssca_vimpo_value_loss_raw} & 0.002 \\
+\path{actor/ssca_vimpo_value_loss_x1e4} & 0.761 \\
+\path{actor/ssca_vimpo_value_loss_raw_x1e4} & 15.214 \\
+\path{actor/ssca_vimpo_active_row_ratio} & 0.570 \\
+\path{actor/ssca_vimpo_terminal_value_mean_active} & -0.018 \\
+\path{actor/ssca_vimpo_terminal_target_mean_active} & -0.019 \\
+\path{actor/ssca_vimpo_rmse_active} & 0.070 \\
+\path{actor/ssca_vimpo_mae_active} & 0.049 \\
+\path{actor/ssca_vimpo_value_target_corr_active} & 0.003 \\
+\path{actor/ssca_vimpo_sign_acc_active} & 0.488 \\
+\path{actor/ssca_vimpo_target_positive_rate_active} & 0.414 \\
+\path{actor/ssca_vimpo_value_positive_rate_active} & 0.540 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\path{value_target_corr_active=0.003} 和 \path{sign_acc_active=0.488} 接近随机，说明 VIMPO implied value 没有有效学到 paired retry improvement。这个 auxiliary loss 虽然接入了，但当前权重、target 分摊和 reward delta 分布都没有形成足够强的优化信号。
+
+\section{与 GraphGPO 的参照}
+同 seed2026 的 GraphGPO ALFWorld full 日志为：
+\begin{lstlisting}
+logs/graphgpo_qwen25_15b_alfworld_full_seed2026_20260622_051648.log
+\end{lstlisting}
+其最终 step150 约为：
+
+\begin{center}
+\small
+\begin{tabularx}{\linewidth}{l r r r}
+\toprule
+Run & \path{val/success_rate} & \path{episode/success_rate} & \path{timing_s/step} \\
+\midrule
+GraphGPO seed2026 & 0.883 & 0.906 & 235.068 \\
+SSCA + VIMPO seed2026 & 0.309 & 0.605 & 610.902 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+这不是严格公平的算法比较，因为 SSCA 每个 prompt 要执行 \path{traj1 + summary + traj2}，rollout 和 validation 成本更高，batch 组织也不同。但它说明：当前 SSCA 版本尚不能作为 GraphGPO/GRPO 的有效替代或增强。
+
+\section{问题分析}
+
+\subsection{Summary 学会了格式，但没学到 outcome-useful memory}
+最关键的矛盾是：summary quality 提升明显，但 reward correlation 接近 0 或为负。当前 quality reward 更像是在优化“是否像一个合格表格/模板”，而不是“是否真的帮助第二次尝试”。因此模型会越来越会写五行 summary，但这五行不一定包含能改变 action trajectory 的有效信息。
+
+\subsection{traj2 prompt 更复杂，可能干扰 action policy}
+traj2 比 traj1 多读一段 retry memory，prompt 更长，且必须在 live observation 和 memory 之间做信息融合。最终 \path{traj2_invalid_count_mean=0.250} 高于 \path{traj1_invalid_count_mean=0.109}，说明 summary 可能增加了无效动作或错误动作选择的概率。即使 summary 格式正确，如果其中的 plan 过时、不够 grounded，或者被模型当成硬指令复制，都会让 traj2 走偏。
+
+\subsection{成功 traj1 后再 retry 会自然产生退化样本}
+当前所有 prompt 都执行 retry，不管 traj1 是否已经成功。训练后期 traj1 本身越来越强，很多 paired 样本中 traj1 已经成功；此时 traj2 只有重复成功才算不退化。最终 train 侧 \path{traj1_success=0.797}，\path{traj2_success=0.414}，因此大量样本给出负 delta。这个设定会把训练目标从“失败后总结经验并改善”变成“不要比一个已经成功的首次尝试差”，难度更高且噪声更大。
+
+\subsection{VIMPO target 对 summary 的直接监督偏弱}
+当前 branch target 被分摊到 summary row 和所有 traj2 action rows。summary 是 retry branch 的条件变量，但它只拿到被分摊后的一小部分 target；而且 \path{beta=0.01}、\path{value_loss_coef=0.05} 都比较保守。最终 VIMPO 相关性指标没有起来，说明这个辅助项尚未有效地把 \path{reward2 - reward1} 转化为可学习的 summary/token credit。
+
+\subsection{运行结束不干净，但指标可用}
+SSCA + VIMPO full 在打印 final validation metrics 和 progress 100\% 后出现：
+\begin{lstlisting}
+RuntimeError: DataLoader worker (...) is killed by signal: Killed.
+\end{lstlisting}
+该错误发生在 final validation 之后，因此不影响已记录指标；但说明长时间运行后的 DataLoader / Ray worker 清理仍需要处理。
+
+\section{当前结论}
+当前版本可以得出以下结论：
+\begin{enumerate}
+  \item 工程链路成立：\path{traj1 -> summary -> traj2} 可以完整跑通，summary 作为 actor action 进入训练。
+  \item Prompt 改造有效：五标签、plan 约束、word limit 等 summary 格式指标明显改善。
+  \item 核心算法目标未达成：\path{traj2} 没有比 paired \path{traj1} 更好，retry 平均 delta 仍为负。
+  \item VIMPO-style value loss 已接入，但尚未学到有效的 paired improvement value。
+  \item 目前不建议直接扩大到 3 seed 作为正式结果；更合理的是先改 retry gating 和 summary credit，再重新 smoke/full。
+\end{enumerate}
+
+\section{下一版建议}
+
+\subsection{只对失败或低分 traj1 启动 retry 训练}
+当前所有样本都 retry，成功 traj1 会制造大量自然退化样本。下一版建议：
+\begin{itemize}
+  \item 对 \path{reward1 <= threshold} 的样本启用 summary+traj2 主训练；
+  \item 对成功 traj1 可以不 retry，或只作为 preserve-plan 辅助分析，不进入主要 policy loss；
+  \item metrics 按 \path{traj1_failed} 和 \path{traj1_success} 分桶报告。
+\end{itemize}
+
+\subsection{加强 summary 的 outcome credit}
+可以考虑让 summary row 单独吃更强的 paired improvement signal：
+\begin{itemize}
+  \item summary row 使用完整 \path{reward2 - reward1} target；
+  \item traj2 action rows 继续使用 retry outcome reward；
+  \item 或者增加 pairwise objective：improved summary 提升概率，degraded summary 降低概率。
+\end{itemize}
+
+\subsection{降低结构 bonus，增加 outcome-aligned reward}
+结构 bonus 已经足够让格式学起来，但它和最终 reward 不相关。建议把格式 bonus 变成低权重 gate，只保证 label 完整和可解析；真正 reward shaping 应更多来自 outcome improvement，例如：
+\begin{equation}
+  bonus = \alpha \cdot \max(r_2-r_1, 0).
+\end{equation}
+
+\subsection{改 retry prompt，避免 memory 干扰动作}
+可以把 summary 放到更明确的 memory section，并在 action prompt 前再次强调：当前 admissible actions 和 live observation 优先，summary 只提供搜索优先级和错误规避，不是要逐字复制的动作序列。
+
+\subsection{补充诊断指标}
+建议新增：
+\begin{itemize}
+  \item \path{retry_given_traj1_failed_success_rate}；
+  \item \path{retry_given_traj1_success_success_rate}；
+  \item \path{reward_delta_given_traj1_failed_mean}；
+  \item \path{reward_delta_given_traj1_success_mean}；
+  \item \path{summary_quality_given_improved_mean}；
+  \item \path{summary_quality_given_degraded_mean}；
+  \item \path{summary_contains_target_object_rate}；
+  \item \path{summary_plan_first_is_admissible_rate}。
+\end{itemize}
+
+这些指标能回答当前最关键的问题：summary 是否真的帮助失败样本，还是只是在成功样本上增加干扰。
+
+\section{复现实验入口}
+单 seed full：
+\begin{lstlisting}
+bash /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/scripts/run_ssca_retry_grpo_alfworld_1p5b_full.sh
+\end{lstlisting}
+
+三 seed 串行：
+\begin{lstlisting}
+bash /prj/corp/crd/morpheus/lasvegas/china-scratch/ziyuhuan/Projects/verl-agent/scripts/run_ssca_retry_grpo_alfworld_1p5b_full_3seeds.sh
+\end{lstlisting}
+
+基于当前 seed2026 结果，更推荐先做机制修改，再运行 3-seed full。
+
+\end{document}

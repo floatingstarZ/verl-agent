@@ -15,3 +15,4 @@
 
 from .rollout_loop import TrajectoryCollector
 from .utils import adjust_batch
+from .reasoning_value_rollout import ReasoningValueTrajectoryCollector

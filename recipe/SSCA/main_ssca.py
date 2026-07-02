@@ -85,11 +85,20 @@ class TaskRunner:
                 if not is_version_ge(pkg="vllm", minver="0.7.3"):
                     raise NotImplementedError("PPO LoRA is not supported before vllm 0.7.3")
 
+        ssca_vimpo_enabled = bool(config.algorithm.get("ssca_vimpo", {}).get("enable", False))
+        ssca_value_head_enabled = bool(config.actor_rollout_ref.actor.get("value_head", {}).get("enable", False))
+
         # define worker classes
         if config.actor_rollout_ref.actor.strategy in ["fsdp", "fsdp2"]:
             assert config.critic.strategy in ["fsdp", "fsdp2"]
             from verl.single_controller.ray import RayWorkerGroup
-            from verl.workers.fsdp_workers import ActorRolloutRefWorker, AsyncActorRolloutRefWorker, CriticWorker
+            from verl.workers.fsdp_workers import AsyncActorRolloutRefWorker, CriticWorker
+            if ssca_value_head_enabled:
+                if config.actor_rollout_ref.rollout.mode == "async":
+                    raise NotImplementedError("SSCA value-head/VIMPO currently supports synchronous rollout only")
+                from verl.workers.step_ppo_fsdp_workers import ActorRolloutRefWorker
+            else:
+                from verl.workers.fsdp_workers import ActorRolloutRefWorker
 
             actor_rollout_cls = AsyncActorRolloutRefWorker if config.actor_rollout_ref.rollout.mode == "async" else ActorRolloutRefWorker
             ray_worker_group_cls = RayWorkerGroup
@@ -175,7 +184,12 @@ class TaskRunner:
         train_dataset = create_rl_dataset(config.data.train_files, config.data, tokenizer, processor)
         val_dataset = create_rl_dataset(config.data.val_files, config.data, tokenizer, processor)
         train_sampler = create_rl_sampler(config.data, train_dataset)
-        trainer = RayPPOTrainer(
+        trainer_cls = RayPPOTrainer
+        if ssca_vimpo_enabled:
+            from recipe.SSCA.vimpo_trainer import SSCAVIMPORayTrainer
+            trainer_cls = SSCAVIMPORayTrainer
+
+        trainer = trainer_cls(
             config=config,
             tokenizer=tokenizer,
             processor=processor,

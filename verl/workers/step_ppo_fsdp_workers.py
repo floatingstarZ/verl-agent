@@ -103,6 +103,35 @@ class ActorRolloutRefWorker(BaseActorRolloutRefWorker):
             )
 
     @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)
+    def compute_reasoning_values(self, data: DataProto):
+        """Compute value-head predictions for reasoning-value visualization/eval."""
+        assert self._is_actor
+        if self._is_offload_param:
+            load_fsdp_model_to_gpu(self.actor_module_fsdp)
+
+        data = data.to(get_torch_device().current_device())
+        data.meta_info["micro_batch_size"] = self.config.actor.ppo_micro_batch_size_per_gpu
+        data.meta_info["max_token_len"] = self.config.actor.ppo_max_token_len_per_gpu
+        data.meta_info["use_dynamic_bsz"] = self.config.actor.use_dynamic_bsz
+
+        with self.ulysses_sharding_manager:
+            data = self.ulysses_sharding_manager.preprocess_data(data)
+            values = self.actor.compute_reasoning_values(data=data)
+            output = DataProto.from_dict(tensors={"reason_value_preds": values})
+            output = self.ulysses_sharding_manager.postprocess_data(output)
+
+        output = output.to("cpu")
+
+        if self.world_size > 1 and fsdp_version(self.actor.actor_module) == 1:
+            self.actor.actor_module._handle.reshard(True)
+
+        if self._is_offload_param:
+            offload_fsdp_model_to_cpu(self.actor_module_fsdp)
+            log_gpu_memory_usage("After offload actor model during compute_reasoning_values", logger=logger)
+
+        return output
+
+    @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)
     def compute_log_prob(self, data: DataProto):
         assert self._is_actor
         if self._is_offload_param:

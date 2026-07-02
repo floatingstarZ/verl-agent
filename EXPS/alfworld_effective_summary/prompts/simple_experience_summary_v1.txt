@@ -1,0 +1,24 @@
+You are helping an ALFWorld retry agent.
+Please summarize reliable experience from the previous attempt so the agent can retry the same task from the initial scene.
+
+Rules:
+- Use only the task, previous attempt, and outcome shown below.
+- Preserve exact object and receptacle names from the task and observations.
+- If the attempt succeeded, keep the successful route and key action sequence.
+- If the attempt failed, state what was tried, the likely mistake, and a safer next move.
+- Keep it short, concrete, and action-oriented. Use ALFWorld command vocabulary.
+- Do not use Markdown, bullets, hidden reasoning, or invented object names.
+
+Task:
+{task}
+
+Previous attempt:
+{trace}
+
+Outcome:
+{outcome}
+
+Return only these three lines:
+Experience: <reliable facts or route from the previous attempt>
+Next try: <one concise retry plan from the start>
+Avoid: <unhelpful or invalid actions to avoid; write none if there is no evidence>

@@ -359,7 +359,7 @@ class ActorRolloutRefWorker(Worker):
 
         # TODO: add more optimizer args into config
         if role == "actor" and optim_config is not None:
-            from verl.utils.torch_functional import get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup
+            from verl.utils.torch_functional import get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_exponential_schedule_with_warmup
 
             actor_optimizer = optim.AdamW(
                 actor_module_fsdp.parameters(),
@@ -383,6 +383,8 @@ class ActorRolloutRefWorker(Worker):
                 actor_lr_scheduler = get_constant_schedule_with_warmup(optimizer=actor_optimizer, num_warmup_steps=num_warmup_steps)
             elif warmup_style == "cosine":
                 actor_lr_scheduler = get_cosine_schedule_with_warmup(optimizer=actor_optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=total_steps, min_lr_ratio=min_lr_ratio, num_cycles=num_cycles)
+            elif warmup_style == "exponential":
+                actor_lr_scheduler = get_exponential_schedule_with_warmup(optimizer=actor_optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=total_steps, min_lr_ratio=min_lr_ratio)
             else:
                 raise NotImplementedError(f"Warmup style {warmup_style} is not supported")
 
@@ -655,8 +657,14 @@ class ActorRolloutRefWorker(Worker):
         with self.rollout_sharding_manager:
             log_gpu_memory_usage("After entering rollout sharding manager", logger=logger)
 
+            rollout_kwargs = prompts.meta_info.pop("rollout_kwargs", {}) or {}
             prompts = self.rollout_sharding_manager.preprocess_data(prompts)
-            output = self.rollout.generate_sequences(prompts=prompts)
+            try:
+                output = self.rollout.generate_sequences(prompts=prompts, **rollout_kwargs)
+            except TypeError:
+                if rollout_kwargs:
+                    logger.warning("Rollout backend does not accept rollout_kwargs=%s; retrying without them", rollout_kwargs)
+                output = self.rollout.generate_sequences(prompts=prompts)
             
             log_gpu_memory_usage("After rollout generation", logger=logger)
 
@@ -1005,12 +1013,14 @@ class CriticWorker(Worker):
 
         print(f"Total steps: {total_steps}, num_warmup_steps: {num_warmup_steps}")
 
-        from verl.utils.torch_functional import get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup
+        from verl.utils.torch_functional import get_constant_schedule_with_warmup, get_cosine_schedule_with_warmup, get_exponential_schedule_with_warmup
 
         if warmup_style == "constant":
             critic_lr_scheduler = get_constant_schedule_with_warmup(optimizer=critic_optimizer, num_warmup_steps=num_warmup_steps)
         elif warmup_style == "cosine":
             critic_lr_scheduler = get_cosine_schedule_with_warmup(optimizer=critic_optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=total_steps)
+        elif warmup_style == "exponential":
+            critic_lr_scheduler = get_exponential_schedule_with_warmup(optimizer=critic_optimizer, num_warmup_steps=num_warmup_steps, num_training_steps=total_steps, min_lr_ratio=config.optim.get("min_lr_ratio", 0.1))
         else:
             raise NotImplementedError(f"Warmup style {warmup_style} is not supported")
 

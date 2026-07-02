@@ -66,6 +66,8 @@ actor_rollout_ref:
     ulysses_sequence_parallel_size: 1 # sp size
     policy_loss:
       loss_mode: "vanilla"
+      ntf_keep_ratio: 0.1
+      ntf_min_keep_tokens: 1
     checkpoint:
       contents: ['model', 'optimizer', 'extra']  # with 'hf_model' you can save whole model as hf format, now only use sharded model checkpoint to save space
     optim:
@@ -276,6 +278,8 @@ algorithm:
     similarity_thresh: 0.95 # similarity threshold for GiGPO (0.0, 1.0)
   istar:
     use_process_only: False
+  contrastive_rf:
+    positive_threshold: null  # null/batch_mean for continuous rewards; 0.0 for binary success rewards
   filter_groups: # DAPO from https://arxiv.org/abs/2503.14476
     enable: False
     max_num_gen_batches: 10

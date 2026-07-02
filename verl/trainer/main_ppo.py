@@ -85,13 +85,24 @@ class TaskRunner:
                 if not is_version_ge(pkg="vllm", minver="0.7.3"):
                     raise NotImplementedError("PPO LoRA is not supported before vllm 0.7.3")
 
+        reasoning_value_aux_enabled = bool(config.actor_rollout_ref.actor.get("reasoning_value_aux", {}).get("enable", False))
+        value_head_enabled = bool(config.actor_rollout_ref.actor.get("value_head", {}).get("enable", False))
+        if reasoning_value_aux_enabled and not value_head_enabled:
+            raise ValueError("reasoning_value_aux requires actor_rollout_ref.actor.value_head.enable=True")
+
         # define worker classes
         if config.actor_rollout_ref.actor.strategy in ["fsdp", "fsdp2"]:
             assert config.critic.strategy in ["fsdp", "fsdp2"]
             from verl.single_controller.ray import RayWorkerGroup
-            from verl.workers.fsdp_workers import ActorRolloutRefWorker, AsyncActorRolloutRefWorker, CriticWorker
-
-            actor_rollout_cls = AsyncActorRolloutRefWorker if config.actor_rollout_ref.rollout.mode == "async" else ActorRolloutRefWorker
+            from verl.workers.fsdp_workers import AsyncActorRolloutRefWorker, CriticWorker
+            if value_head_enabled:
+                if config.actor_rollout_ref.rollout.mode == "async":
+                    raise NotImplementedError("value-head actor side-branch currently supports synchronous rollout only")
+                from verl.workers.step_ppo_fsdp_workers import ActorRolloutRefWorker
+                actor_rollout_cls = ActorRolloutRefWorker
+            else:
+                from verl.workers.fsdp_workers import ActorRolloutRefWorker
+                actor_rollout_cls = AsyncActorRolloutRefWorker if config.actor_rollout_ref.rollout.mode == "async" else ActorRolloutRefWorker
             ray_worker_group_cls = RayWorkerGroup
 
         elif config.actor_rollout_ref.actor.strategy == "megatron":
@@ -167,7 +178,10 @@ class TaskRunner:
 
         assert config.actor_rollout_ref.rollout.n == 1, "In verl, actor_rollout_ref.rollout.n>1 is for GRPO. In verl+env, we keep n=1, and achieve GRPO by env.rollout.n"
 
-        from agent_system.multi_turn_rollout import TrajectoryCollector
+        if reasoning_value_aux_enabled:
+            from agent_system.multi_turn_rollout import ReasoningValueTrajectoryCollector as TrajectoryCollector
+        else:
+            from agent_system.multi_turn_rollout import TrajectoryCollector
         traj_collector = TrajectoryCollector(config=config, tokenizer=tokenizer, processor=processor)
 
         from verl.utils.dataset.rl_dataset import collate_fn

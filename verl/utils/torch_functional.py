@@ -502,6 +502,27 @@ def get_cosine_schedule_with_warmup(
     return LambdaLR(optimizer, lr_lambda, last_epoch)
 
 
+def get_exponential_schedule_with_warmup(
+    optimizer: Optimizer,
+    num_warmup_steps: int,
+    num_training_steps: int,
+    min_lr_ratio: float = 0.1,
+    last_epoch: int = -1,
+):
+    """Create an exponential decay schedule with linear warmup."""
+    min_lr_ratio = 0.1 if min_lr_ratio is None else float(min_lr_ratio)
+    min_lr_ratio = min(max(min_lr_ratio, 1e-8), 1.0)
+
+    def lr_lambda(current_step):
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        progress = float(current_step - num_warmup_steps) / float(max(1, num_training_steps - num_warmup_steps))
+        progress = min(max(progress, 0.0), 1.0)
+        return min_lr_ratio ** progress
+
+    return LambdaLR(optimizer, lr_lambda, last_epoch)
+
+
 def get_constant_schedule_with_warmup(
     optimizer: Optimizer,
     num_warmup_steps: int,

@@ -203,6 +203,7 @@ class vLLMRollout(BaseRollout):
 
         do_sample = prompts.meta_info.get("do_sample", True)
         is_validate = prompts.meta_info.get("validate", False)
+        target_response_length = int(kwargs.get("max_tokens", self.config.response_length))
         if not do_sample:
             kwargs = {
                 "best_of": 1,
@@ -243,9 +244,12 @@ class vLLMRollout(BaseRollout):
             response = output[0].to(idx.device)
             log_probs = output[1].to(idx.device)
 
-            if response.shape[1] < self.config.response_length:
-                response = pad_sequence_to_length(response, self.config.response_length, self.pad_token_id)
-                log_probs = pad_sequence_to_length(log_probs, self.config.response_length, self.pad_token_id)
+            if response.shape[1] < target_response_length:
+                response = pad_sequence_to_length(response, target_response_length, self.pad_token_id)
+                log_probs = pad_sequence_to_length(log_probs, target_response_length, self.pad_token_id)
+            elif response.shape[1] > target_response_length:
+                response = response[:, :target_response_length]
+                log_probs = log_probs[:, :target_response_length]
 
             # utilize current sampling params
             if self.sampling_params.n > 1 and do_sample:

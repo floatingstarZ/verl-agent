@@ -292,6 +292,7 @@ class vLLMRollout(BaseRollout):
 
         do_sample = prompts.meta_info.get("do_sample", True)
         is_validate = prompts.meta_info.get("validate", False)
+        target_response_length = int(kwargs.get("max_tokens", self.config.response_length))
         if not do_sample:
             kwargs = {
                 "best_of": 1,
@@ -340,8 +341,8 @@ class vLLMRollout(BaseRollout):
                         curr_log_prob.append(logprob[response_ids[i]].logprob)
                     rollout_log_probs.append(curr_log_prob)
 
-            response = pad_2d_list_to_length(response, self.pad_token_id, max_length=self.config.response_length).to(idx.device)
-            rollout_log_probs = pad_2d_list_to_length(rollout_log_probs, -1, max_length=self.config.response_length).to(idx.device)
+            response = pad_2d_list_to_length(response, self.pad_token_id, max_length=target_response_length).to(idx.device)
+            rollout_log_probs = pad_2d_list_to_length(rollout_log_probs, -1, max_length=target_response_length).to(idx.device)
             rollout_log_probs = rollout_log_probs.to(torch.float32)
 
             if self.sampling_params.n > 1 and do_sample:

@@ -29,13 +29,14 @@ from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 
 import verl.utils.torch_functional as verl_F
 from verl import DataProto
-from verl.trainer.ppo.core_algos import agg_loss, compute_policy_loss, compute_policy_loss_gspo, kl_penalty
+from verl.trainer.ppo.core_algos import agg_loss, compute_c_rf_ntf_policy_loss, compute_policy_loss, compute_policy_loss_gspo, kl_penalty
 from verl.utils.debug import GPUMemoryLogger
 from verl.utils.device import get_device_name, get_torch_device, is_cuda_available, is_npu_available
 from verl.utils.fsdp_utils import FSDPModule, fsdp2_clip_grad_norm_
 from verl.utils.py_functional import append_to_dict
 from verl.utils.seqlen_balancing import get_reverse_idx, rearrange_micro_batches
 from verl.utils.torch_functional import logprobs_from_logits
+from recipe.SSCA.vimpo_core import compute_ssca_vimpo_value_loss, ssca_vimpo_actor_enabled, ssca_vimpo_append_select_keys
 from verl.utils.ulysses import gather_outpus_and_unpad, ulysses_pad_and_slice_inputs, ulysses_pad
 from verl.workers.actor import BasePPOActor
 
@@ -339,12 +340,17 @@ class DataParallelPPOActor(BasePPOActor):
 
         temperature = data.meta_info["temperature"]  # temperature must be in the data.meta_info to avoid silent error
         multi_turn = data.meta_info.get("multi_turn", False)
+        use_ssca_vimpo_loss = ssca_vimpo_actor_enabled(self.config)
 
         select_keys = ["responses", "input_ids", "attention_mask", "position_ids", "old_log_probs", "advantages"]
+        if self.config.policy_loss.get("loss_mode", "vanilla") == "c_rf_ntf":
+            contrastive_rf_extra_keys = ["contrastive_rf_traj_token_weight", "contrastive_rf_ntf_mask"]
+            select_keys.extend([key for key in contrastive_rf_extra_keys if key in data.batch])
         if multi_turn:
             select_keys.append("loss_mask")
         if self.config.use_kl_loss:
             select_keys.append("ref_log_prob")
+        ssca_vimpo_append_select_keys(self.config, select_keys)
         batch = data.select(batch_keys=select_keys).batch
         has_multi_modal_inputs = "multi_modal_inputs" in data.non_tensor_batch.keys()
 
@@ -407,14 +413,17 @@ class DataParallelPPOActor(BasePPOActor):
                     entropy, log_prob = self._forward_micro_batch(micro_batch=data, temperature=temperature, calculate_entropy=calculate_entropy)
                     
                     loss_mode = self.config.policy_loss.get("loss_mode", "vanilla")
+                    c_rf_ntf_metrics = None
                     if loss_mode == "vanilla":
                         policy_loss_fn = compute_policy_loss
                     elif loss_mode == "gspo":
                         policy_loss_fn = compute_policy_loss_gspo
+                    elif loss_mode == "c_rf_ntf":
+                        policy_loss_fn = compute_c_rf_ntf_policy_loss
                     else:
                         raise ValueError(f"Unsupported loss_mode: {loss_mode}")
 
-                    pg_loss, pg_clipfrac, ppo_kl, pg_clipfrac_lower = policy_loss_fn(
+                    policy_loss_output = policy_loss_fn(
                         old_log_prob=old_log_prob,
                         log_prob=log_prob,
                         advantages=advantages,
@@ -424,7 +433,22 @@ class DataParallelPPOActor(BasePPOActor):
                         cliprange_high=clip_ratio_high,
                         clip_ratio_c=clip_ratio_c,
                         loss_agg_mode=loss_agg_mode,
+                        **(
+                            {
+                                "ntf_keep_ratio": self.config.policy_loss.get("ntf_keep_ratio", 0.1),
+                                "ntf_min_keep_tokens": self.config.policy_loss.get("ntf_min_keep_tokens", 1),
+                                "traj_token_weight": data["contrastive_rf_traj_token_weight"] if "contrastive_rf_traj_token_weight" in data else None,
+                                "ntf_mask": data["contrastive_rf_ntf_mask"] if "contrastive_rf_ntf_mask" in data else None,
+                            }
+                            if loss_mode == "c_rf_ntf"
+                            else {}
+                        ),
                     )
+                    if loss_mode == "c_rf_ntf":
+                        pg_loss, pg_clipfrac, ppo_kl, pg_clipfrac_lower, c_rf_ntf_metrics = policy_loss_output
+                        append_to_dict(metrics, c_rf_ntf_metrics)
+                    else:
+                        pg_loss, pg_clipfrac, ppo_kl, pg_clipfrac_lower = policy_loss_output
 
                     if entropy_coeff != 0:
                         entropy_loss = agg_loss(loss_mat=entropy, loss_mask=response_mask, loss_agg_mode=loss_agg_mode)
@@ -433,6 +457,18 @@ class DataParallelPPOActor(BasePPOActor):
                         policy_loss = pg_loss - entropy_loss * entropy_coeff
                     else:
                         policy_loss = pg_loss
+
+                    if use_ssca_vimpo_loss:
+                        ssca_vimpo_loss, ssca_vimpo_metrics = compute_ssca_vimpo_value_loss(
+                            log_prob=log_prob,
+                            ref_log_prob=data["ref_log_prob"],
+                            response_mask=response_mask,
+                            terminal_target=data["ssca_vimpo_terminal_target"],
+                            loss_mask=data["ssca_vimpo_loss_mask"],
+                            config=self.config,
+                        )
+                        policy_loss = policy_loss + ssca_vimpo_loss
+                        append_to_dict(metrics, ssca_vimpo_metrics)
 
                     if self.config.use_kl_loss:
                         ref_log_prob = data["ref_log_prob"]

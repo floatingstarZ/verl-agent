@@ -282,6 +282,99 @@ def compute_reinforce_plus_plus_baseline_outcome_advantage(token_level_rewards: 
     return scores, scores
 
 
+def compute_contrastive_reinforce_outcome_advantage(
+    token_level_rewards: torch.Tensor,
+    response_mask: torch.Tensor,
+    positive_threshold=None,
+    traj_index=None,
+    old_log_prob: torch.Tensor | None = None,
+    ntf_keep_ratio: float = 0.1,
+    ntf_min_keep_tokens: int = 1,
+    return_aux: bool = False,
+):
+    """
+    Compute trajectory-level +/- advantages for Contrastive-REINFORCE (C-RF).
+
+    In agent environments, each DataProto row is one generated action/step, while
+    the paper's C-RF labels and averages full trajectories.  When ``traj_index``
+    is provided, rows with the same trajectory id share one outcome label and a
+    token weight that sums to one over the whole trajectory.  NTF masks are also
+    selected over all valid tokens in a negative trajectory using behavior/old
+    log-probabilities, so actor micro-batching does not change token selection.
+    """
+    with torch.no_grad():
+        response_mask = response_mask.float()
+        scores = token_level_rewards.sum(dim=-1).float()
+        bsz, response_length = response_mask.shape
+        device = response_mask.device
+        labels = torch.empty_like(scores)
+        traj_scores_for_rows = scores.clone()
+        traj_token_weight = torch.zeros_like(response_mask)
+        ntf_mask = torch.zeros_like(response_mask)
+
+        if traj_index is None:
+            groups = {idx: [idx] for idx in range(bsz)}
+        else:
+            traj_values = np.asarray(traj_index, dtype=object).reshape(-1)
+            if len(traj_values) != bsz:
+                raise ValueError(f"traj_index length {len(traj_values)} does not match batch size {bsz}")
+            groups = defaultdict(list)
+            for row_idx, traj_uid in enumerate(traj_values):
+                groups[traj_uid].append(row_idx)
+
+        traj_score_items = []
+        for traj_uid, row_indices in groups.items():
+            row_tensor = torch.as_tensor(row_indices, device=device, dtype=torch.long)
+            traj_score = scores[row_tensor].mean()
+            traj_score_items.append((traj_uid, row_indices, traj_score))
+
+        unique_scores = torch.stack([item[2] for item in traj_score_items]) if traj_score_items else scores.new_zeros((0,))
+        if positive_threshold is None or str(positive_threshold).lower() in {"none", "null", "batch_mean", "mean"}:
+            threshold = unique_scores.mean() if unique_scores.numel() > 0 else scores.new_tensor(0.0)
+        else:
+            threshold = torch.as_tensor(float(positive_threshold), device=device, dtype=scores.dtype)
+
+        keep_ratio = min(max(float(ntf_keep_ratio), 0.0), 1.0)
+        min_keep_tokens = max(int(ntf_min_keep_tokens), 0)
+        for _traj_uid, row_indices, traj_score in traj_score_items:
+            row_tensor = torch.as_tensor(row_indices, device=device, dtype=torch.long)
+            label = scores.new_tensor(1.0) if traj_score > threshold else scores.new_tensor(-1.0)
+            labels[row_tensor] = label
+            traj_scores_for_rows[row_tensor] = traj_score
+
+            traj_valid_tokens = response_mask[row_tensor].sum().clamp_min(1.0)
+            traj_token_weight[row_tensor] = response_mask[row_tensor] / traj_valid_tokens
+
+            if label < 0 and keep_ratio > 0:
+                flat_valid = torch.nonzero(response_mask[row_tensor].reshape(-1).bool(), as_tuple=False).flatten()
+                valid_count = int(flat_valid.numel())
+                if valid_count <= 0:
+                    continue
+                keep_count = int(np.ceil(valid_count * keep_ratio))
+                if keep_count > 0:
+                    keep_count = max(min_keep_tokens, keep_count)
+                keep_count = min(keep_count, valid_count)
+                if keep_count <= 0:
+                    continue
+                if old_log_prob is not None:
+                    rank_values = old_log_prob[row_tensor].detach().reshape(-1)[flat_valid]
+                else:
+                    rank_values = torch.arange(valid_count, device=device, dtype=scores.dtype)
+                kept_rel = torch.topk(rank_values, k=keep_count, largest=False).indices
+                kept_flat = flat_valid[kept_rel]
+                local_rows = torch.div(kept_flat, response_length, rounding_mode="floor")
+                local_cols = kept_flat % response_length
+                global_rows = row_tensor[local_rows]
+                ntf_mask[global_rows, local_cols] = 1.0
+
+        advantages = labels.unsqueeze(-1) * response_mask
+        returns = advantages.clone()
+
+    if return_aux:
+        return advantages, returns, traj_token_weight, ntf_mask, traj_scores_for_rows, labels
+    return advantages, returns
+
+
 def compute_rloo_outcome_advantage(token_level_rewards: torch.Tensor, response_mask: torch.Tensor, index: np.ndarray, traj_index: np.ndarray, epsilon: float = 1e-6, compute_mean_std_cross_steps: bool = True):
     """
     Compute advantage for RLOO based on https://arxiv.org/abs/2402.14740
@@ -490,6 +583,140 @@ def compute_policy_loss(
     pg_loss = agg_loss(loss_mat=pg_losses, loss_mask=response_mask, loss_agg_mode=loss_agg_mode)
 
     return pg_loss, pg_clipfrac, ppo_kl, pg_clipfrac_lower
+
+
+def _zero_like_scalar(tensor: torch.Tensor) -> torch.Tensor:
+    return torch.zeros((), device=tensor.device, dtype=tensor.dtype)
+
+
+def compute_c_rf_ntf_policy_loss(
+    old_log_prob: torch.Tensor,
+    log_prob: torch.Tensor,
+    advantages: torch.Tensor,
+    response_mask: torch.Tensor,
+    cliprange=None,
+    cliprange_low=None,
+    cliprange_high=None,
+    clip_ratio_c=3.0,
+    loss_agg_mode: str = "token-mean",
+    ntf_keep_ratio: float = 0.1,
+    ntf_min_keep_tokens: int = 1,
+    traj_token_weight: torch.Tensor | None = None,
+    ntf_mask: torch.Tensor | None = None,
+):
+    """
+    Contrastive-REINFORCE with Negative Token Filtering (C-RF w/ NTF).
+
+    If ``traj_token_weight`` is provided, the objective is trajectory-aware:
+    weights sum to one over all valid action tokens in each trajectory, so long
+    episodes do not dominate simply because they contain more action rows.  The
+    negative denominator remains the full trajectory token mass; NTF only zeros
+    selected numerator terms.
+    """
+    del clip_ratio_c, loss_agg_mode  # C-RF has its own trajectory-normalized objective.
+    if cliprange_low is None:
+        cliprange_low = cliprange
+    if cliprange_high is None:
+        cliprange_high = cliprange
+    if cliprange_low is None or cliprange_high is None:
+        raise ValueError("cliprange or both cliprange_low/cliprange_high must be provided")
+
+    response_mask = response_mask.float()
+    valid_lens = response_mask.sum(dim=-1).clamp_min(1.0)
+    row_advantages = (advantages.float() * response_mask).sum(dim=-1) / valid_lens
+    positive_rows = row_advantages > 0
+    negative_rows = row_advantages < 0
+
+    negative_approx_kl = log_prob - old_log_prob
+    ratio = torch.exp(negative_approx_kl)
+    ppo_kl = verl_F.masked_mean(-negative_approx_kl, response_mask)
+
+    positive_objective = ratio.clamp_max(1.0 + float(cliprange_high))
+    negative_objective = ratio.clamp_min(1.0 - float(cliprange_low))
+
+    keep_ratio = min(max(float(ntf_keep_ratio), 0.0), 1.0)
+    min_keep_tokens = max(int(ntf_min_keep_tokens), 0)
+    if ntf_mask is not None:
+        negative_keep_mask = ntf_mask.float().to(response_mask.device) * response_mask * negative_rows.unsqueeze(-1).float()
+    else:
+        negative_keep_mask = torch.zeros_like(response_mask)
+        if keep_ratio > 0:
+            detached_log_prob = log_prob.detach()
+            negative_indices = torch.nonzero(negative_rows, as_tuple=False).flatten()
+            for row_idx in negative_indices.tolist():
+                valid_idx = torch.nonzero(response_mask[row_idx].bool(), as_tuple=False).flatten()
+                valid_count = int(valid_idx.numel())
+                if valid_count <= 0:
+                    continue
+                keep_count = int(np.ceil(valid_count * keep_ratio))
+                if keep_count > 0:
+                    keep_count = max(min_keep_tokens, keep_count)
+                keep_count = min(keep_count, valid_count)
+                if keep_count <= 0:
+                    continue
+                kept_rel = torch.topk(detached_log_prob[row_idx, valid_idx], k=keep_count, largest=False).indices
+                negative_keep_mask[row_idx, valid_idx[kept_rel]] = 1.0
+
+    zero = _zero_like_scalar(log_prob)
+    if traj_token_weight is not None:
+        token_weight = traj_token_weight.float().to(response_mask.device) * response_mask
+        positive_base_weight = token_weight * positive_rows.unsqueeze(-1).float()
+        negative_base_weight = token_weight * negative_rows.unsqueeze(-1).float()
+        negative_kept_weight = negative_base_weight * negative_keep_mask
+
+        positive_den = positive_base_weight.sum()
+        negative_den = negative_base_weight.sum()
+        positive_loss = -((positive_objective * positive_base_weight).sum() / positive_den.clamp_min(1e-8)) if positive_den.detach().item() > 0 else zero
+        negative_loss = ((negative_objective * negative_kept_weight).sum() / negative_den.clamp_min(1e-8)) if negative_den.detach().item() > 0 else zero
+        row_positive_objective = (positive_objective * response_mask).sum(dim=-1) / valid_lens
+        row_negative_objective = (negative_objective * negative_keep_mask).sum(dim=-1) / valid_lens
+    else:
+        row_positive_objective = (positive_objective * response_mask).sum(dim=-1) / valid_lens
+        row_negative_objective = (negative_objective * negative_keep_mask).sum(dim=-1) / valid_lens
+        positive_den = positive_rows.float().sum()
+        negative_den = negative_rows.float().sum()
+        positive_loss = -row_positive_objective[positive_rows].mean() if positive_rows.any() else zero
+        negative_loss = row_negative_objective[negative_rows].mean() if negative_rows.any() else zero
+
+    if positive_rows.any() and negative_rows.any():
+        pg_loss = 0.5 * (positive_loss + negative_loss)
+    elif positive_rows.any():
+        pg_loss = positive_loss
+    elif negative_rows.any():
+        pg_loss = negative_loss
+    else:
+        pg_loss = zero
+
+    positive_token_mask = response_mask * positive_rows.unsqueeze(-1).float()
+    negative_valid_mask = response_mask * negative_rows.unsqueeze(-1).float()
+    pg_clipfrac = verl_F.masked_mean((ratio > (1.0 + float(cliprange_high))).float(), positive_token_mask)
+    pg_clipfrac_lower = verl_F.masked_mean((ratio < (1.0 - float(cliprange_low))).float(), negative_keep_mask)
+
+    kept_negative_tokens = negative_keep_mask.sum()
+    valid_negative_tokens = negative_valid_mask.sum().clamp_min(1.0)
+    kept_logprob = verl_F.masked_mean(log_prob.detach(), negative_keep_mask)
+    masked_negative_mask = (negative_valid_mask - negative_keep_mask).clamp_min(0.0)
+    masked_logprob = verl_F.masked_mean(log_prob.detach(), masked_negative_mask)
+
+    positive_count = positive_rows.float().sum()
+    negative_count = negative_rows.float().sum()
+    metrics = {
+        "actor/c_rf_ntf/positive_rate": (positive_count / positive_rows.numel()).detach().item() if positive_rows.numel() else 0.0,
+        "actor/c_rf_ntf/positive_rows": positive_count.detach().item(),
+        "actor/c_rf_ntf/negative_rows": negative_count.detach().item(),
+        "actor/c_rf_ntf/positive_objective_mean": row_positive_objective[positive_rows].detach().mean().item() if positive_rows.any() else 0.0,
+        "actor/c_rf_ntf/negative_objective_mean": row_negative_objective[negative_rows].detach().mean().item() if negative_rows.any() else 0.0,
+        "actor/c_rf_ntf/positive_weight_mass": positive_den.detach().item() if torch.is_tensor(positive_den) else float(positive_den),
+        "actor/c_rf_ntf/negative_weight_mass": negative_den.detach().item() if torch.is_tensor(negative_den) else float(negative_den),
+        "actor/c_rf_ntf/trajectory_weighted": 1.0 if traj_token_weight is not None else 0.0,
+        "actor/c_rf_ntf/precomputed_ntf_mask": 1.0 if ntf_mask is not None else 0.0,
+        "actor/c_rf_ntf/ntf_keep_ratio": keep_ratio,
+        "actor/c_rf_ntf/ntf_kept_token_frac": (kept_negative_tokens / valid_negative_tokens).detach().item(),
+        "actor/c_rf_ntf/ntf_kept_logprob_mean": kept_logprob.detach().item() if kept_negative_tokens.detach().item() > 0 else 0.0,
+        "actor/c_rf_ntf/ntf_masked_logprob_mean": masked_logprob.detach().item() if masked_negative_mask.sum().detach().item() > 0 else 0.0,
+    }
+
+    return pg_loss, pg_clipfrac, ppo_kl, pg_clipfrac_lower, metrics
 
 
 def compute_policy_loss_gspo(

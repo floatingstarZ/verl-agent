@@ -1,6 +1,8 @@
 # Recipe
 The examples under `recipes/` are representative extensions to verl for specific end-to-end RL training recipes.
 
+- [GraphGPO](./GraphGPO): graph-based credit assignment for agentic RL. Entry point: `python -m recipe.GraphGPO.main_graphgpo`.
+
 # Awesome work using verl
 
 - [s3](https://github.com/pat-jj/s3) **Efficient Yet Effective** Search Agent Training via RL ![GitHub Repo stars](https://img.shields.io/github/stars/pat-jj/s3)

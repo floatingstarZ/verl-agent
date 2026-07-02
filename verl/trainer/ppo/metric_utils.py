@@ -25,6 +25,24 @@ import torch
 from verl import DataProto
 from verl.utils.import_utils import deprecated
 
+
+def _float_stat(values, stat: str) -> float:
+    array = np.asarray(values, dtype=np.float32).reshape(-1)
+    if array.size == 0:
+        return 0.0
+    if stat == "mean":
+        return float(array.mean())
+    if stat == "max":
+        return float(array.max())
+    if stat == "min":
+        return float(array.min())
+    raise ValueError(f"Unsupported stat: {stat}")
+
+
+def _first_float(value) -> float:
+    array = np.asarray(value, dtype=np.float32).reshape(-1)
+    return float(array[0]) if array.size else 0.0
+
 @deprecated("verl.utils.metric.reduce_metrics")
 def reduce_metrics(metrics: Dict[str, List[Any]]) -> Dict[str, Any]:
     """
@@ -126,6 +144,53 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> Dict[str,
         return_diff_var = torch.var(valid_returns - valid_values)
         return_var = torch.var(valid_returns)
 
+    ssca_scalar_metrics = {}
+    for key, value in batch.non_tensor_batch.items():
+        if str(key).startswith("ssca_metric/"):
+            try:
+                ssca_scalar_metrics[f"episode/{key}"] = float(np.asarray(value, dtype=np.float32).mean())
+            except (TypeError, ValueError):
+                continue
+
+    contrastive_rf_metrics = {}
+    if "contrastive_rf_labels" in batch.batch:
+        crf_labels = batch.batch["contrastive_rf_labels"].detach().float()
+        unique_traj_labels = crf_labels[unique_idx]
+        contrastive_rf_metrics = {
+            "contrastive_rf/positive_rate": (crf_labels > 0).float().mean().item(),
+            "contrastive_rf/negative_rate": (crf_labels < 0).float().mean().item(),
+            "contrastive_rf/positive_traj_rate": (unique_traj_labels > 0).float().mean().item(),
+            "contrastive_rf/negative_traj_rate": (unique_traj_labels < 0).float().mean().item(),
+            "contrastive_rf/unique_traj_count": float(len(unique_traj_uid)),
+        }
+        if "contrastive_rf_scores" in batch.batch:
+            crf_scores = batch.batch["contrastive_rf_scores"].detach().float()
+            unique_traj_scores = crf_scores[unique_idx]
+            contrastive_rf_metrics.update(
+                {
+                    "contrastive_rf/score_mean": crf_scores.mean().item(),
+                    "contrastive_rf/score_max": crf_scores.max().item(),
+                    "contrastive_rf/score_min": crf_scores.min().item(),
+                    "contrastive_rf/traj_score_mean": unique_traj_scores.mean().item(),
+                    "contrastive_rf/traj_score_max": unique_traj_scores.max().item(),
+                    "contrastive_rf/traj_score_min": unique_traj_scores.min().item(),
+                }
+            )
+        if "contrastive_rf_traj_token_weight" in batch.batch:
+            crf_weight = batch.batch["contrastive_rf_traj_token_weight"].detach().float()
+            row_weight_mass = (crf_weight * response_mask.float()).sum(dim=-1)
+            contrastive_rf_metrics.update(
+                {
+                    "contrastive_rf/traj_token_weight_total": (crf_weight * response_mask.float()).sum().item(),
+                    "contrastive_rf/row_weight_mass_mean": row_weight_mass.mean().item(),
+                    "contrastive_rf/row_weight_mass_max": row_weight_mass.max().item(),
+                }
+            )
+        if "contrastive_rf_ntf_mask" in batch.batch:
+            ntf_mask = batch.batch["contrastive_rf_ntf_mask"].detach().float() * response_mask.float()
+            neg_mask = response_mask.float() * (crf_labels < 0).float().unsqueeze(-1)
+            contrastive_rf_metrics["contrastive_rf/ntf_kept_token_frac"] = (ntf_mask.sum() / neg_mask.sum().clamp_min(1.0)).item()
+
     metrics = {
         # score
         "critic/score/mean": torch.mean(sequence_score).detach().item(),
@@ -166,25 +231,20 @@ def compute_data_metrics(batch: DataProto, use_critic: bool = True) -> Dict[str,
         "prompt_length/min": torch.min(prompt_length).detach().item(),
         "prompt_length/clip_ratio": torch.mean(torch.eq(prompt_length, max_prompt_length).float()).detach().item(),
         # episode
-        "episode/reward/mean": 
-            batch.non_tensor_batch["episode_rewards"][unique_idx].mean().item(),
-        "episode/reward/max": 
-            batch.non_tensor_batch["episode_rewards"][unique_idx].max().item(),
-        "episode/reward/min": 
-            batch.non_tensor_batch["episode_rewards"][unique_idx].min().item(),
-        "episode/length/mean": 
-            batch.non_tensor_batch["episode_lengths"][unique_idx].mean().item(),
-        "episode/length/max":
-            batch.non_tensor_batch["episode_lengths"][unique_idx].max().item(),
-        "episode/length/min": 
-            batch.non_tensor_batch["episode_lengths"][unique_idx].min().item(),
-        "episode/tool_call_count/mean": 
-            batch.non_tensor_batch["tool_callings"][unique_idx].mean().item(),
+        "episode/reward/mean": _float_stat(batch.non_tensor_batch["episode_rewards"][unique_idx], "mean"),
+        "episode/reward/max": _float_stat(batch.non_tensor_batch["episode_rewards"][unique_idx], "max"),
+        "episode/reward/min": _float_stat(batch.non_tensor_batch["episode_rewards"][unique_idx], "min"),
+        "episode/length/mean": _float_stat(batch.non_tensor_batch["episode_lengths"][unique_idx], "mean"),
+        "episode/length/max": _float_stat(batch.non_tensor_batch["episode_lengths"][unique_idx], "max"),
+        "episode/length/min": _float_stat(batch.non_tensor_batch["episode_lengths"][unique_idx], "min"),
+        "episode/tool_call_count/mean": _float_stat(batch.non_tensor_batch["tool_callings"][unique_idx], "mean"),
         # "episode/tool_call_count/max":
-        #     batch.non_tensor_batch["tool_callings"][unique_idx].max().item(),
+        #     _float_stat(batch.non_tensor_batch["tool_callings"][unique_idx], "max"),
         # "episode/tool_call_count/min":
-        #     batch.non_tensor_batch["tool_callings"][unique_idx].min().item(),
-        **({f"episode/{k}": v[0].item() for k, v in batch.non_tensor_batch.items() if "success_rate" in k}),
+        #     _float_stat(batch.non_tensor_batch["tool_callings"][unique_idx], "min"),
+        **({f"episode/{k}": _first_float(v) for k, v in batch.non_tensor_batch.items() if "success_rate" in k}),
+        **ssca_scalar_metrics,
+        **contrastive_rf_metrics,
     }
     return metrics
 

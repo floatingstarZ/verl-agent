@@ -91,6 +91,7 @@ class AdvantageEstimator(str, Enum):
     GRPO = "grpo"
     REINFORCE_PLUS_PLUS = "reinforce_plus_plus"
     REINFORCE_PLUS_PLUS_BASELINE = "reinforce_plus_plus_baseline"
+    CONTRASTIVE_REINFORCE = "contrastive_reinforce"
     REMAX = "remax"
     RLOO = "rloo"
     GRPO_PASSK = "grpo_passk"
@@ -254,7 +255,7 @@ def compute_response_mask(data: DataProto):
     return attention_mask[:, -response_length:]
 
 
-def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_repeat=1, multi_turn=False, norm_adv_by_std_in_grpo=True, step_advantage_w=1.0, gigpo_mode="mean_std_norm", gigpo_enable_similarity=False, gigpo_similarity_thresh=0.95, use_process_only=False, **kwargs):
+def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_repeat=1, multi_turn=False, norm_adv_by_std_in_grpo=True, step_advantage_w=1.0, gigpo_mode="mean_std_norm", gigpo_enable_similarity=False, gigpo_similarity_thresh=0.95, use_process_only=False, contrastive_rf_positive_threshold=None, contrastive_rf_ntf_keep_ratio=0.1, contrastive_rf_ntf_min_keep_tokens=1, **kwargs):
     """Compute advantage estimates for policy optimization.
 
     This function computes advantage estimates using various estimators like GAE, GRPO, REINFORCE++, etc.
@@ -337,6 +338,23 @@ def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_re
         )
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.CONTRASTIVE_REINFORCE:
+        advantages, returns, traj_token_weight, ntf_mask, scores, labels = core_algos.compute_contrastive_reinforce_outcome_advantage(
+            token_level_rewards=data.batch["token_level_rewards"],
+            response_mask=data.batch["response_mask"],
+            positive_threshold=contrastive_rf_positive_threshold,
+            traj_index=data.non_tensor_batch.get("traj_uid", None),
+            old_log_prob=data.batch.get("old_log_probs", None),
+            ntf_keep_ratio=contrastive_rf_ntf_keep_ratio,
+            ntf_min_keep_tokens=contrastive_rf_ntf_min_keep_tokens,
+            return_aux=True,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
+        data.batch["contrastive_rf_scores"] = scores
+        data.batch["contrastive_rf_labels"] = labels
+        data.batch["contrastive_rf_traj_token_weight"] = traj_token_weight
+        data.batch["contrastive_rf_ntf_mask"] = ntf_mask
     elif adv_estimator == AdvantageEstimator.REMAX:
         advantages, returns = core_algos.compute_remax_outcome_advantage(
             token_level_rewards=data.batch["token_level_rewards"],
@@ -491,6 +509,7 @@ class RayPPOTrainer:
             AdvantageEstimator.GRPO,
             AdvantageEstimator.GRPO_PASSK,
             AdvantageEstimator.REINFORCE_PLUS_PLUS,
+            AdvantageEstimator.CONTRASTIVE_REINFORCE,
             AdvantageEstimator.REMAX,
             AdvantageEstimator.RLOO,
             AdvantageEstimator.REINFORCE_PLUS_PLUS_BASELINE,
@@ -892,6 +911,8 @@ class RayPPOTrainer:
             "step_returns",
             "step_rewards",
             "value_step_rewards",
+            "contrastive_rf_scores",
+            "contrastive_rf_labels",
         ]
         token_tensor_keys = [
             "responses",
@@ -904,6 +925,8 @@ class RayPPOTrainer:
             "token_level_rewards",
             "advantages",
             "returns",
+            "contrastive_rf_traj_token_weight",
+            "contrastive_rf_ntf_mask",
         ]
         if include_full_prompt_tokens:
             token_tensor_keys.extend(["prompts", "input_ids", "attention_mask", "position_ids"])
@@ -1107,6 +1130,374 @@ class RayPPOTrainer:
         # Log to each configured logger
         self.validation_generations_logger.log(self.config.trainer.logger, samples, self.global_steps)
 
+    @staticmethod
+    def _reason_value_to_float(value, default=0.0):
+        if isinstance(value, torch.Tensor):
+            if value.numel() == 0:
+                return default
+            return float(value.detach().cpu().reshape(-1)[0].item())
+        if isinstance(value, np.ndarray):
+            if value.size == 0:
+                return default
+            return float(value.reshape(-1)[0])
+        try:
+            return float(value)
+        except Exception:
+            return default
+
+    @staticmethod
+    def _reason_value_to_bool(value) -> bool:
+        return bool(RayPPOTrainer._reason_value_to_float(value, 0.0))
+
+    @staticmethod
+    def _extract_xml_tag(text: str, tag: str) -> str:
+        import re
+
+        match = re.search(rf"<{tag}>(.*?)</{tag}>", text, flags=re.IGNORECASE | re.DOTALL)
+        return match.group(1).strip() if match else ""
+
+    @staticmethod
+    def _shorten_for_html(text: str, limit: int = 3000) -> str:
+        text = "" if text is None else str(text)
+        if len(text) <= limit:
+            return text
+        keep = max(0, limit // 2)
+        return text[:keep] + "\n\n... [truncated] ...\n\n" + text[-keep:]
+
+    def _build_reason_value_curve_svg(self, steps: list[dict], width: int = 720, height: int = 190) -> str:
+        import html
+
+        if not steps:
+            return ""
+        pad_l, pad_r, pad_t, pad_b = 44, 16, 16, 32
+        xs = [float(s["step_index"]) for s in steps]
+        pred = [float(s.get("value_pred", 0.0)) for s in steps]
+        target = [float(s.get("value_target", 0.0)) for s in steps]
+        rewards = [float(s.get("reward", 0.0)) for s in steps]
+        y_values = pred + target + [0.0, 1.0]
+        ymin, ymax = min(y_values), max(y_values)
+        if abs(ymax - ymin) < 1e-6:
+            ymin -= 0.5
+            ymax += 0.5
+        span = ymax - ymin
+        ymin -= 0.05 * span
+        ymax += 0.05 * span
+        xmin, xmax = min(xs), max(xs)
+        if xmax <= xmin:
+            xmax = xmin + 1.0
+
+        def xmap(x):
+            return pad_l + (x - xmin) / (xmax - xmin) * (width - pad_l - pad_r)
+
+        def ymap(y):
+            return pad_t + (ymax - y) / (ymax - ymin) * (height - pad_t - pad_b)
+
+        def poly(vals):
+            return " ".join(f"{xmap(x):.1f},{ymap(y):.1f}" for x, y in zip(xs, vals))
+
+        right_x = width - pad_r
+        bottom_y = height - pad_b
+        footer_y = height - 8
+        right_label_x = width - pad_r - 58
+        legend_pred_x = pad_l + 8
+        legend_target_x = pad_l + 95
+        legend_reward_x = pad_l + 205
+
+        grid = []
+        for frac in [0.0, 0.25, 0.5, 0.75, 1.0]:
+            y = pad_t + frac * (height - pad_t - pad_b)
+            val = ymax - frac * (ymax - ymin)
+            grid.append(f'<line x1="{pad_l}" y1="{y:.1f}" x2="{right_x}" y2="{y:.1f}" stroke="#e5e7eb"/>')
+            grid.append(f'<text x="4" y="{y+4:.1f}" font-size="11" fill="#6b7280">{val:.2f}</text>')
+        reward_marks = []
+        for step, reward in zip(steps, rewards):
+            if reward > 0:
+                x = xmap(float(step["step_index"]))
+                reward_marks.append(f'<circle cx="{x:.1f}" cy="{pad_t+8}" r="5" fill="#16a34a"><title>reward={reward:.2f}</title></circle>')
+        return """
+<svg class="curve" viewBox="0 0 {width} {height}" role="img" aria-label="value curve">
+  <rect x="0" y="0" width="{width}" height="{height}" fill="white"/>
+  {grid}
+  <line x1="{pad_l}" y1="{bottom_y}" x2="{right_x}" y2="{bottom_y}" stroke="#9ca3af"/>
+  <line x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{bottom_y}" stroke="#9ca3af"/>
+  <polyline points="{pred_points}" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+  <polyline points="{target_points}" fill="none" stroke="#f97316" stroke-width="2" stroke-dasharray="5 4"/>
+  {reward_marks}
+  <text x="{pad_l}" y="{footer_y}" font-size="11" fill="#6b7280">step {xmin:.0f}</text>
+  <text x="{right_label_x}" y="{footer_y}" font-size="11" fill="#6b7280">step {xmax:.0f}</text>
+  <text x="{legend_pred_x}" y="14" font-size="12" fill="#2563eb">prediction</text>
+  <text x="{legend_target_x}" y="14" font-size="12" fill="#f97316">target return</text>
+  <text x="{legend_reward_x}" y="14" font-size="12" fill="#16a34a">reward>0</text>
+</svg>
+""".format(
+            width=width,
+            height=height,
+            pad_l=pad_l,
+            pad_r=pad_r,
+            pad_t=pad_t,
+            pad_b=pad_b,
+            right_x=right_x,
+            bottom_y=bottom_y,
+            footer_y=footer_y,
+            right_label_x=right_label_x,
+            legend_pred_x=legend_pred_x,
+            legend_target_x=legend_target_x,
+            legend_reward_x=legend_reward_x,
+            grid="\n  ".join(grid),
+            reward_marks="\n  ".join(reward_marks),
+            pred_points=html.escape(poly(pred)),
+            target_points=html.escape(poly(target)),
+            xmin=xmin,
+            xmax=xmax,
+        )
+
+    def _build_reason_value_overall_curve_svg(self, cases: list[dict]) -> str:
+        buckets: dict[int, list[dict]] = {}
+        for case in cases:
+            for step in case.get("steps", []):
+                buckets.setdefault(int(step.get("step_index", 0)), []).append(step)
+        mean_steps = []
+        for step_index in sorted(buckets):
+            rows = buckets[step_index]
+            count = max(len(rows), 1)
+            mean_steps.append(
+                {
+                    "step_index": step_index,
+                    "value_pred": sum(float(row.get("value_pred", 0.0) or 0.0) for row in rows) / count,
+                    "value_target": sum(float(row.get("value_target", 0.0) or 0.0) for row in rows) / count,
+                    "reward": sum(float(row.get("reward", 0.0) or 0.0) for row in rows) / count,
+                }
+            )
+        return self._build_reason_value_curve_svg(mean_steps)
+
+    def _write_reason_value_cases_html(self, cases: list[dict], html_path: str, json_name: str):
+        import html
+
+        def esc(text):
+            return html.escape("" if text is None else str(text))
+
+        summary_rows = []
+        body_sections = []
+        success_count = sum(1 for case in cases if case.get("success"))
+        total_steps = sum(len(case.get("steps", [])) for case in cases)
+        overall_curve = self._build_reason_value_overall_curve_svg(cases)
+        for case in cases:
+            steps = case["steps"]
+            success = "✅" if case.get("success") else "❌"
+            pred_values = [s["value_pred"] for s in steps]
+            summary_rows.append(
+                "<tr>"
+                f"<td>{case['case_index']}</td>"
+                f"<td><code>{esc(case['traj_uid'][:8])}</code></td>"
+                f"<td>{success}</td>"
+                f"<td>{esc(case.get('task_type', 'unknown'))}</td>"
+                f"<td>{esc(case.get('task', '')[:120])}</td>"
+                f"<td>{case.get('episode_reward', 0.0):.2f}</td>"
+                f"<td>{case.get('episode_length', len(steps)):.0f}</td>"
+                f"<td>{(max(pred_values) if pred_values else 0.0):.3f}</td>"
+                f"<td>{(pred_values[-1] if pred_values else 0.0):.3f}</td>"
+                "</tr>"
+            )
+
+            step_rows = []
+            for step in steps:
+                action_reason = self._extract_xml_tag(step.get("action_response", ""), "think")
+                action = step.get("action", "")
+                value_reason = self._extract_xml_tag(step.get("value_response", ""), "think")
+                if not value_reason:
+                    value_reason = step.get("value_response", "")
+                valid = "✅" if step.get("is_action_valid") else "❌"
+                reward = float(step.get("reward", 0.0))
+                reward_cls = "reward-pos" if reward > 0 else ""
+                step_rows.append(
+                    "<tr>"
+                    f"<td>{step['step_index']}</td>"
+                    f"<td class='num'>{step.get('value_pred', 0.0):.3f}</td>"
+                    f"<td class='num'>{step.get('value_target', 0.0):.3f}</td>"
+                    f"<td class='num'>{esc(step.get('value_text', ''))}</td>"
+                    f"<td class='num {reward_cls}'>{reward:.2f}</td>"
+                    f"<td>{valid}</td>"
+                    f"<td><code>{esc(action)}</code></td>"
+                    f"<td><details><summary>action reasoning</summary><pre>{esc(self._shorten_for_html(action_reason, 2500))}</pre>"
+                    f"<details><summary>full action output</summary><pre>{esc(self._shorten_for_html(step.get('action_response', ''), 3000))}</pre></details></details></td>"
+                    f"<td><details><summary>value reasoning</summary><pre>{esc(self._shorten_for_html(value_reason, 3000))}</pre>"
+                    f"<details><summary>full value output</summary><pre>{esc(self._shorten_for_html(step.get('value_response', ''), 3000))}</pre></details>"
+                    f"<details><summary>value prompt</summary><pre>{esc(self._shorten_for_html(step.get('value_prompt', ''), 3500))}</pre></details></details></td>"
+                    f"<td><details><summary>state/action prompt</summary><pre>{esc(self._shorten_for_html(step.get('action_prompt', ''), 3500))}</pre></details>"
+                    f"<details><summary>raw observation</summary><pre>{esc(self._shorten_for_html(step.get('observation', ''), 2500))}</pre></details></td>"
+                    "</tr>"
+                )
+
+            body_sections.append(
+                f"<section class='case' id='case-{case['case_index']}'>"
+                f"<h2>Case {case['case_index']} · {success} · reward={case.get('episode_reward', 0.0):.2f} · len={case.get('episode_length', len(steps)):.0f}</h2>"
+                f"<p><b>Task type:</b> {esc(case.get('task_type', 'unknown'))}<br><b>Task:</b> {esc(case.get('task', ''))}<br><b>Traj:</b> <code>{esc(case['traj_uid'])}</code></p>"
+                f"{self._build_reason_value_curve_svg(steps)}"
+                "<table class='steps'><thead><tr><th>step</th><th>V pred</th><th>target</th><th>V text</th><th>reward</th><th>valid</th><th>action</th><th>actor</th><th>value branch</th><th>state</th></tr></thead><tbody>"
+                + "\n".join(step_rows)
+                + "</tbody></table></section>"
+            )
+
+        html_text = f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Reasoning Value Aux ALFWorld Case Visualization</title>
+<style>
+body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 24px; color: #111827; background: #f8fafc; }}
+h1 {{ margin-bottom: 0.2rem; }}
+.meta {{ color: #4b5563; margin-top: 0; }}
+table {{ border-collapse: collapse; width: 100%; background: white; }}
+th, td {{ border: 1px solid #e5e7eb; padding: 6px 8px; vertical-align: top; font-size: 13px; }}
+th {{ background: #eef2ff; position: sticky; top: 0; z-index: 1; }}
+.summary th {{ position: static; }}
+.case {{ margin-top: 28px; padding: 18px; background: white; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 1px 2px rgba(15,23,42,.05); }}
+pre {{ white-space: pre-wrap; word-break: break-word; background: #f3f4f6; padding: 10px; border-radius: 8px; max-height: 360px; overflow: auto; }}
+code {{ color: #1d4ed8; }}
+.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+.reward-pos {{ color: #15803d; font-weight: 700; }}
+.curve {{ width: 100%; max-width: 920px; border: 1px solid #e5e7eb; border-radius: 10px; margin: 8px 0 16px; }}
+details > summary {{ cursor: pointer; color: #1d4ed8; }}
+.small {{ font-size: 12px; color: #6b7280; }}
+</style>
+</head>
+<body>
+<h1>Reasoning Value Aux ALFWorld Case Visualization</h1>
+<p class="meta">JSON source: <code>{esc(json_name)}</code>. <b>V pred</b> is the scalar stored in <code>value_pred</code>: for trained aux dumps it is the learned MLP readout; for offline text-value reruns it is the parsed text score, e.g. <code>&lt;value&gt;N&lt;/value&gt;</code> or <code>The value is: N</code>, normalized to 0-1. Target is the reward-to-go target used by the aux loss.</p>
+<h2>Overall Value Curve</h2>
+<p class="small">Mean over {len(cases)} trajectories / {total_steps} rollout steps. Green markers indicate positive mean immediate reward at that step index. Success count: {success_count}/{len(cases)}.</p>
+{overall_curve}
+<h2>Summary</h2>
+<table class="summary"><thead><tr><th>case</th><th>traj</th><th>success</th><th>type</th><th>task</th><th>ep reward</th><th>len</th><th>max V</th><th>final V</th></tr></thead><tbody>
+{''.join(summary_rows)}
+</tbody></table>
+{''.join(body_sections)}
+</body>
+</html>
+"""
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(html_text)
+
+    def _dump_reasoning_value_cases(self, batch: DataProto, dump_dir: str, max_cases: int = 10) -> None:
+        import json
+        import os
+        import re
+
+        os.makedirs(dump_dir, exist_ok=True)
+        n_rows = len(batch)
+        if n_rows == 0:
+            return
+
+        action_prompts = self.tokenizer.batch_decode(batch.batch.get("prompts", batch.batch["input_ids"]), skip_special_tokens=True)
+        action_responses = self.tokenizer.batch_decode(batch.batch["responses"], skip_special_tokens=True)
+        value_prompts = self.tokenizer.batch_decode(batch.batch["reason_value_prompts"], skip_special_tokens=True)
+        value_responses = self.tokenizer.batch_decode(batch.batch["reason_value_responses"], skip_special_tokens=True)
+        traj_uids = batch.non_tensor_batch.get("traj_uid", np.array([str(i) for i in range(n_rows)], dtype=object))
+
+        grouped: dict[str, list[int]] = {}
+        for idx, traj_uid in enumerate(traj_uids):
+            grouped.setdefault(str(traj_uid), []).append(idx)
+
+        cases = []
+        for case_index, (traj_uid, indices) in enumerate(grouped.items()):
+            if case_index >= max_cases:
+                break
+            first_idx = indices[0]
+            first_prompt = action_prompts[first_idx]
+            task_match = re.search(r"Your task is to:\s*(.*?)(?:\n|$)", first_prompt, flags=re.DOTALL)
+            if task_match:
+                task = task_match.group(1).strip()
+            else:
+                obs_text = str(batch.non_tensor_batch.get("anchor_obs", [""] * n_rows)[first_idx])
+                task_match = re.search(r"Your task is to:\s*(.*?)(?:\n|$)", obs_text, flags=re.DOTALL)
+                task = task_match.group(1).strip() if task_match else ""
+            task_type = "unknown"
+            lower_task = (task + " " + first_prompt).lower()
+            for candidate in [
+                "pick_two_obj_and_place",
+                "look_at_obj_in_light",
+                "pick_heat_then_place_in_recep",
+                "pick_cool_then_place_in_recep",
+                "pick_clean_then_place_in_recep",
+                "pick_and_place",
+            ]:
+                if candidate in lower_task:
+                    task_type = candidate
+                    break
+
+            steps = []
+            for step_index, idx in enumerate(indices):
+                action_response = action_responses[idx]
+                action = self._extract_xml_tag(action_response, "action")
+                value_response = value_responses[idx]
+                value_text = self._extract_xml_tag(value_response, "value")
+                steps.append(
+                    {
+                        "row_index": int(idx),
+                        "step_index": int(step_index),
+                        "observation": str(batch.non_tensor_batch.get("anchor_obs", [""] * n_rows)[idx]),
+                        "action_prompt": action_prompts[idx],
+                        "action_response": action_response,
+                        "action": action,
+                        "value_prompt": value_prompts[idx],
+                        "value_response": value_response,
+                        "value_text": value_text,
+                        "value_pred": self._reason_value_to_float(batch.batch["reason_value_preds"][idx]),
+                        "value_target": self._reason_value_to_float(batch.batch.get("reason_value_targets", torch.zeros(n_rows))[idx]),
+                        "value_think_close_found": self._reason_value_to_float(batch.batch.get("reason_value_think_close_found", torch.zeros(n_rows))[idx]),
+                        "value_response_valid_len": self._reason_value_to_float(batch.batch.get("reason_value_response_valid_len", torch.zeros(n_rows))[idx]),
+                        "reward": self._reason_value_to_float(batch.non_tensor_batch.get("rewards", np.zeros(n_rows, dtype=object))[idx]),
+                        "is_action_valid": self._reason_value_to_bool(batch.non_tensor_batch.get("is_action_valid", np.ones(n_rows, dtype=object))[idx]),
+                    }
+                )
+            episode_reward = self._reason_value_to_float(batch.non_tensor_batch.get("episode_rewards", np.zeros(n_rows, dtype=object))[first_idx])
+            episode_length = self._reason_value_to_float(batch.non_tensor_batch.get("episode_lengths", np.zeros(n_rows, dtype=object))[first_idx], default=len(steps))
+            cases.append(
+                {
+                    "case_index": case_index,
+                    "traj_uid": traj_uid,
+                    "task": task,
+                    "task_type": task_type,
+                    "success": episode_reward > 0,
+                    "episode_reward": episode_reward,
+                    "episode_length": episode_length,
+                    "steps": steps,
+                }
+            )
+
+        json_path = os.path.join(dump_dir, "reason_value_cases.json")
+        html_path = os.path.join(dump_dir, "reason_value_cases.html")
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump({"cases": cases}, f, ensure_ascii=False, indent=2)
+        self._write_reason_value_cases_html(cases, html_path=html_path, json_name=os.path.basename(json_path))
+        with open(os.path.join(dump_dir, "README.txt"), "w", encoding="utf-8") as f:
+            f.write(f"Wrote {len(cases)} cases from {n_rows} rollout rows.\nHTML: {html_path}\nJSON: {json_path}\n")
+        print(f"[reason_value_case_dump] wrote {len(cases)} cases to {html_path}")
+
+    def _maybe_dump_reasoning_value_cases(self, batch: DataProto) -> DataProto:
+        dump_dir = self.config.trainer.get("reason_value_case_dump_dir", None)
+        if not dump_dir or getattr(self, "_reason_value_case_dump_done", False):
+            return batch
+        if "reason_value_input_ids" not in batch.batch:
+            print("[reason_value_case_dump] skip: reason_value_* tensors are absent")
+            return batch
+        max_cases = int(self.config.trainer.get("reason_value_case_dump_max_cases", 10) or 10)
+        reason_input = batch.select(
+            batch_keys=[
+                "reason_value_input_ids",
+                "reason_value_attention_mask",
+                "reason_value_position_ids",
+                "reason_value_indices",
+            ]
+        )
+        reason_input_padded, pad_size = pad_dataproto_to_divisor(reason_input, self.actor_rollout_wg.world_size)
+        reason_values_padded = self.actor_rollout_wg.compute_reasoning_values(reason_input_padded)
+        reason_values = unpad_dataproto(reason_values_padded, pad_size=pad_size)
+        batch = batch.union(reason_values)
+        self._dump_reasoning_value_cases(batch=batch, dump_dir=dump_dir, max_cases=max_cases)
+        self._reason_value_case_dump_done = True
+        return batch
+
     def _validate(self):
         reward_tensor_lst = []
         data_source_lst = []
@@ -1120,64 +1511,78 @@ class RayPPOTrainer:
         sample_scores = []
 
         for test_data in self.val_dataloader:
-            test_batch = DataProto.from_single_dict(test_data)
-
-            # repeat test batch
-            test_batch = test_batch.repeat(repeat_times=self.config.actor_rollout_ref.rollout.val_kwargs.n, interleave=True)
+            base_test_batch = DataProto.from_single_dict(test_data)
+            val_repeat_times = int(self.config.actor_rollout_ref.rollout.val_kwargs.get("n", 1) or 1)
+            val_repeat_times = max(val_repeat_times, 1)
 
             # we only do validation on rule-based rm
-            if self.config.reward_model.enable and test_batch[0].non_tensor_batch["reward_model"]["style"] == "model":
+            if self.config.reward_model.enable and base_test_batch[0].non_tensor_batch["reward_model"]["style"] == "model":
                 return {}
 
-            # Store original inputs
-            input_ids = test_batch.batch["input_ids"]
-            # TODO: Can we keep special tokens except for padding tokens?
+            test_output_gen_batches = []
+            for val_repeat_idx in range(val_repeat_times):
+                test_batch = deepcopy(base_test_batch)
+
+                batch_keys_to_pop = ["input_ids", "attention_mask", "position_ids"]
+                non_tensor_batch_keys_to_pop = ["raw_prompt_ids", "data_source"]
+                if "multi_modal_data" in test_batch.non_tensor_batch:
+                    non_tensor_batch_keys_to_pop.append("multi_modal_data")
+                if "raw_prompt" in test_batch.non_tensor_batch:
+                    non_tensor_batch_keys_to_pop.append("raw_prompt")
+                if "tools_kwargs" in test_batch.non_tensor_batch:
+                    non_tensor_batch_keys_to_pop.append("tools_kwargs")
+                if "env_kwargs" in test_batch.non_tensor_batch:
+                    non_tensor_batch_keys_to_pop.append("env_kwargs")
+                test_gen_batch = test_batch.pop(
+                    batch_keys=batch_keys_to_pop,
+                    non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
+                )
+
+                test_gen_batch.meta_info = {
+                    "eos_token_id": self.tokenizer.eos_token_id,
+                    "pad_token_id": self.tokenizer.pad_token_id,
+                    "recompute_log_prob": False,
+                    "do_sample": self.config.actor_rollout_ref.rollout.val_kwargs.do_sample,
+                    "validate": True,
+                    "validate_repeat_idx": val_repeat_idx,
+                    "validate_repeat_times": val_repeat_times,
+                }
+                print(f"test_gen_batch meta info: {test_gen_batch.meta_info}")
+
+                # # pad to be divisible by dp_size
+                # test_gen_batch_padded, pad_size = pad_dataproto_to_divisor(test_gen_batch, self.actor_rollout_wg.world_size)
+                # test_output_gen_batch_padded = self.actor_rollout_wg.generate_sequences(test_gen_batch_padded)
+
+                # # unpad
+                # test_output_gen_batch = unpad_dataproto(test_output_gen_batch_padded, pad_size=pad_size)
+
+                ################ agent-environment loop ###############
+                test_output_gen_batch = self.traj_collector.multi_turn_loop(
+                                                        gen_batch=test_gen_batch,
+                                                        actor_rollout_wg=self.actor_rollout_wg,
+                                                        envs=self.val_envs,
+                                                        is_train=False,
+                                                        )
+                print(f'validation generation end ({val_repeat_idx + 1}/{val_repeat_times})')
+                test_output_gen_batches.append(test_output_gen_batch)
+
+            if len(test_output_gen_batches) > 1:
+                all_non_tensor_keys = set().union(*(batch.non_tensor_batch.keys() for batch in test_output_gen_batches))
+                for output_batch in test_output_gen_batches:
+                    missing_keys = all_non_tensor_keys.difference(output_batch.non_tensor_batch.keys())
+                    for key in missing_keys:
+                        fill_value = np.nan if ('success_rate' in key or str(key).startswith('ssca_metric/')) else None
+                        output_batch.non_tensor_batch[key] = np.full((len(output_batch),), fill_value, dtype=object)
+                test_batch = DataProto.concat(test_output_gen_batches)
+            else:
+                test_batch = test_output_gen_batches[0]
+            test_batch = self._maybe_dump_reasoning_value_cases(test_batch)
+
+            # Store generated outputs and their corresponding step prompts.
+            input_ids = test_batch.batch.get("prompts", test_batch.batch["input_ids"])
             input_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in input_ids]
             sample_inputs.extend(input_texts)
-
-            batch_keys_to_pop = ["input_ids", "attention_mask", "position_ids"]
-            non_tensor_batch_keys_to_pop = ["raw_prompt_ids", "data_source"]
-            if "multi_modal_data" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("multi_modal_data")
-            if "raw_prompt" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("raw_prompt")
-            if "tools_kwargs" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("tools_kwargs")
-            if "env_kwargs" in test_batch.non_tensor_batch:
-                non_tensor_batch_keys_to_pop.append("env_kwargs")
-            test_gen_batch = test_batch.pop(
-                batch_keys=batch_keys_to_pop,
-                non_tensor_batch_keys=non_tensor_batch_keys_to_pop,
-            )
-
-            test_gen_batch.meta_info = {
-                "eos_token_id": self.tokenizer.eos_token_id,
-                "pad_token_id": self.tokenizer.pad_token_id,
-                "recompute_log_prob": False,
-                "do_sample": self.config.actor_rollout_ref.rollout.val_kwargs.do_sample,
-                "validate": True,
-            }
-            print(f"test_gen_batch meta info: {test_gen_batch.meta_info}")
-
-            # # pad to be divisible by dp_size
-            # test_gen_batch_padded, pad_size = pad_dataproto_to_divisor(test_gen_batch, self.actor_rollout_wg.world_size)
-            # test_output_gen_batch_padded = self.actor_rollout_wg.generate_sequences(test_gen_batch_padded)
-
-            # # unpad
-            # test_output_gen_batch = unpad_dataproto(test_output_gen_batch_padded, pad_size=pad_size)
-
-            ################ agent-environment loop ###############
-            test_output_gen_batch = self.traj_collector.multi_turn_loop(
-                                                    gen_batch=test_gen_batch,
-                                                    actor_rollout_wg=self.actor_rollout_wg,
-                                                    envs=self.val_envs,
-                                                    is_train=False,
-                                                    )
-            print('validation generation end')
-            del test_batch
-            test_batch = test_output_gen_batch
-            # Store generated outputs
-            output_ids = test_output_gen_batch.batch["responses"]
+            output_ids = test_batch.batch["responses"]
             output_texts = [self.tokenizer.decode(ids, skip_special_tokens=True) for ids in output_ids]
             sample_outputs.extend(output_texts)
 
@@ -1191,17 +1596,17 @@ class RayPPOTrainer:
 
             reward_tensor_lst.append(reward_tensor)
             data_source_lst.append(test_batch.non_tensor_batch.get('data_source', ['unknown'] * reward_tensor.shape[0]))
-            tool_calling_list.append(test_output_gen_batch.non_tensor_batch['tool_callings'])
-            traj_uid_list.append(test_output_gen_batch.non_tensor_batch['traj_uid'])
+            tool_calling_list.append(test_batch.non_tensor_batch['tool_callings'])
+            traj_uid_list.append(test_batch.non_tensor_batch['traj_uid'])
+            unique_traj_uids, unique_traj_indices = np.unique(test_batch.non_tensor_batch['traj_uid'], return_index=True)
             # success rate
             for k in test_batch.non_tensor_batch.keys():
-                if 'success_rate' in k:
+                if 'success_rate' in k or str(k).startswith('ssca_metric/'):
                     if k not in success_rate_dict:
                         success_rate_dict[k] = []
-                    success_rate_dict[k].append(test_batch.non_tensor_batch[k][0])
-                    # all success_rate should be the same
-                    for i in range(1, len(test_batch.non_tensor_batch[k])):
-                        assert test_batch.non_tensor_batch[k][0] == test_batch.non_tensor_batch[k][i], f'not all success_rate are the same, 0: {test_batch.non_tensor_batch[k][0]}, {i}: {test_batch.non_tensor_batch[k][i]}'
+                    metric_values = np.asarray(test_batch.non_tensor_batch[k][unique_traj_indices], dtype=np.float32)
+                    metric_values = metric_values[~np.isnan(metric_values)]
+                    success_rate_dict[k].extend(metric_values.tolist())
 
         self._maybe_log_val_generations(inputs=sample_inputs, outputs=sample_outputs, scores=sample_scores)
 
@@ -1694,6 +2099,9 @@ class RayPPOTrainer:
                             gigpo_enable_similarity= self.config.algorithm.gigpo.enable_similarity,
                             gigpo_similarity_thresh=self.config.algorithm.gigpo.similarity_thresh,
                             use_process_only=self.config.algorithm.istar.use_process_only,
+                            contrastive_rf_positive_threshold=self.config.algorithm.contrastive_rf.get("positive_threshold", None),
+                            contrastive_rf_ntf_keep_ratio=self.config.actor_rollout_ref.actor.policy_loss.get("ntf_keep_ratio", 0.1),
+                            contrastive_rf_ntf_min_keep_tokens=self.config.actor_rollout_ref.actor.policy_loss.get("ntf_min_keep_tokens", 1),
                         )
 
                     rl_trace_dir = self.config.trainer.get("rl_trace_dir", None)
